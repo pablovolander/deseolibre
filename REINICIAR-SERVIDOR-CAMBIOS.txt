@@ -1,0 +1,48 @@
+═══════════════════════════════════════════════════════════
+  ⚠️  IMPORTANTE: REINICIAR EL SERVIDOR
+═══════════════════════════════════════════════════════════
+
+Se han agregado nuevas funcionalidades al servidor que
+requieren reiniciarlo para que funcionen.
+
+PASOS PARA REINICIAR:
+──────────────────────────────────────────────────────────
+
+1. DETENER el servidor actual:
+   - Ve a la ventana donde está corriendo
+   - Presiona: Ctrl + C
+   - O simplemente cierra la ventana
+
+2. INICIAR el servidor nuevamente:
+   - Haz doble clic en: TEST-COMPLETO.bat
+   - O ejecuta: node server.js
+
+3. ESPERAR a ver:
+   "Servidor Deseo Libre ejecutándose en puerto 3000"
+
+4. LISTO! Ahora puedes usar las nuevas funcionalidades
+
+
+NUEVAS FUNCIONALIDADES AGREGADAS:
+──────────────────────────────────────────────────────────
+
+✅ Clic en fotos para ver perfil del usuario
+✅ Perfiles públicos de todos los usuarios
+✅ Ver todas las publicaciones de un usuario
+✅ Iconos de verificación en las tarjetas
+✅ Contadores de likes y comentarios visibles
+✅ Información de contacto accesible
+
+
+CÓMO PROBAR:
+──────────────────────────────────────────────────────────
+
+1. Abrir: http://localhost:3000/feed-acompañantes-hombres.html
+2. Hacer clic en CUALQUIER foto
+3. ¡Se abrirá el perfil del usuario que la publicó!
+INICIAR-CON-NUEVOS-CAMBIOS.bat
+
+
+
+═══════════════════════════════════════════════════════════
+

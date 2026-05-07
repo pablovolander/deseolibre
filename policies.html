@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Políticas y Términos - Deseo Libre</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+        }
+
+        .logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            font-weight: 600;
+            background: linear-gradient(45deg, var(--coral-pink), var(--deep-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-decoration: none;
+        }
+
+        .nav-menu {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+
+        .nav-menu a {
+            font-family: 'Inter', sans-serif;
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .nav-menu a:hover {
+            color: #764ba2;
+        }
+
+        .btn {
+            font-family: 'Inter', sans-serif;
+            padding: 0.5rem 1.5rem;
+            border: none;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Main Content */
+        main {
+            padding: 3rem 0;
+        }
+
+        .policies-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 3rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .policies-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .policies-header h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 3rem;
+            font-weight: 600;
+            color: #764ba2;
+            margin-bottom: 1rem;
+        }
+
+        .policies-header p {
+            font-family: 'Inter', sans-serif;
+            color: #666;
+            font-size: 1.2rem;
+        }
+
+        .age-warning {
+            background: linear-gradient(45deg, #e91e63, #f06292);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .age-warning h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .age-warning p {
+            font-family: 'Inter', sans-serif;
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .policy-section {
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .policy-section h2 {
+            color: #764ba2;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .policy-section h3 {
+            color: #333;
+            font-size: 1.5rem;
+            margin: 2rem 0 1rem 0;
+        }
+
+        .policy-section p {
+            color: #666;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .policy-section ul {
+            color: #666;
+            margin-left: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .policy-section li {
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .reporting-section {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 3rem;
+        }
+
+        .reporting-section h2 {
+            color: white;
+            margin-bottom: 1rem;
+        }
+
+        .report-types {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .report-type {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .report-type i {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .report-type h4 {
+            margin-bottom: 0.5rem;
+        }
+
+        .contact-section {
+            background: #f8f9fa;
+            padding: 2rem;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .contact-section h2 {
+            color: #764ba2;
+            margin-bottom: 1rem;
+        }
+
+        .contact-info {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #666;
+        }
+
+        .contact-item i {
+            color: #764ba2;
+        }
+
+        .footer-note {
+            text-align: center;
+            margin-top: 3rem;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            color: white;
+        }
+
+        .footer-note p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .nav-menu {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .policies-header h1 {
+                font-size: 2rem;
+            }
+
+            .policy-section h2 {
+                font-size: 1.5rem;
+            }
+
+            .report-types {
+                grid-template-columns: 1fr;
+            }
+
+            .contact-info {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="index.html" class="logo">Deseo Libre</a>
+                <nav>
+                    <ul class="nav-menu">
+                        <li><a href="index.html">Inicio</a></li>
+                        <li><a href="feed.html">Feed</a></li>
+                        <li><a href="profile.html">Mi Perfil</a></li>
+                        <li><a href="index.html#servicios">Servicios</a></li>
+                        <li><a href="index.html#comunidades">Comunidades</a></li>
+                    </ul>
+                </nav>
+                <a href="index.html" class="btn btn-primary">Volver al Inicio</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="policies-container">
+                <div class="policies-header">
+                    <h1>Políticas y Términos de Uso</h1>
+                    <p>Conoce nuestras normas y políticas para mantener una comunidad segura y respetuosa</p>
+                </div>
+
+                <div class="age-warning">
+                    <h2><i class="fas fa-exclamation-triangle"></i> ADVERTENCIA IMPORTANTE</h2>
+                    <p>Esta plataforma es EXCLUSIVAMENTE para mayores de 18 años. El acceso está restringido y se requiere verificación de edad obligatoria.</p>
+                </div>
+
+                <div class="policy-section">
+                    <h2><i class="fas fa-shield-alt"></i> Verificación de Edad</h2>
+                    <p>Deseo Libre es una plataforma exclusivamente para adultos mayores de 18 años. Todos los usuarios deben:</p>
+                    <ul>
+                        <li>Confirmar su mayoría de edad mediante checkbox obligatorio</li>
+                        <li>Proporcionar información veraz sobre su edad</li>
+                        <li>Entender que el contenido es para adultos</li>
+                        <li>Aceptar que cualquier violación resultará en suspensión inmediata</li>
+                    </ul>
+                    <p><strong>No se tolera bajo ninguna circunstancia:</strong></p>
+                    <ul>
+                        <li>Usuarios menores de 18 años</li>
+                        <li>Contenido que involucre menores</li>
+                        <li>Falsificación de edad</li>
+                        <li>Acceso no autorizado por menores</li>
+                    </ul>
+                </div>
+
+                <div class="policy-section">
+                    <h2><i class="fas fa-images"></i> Política de Contenido</h2>
+                    <h3>Contenido Permitido</h3>
+                    <ul>
+                        <li>Contenido adulto consensuado entre mayores de edad</li>
+                        <li>Servicios profesionales para adultos</li>
+                        <li>Comunidades de adultos con intereses compartidos</li>
+                        <li>Contenido educativo sobre sexualidad adulta</li>
+                    </ul>
+                    
+                    <h3>Contenido Prohibido</h3>
+                    <ul>
+                        <li>Cualquier contenido que involucre menores de edad</li>
+                        <li>Contenido violento o no consensuado</li>
+                        <li>Material que viole la dignidad humana</li>
+                        <li>Contenido ilegal en cualquier jurisdicción</li>
+                        <li>Spam, phishing o contenido malicioso</li>
+                        <li>Contenido que promueva actividades ilegales</li>
+                    </ul>
+                </div>
+
+                <div class="policy-section">
+                    <h2><i class="fas fa-users"></i> Normas de la Comunidad</h2>
+                    <h3>Comportamiento Esperado</h3>
+                    <ul>
+                        <li>Respeto mutuo entre todos los usuarios</li>
+                        <li>Comunicación profesional y educada</li>
+                        <li>Consentimiento explícito en todas las interacciones</li>
+                        <li>Privacidad y confidencialidad</li>
+                        <li>Honestidad en perfiles y servicios ofrecidos</li>
+                    </ul>
+                    
+                    <h3>Comportamiento Prohibido</h3>
+                    <ul>
+                        <li>Acoso, intimidación o bullying</li>
+                        <li>Compartir información personal sin consentimiento</li>
+                        <li>Perfiles falsos o impersonación</li>
+                        <li>Actividades comerciales no autorizadas</li>
+                        <li>Uso de la plataforma para actividades ilegales</li>
+                        <li>Discriminación por cualquier motivo</li>
+                    </ul>
+                </div>
+
+                <div class="reporting-section">
+                    <h2><i class="fas fa-flag"></i> Sistema de Reportes</h2>
+                    <p>Mantén nuestra comunidad segura reportando cualquier violación de nuestras políticas.</p>
+                    
+                    <div class="report-types">
+                        <div class="report-type">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <h4>Contenido Inapropiado</h4>
+                            <p>Contenido que viola nuestras políticas</p>
+                        </div>
+                        <div class="report-type">
+                            <i class="fas fa-user-times"></i>
+                            <h4>Acoso</h4>
+                            <p>Comportamiento intimidatorio o abusivo</p>
+                        </div>
+                        <div class="report-type">
+                            <i class="fas fa-spam"></i>
+                            <h4>Spam</h4>
+                            <p>Contenido repetitivo o no deseado</p>
+                        </div>
+                        <div class="report-type">
+                            <i class="fas fa-user-secret"></i>
+                            <h4>Perfil Falso</h4>
+                            <p>Cuentas impersonando a otros</p>
+                        </div>
+                        <div class="report-type">
+                            <i class="fas fa-child"></i>
+                            <h4>Menor de Edad</h4>
+                            <p>Usuarios menores de 18 años</p>
+                        </div>
+                        <div class="report-type">
+                            <i class="fas fa-ellipsis-h"></i>
+                            <h4>Otros</h4>
+                            <p>Cualquier otra violación</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="policy-section">
+                    <h2><i class="fas fa-lock"></i> Política de Privacidad</h2>
+                    <h3>Protección de Datos</h3>
+                    <ul>
+                        <li>Respetamos tu privacidad y protegemos tus datos personales</li>
+                        <li>Solo compartimos información con tu consentimiento explícito</li>
+                        <li>Puedes controlar la visibilidad de tu perfil</li>
+                        <li>Mantenemos registros de seguridad para proteger la plataforma</li>
+                        <li>No vendemos ni compartimos datos con terceros sin consentimiento</li>
+                    </ul>
+                    
+                    <h3>Información Recopilada</h3>
+                    <ul>
+                        <li>Información básica de perfil (nombre, email, teléfono)</li>
+                        <li>Verificación de edad (solo confirmación, no fecha específica)</li>
+                        <li>Contenido que eliges compartir</li>
+                        <li>Datos de uso para mejorar la plataforma</li>
+                    </ul>
+                </div>
+
+                <div class="policy-section">
+                    <h2><i class="fas fa-gavel"></i> Consecuencias por Violaciones</h2>
+                    <h3>Medidas Disciplinarias</h3>
+                    <ul>
+                        <li><strong>Advertencia:</strong> Primera violación menor</li>
+                        <li><strong>Suspensión temporal:</strong> 7-30 días según gravedad</li>
+                        <li><strong>Suspensión permanente:</strong> Violaciones graves o repetidas</li>
+                        <li><strong>Prohibición inmediata:</strong> Contenido ilegal o menores de edad</li>
+                    </ul>
+                    
+                    <h3>Proceso de Apelación</h3>
+                    <ul>
+                        <li>Los usuarios pueden apelar suspensiones</li>
+                        <li>Revisión manual por el equipo de moderación</li>
+                        <li>Decisión final dentro de 7 días hábiles</li>
+                    </ul>
+                </div>
+
+                <div class="contact-section">
+                    <h2><i class="fas fa-envelope"></i> Contacto y Soporte</h2>
+                    <p>¿Tienes preguntas sobre nuestras políticas o necesitas reportar algo?</p>
+                    
+                    <div class="contact-info">
+                        <div class="contact-item">
+                            <i class="fas fa-envelope"></i>
+                            <span>reportes@deseolibre.com</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-phone"></i>
+                            <span>+34 900 123 456</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-clock"></i>
+                            <span>24/7 Soporte</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="footer-note">
+                    <p><strong>Última actualización:</strong> Diciembre 2024</p>
+                    <p>Al usar Deseo Libre, aceptas estas políticas y te comprometes a cumplirlas.</p>
+                    <p>Mantengamos juntos una comunidad segura, respetuosa y profesional.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

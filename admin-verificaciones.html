@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración - Verificaciones | Deseo Libre</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --coral-pink: #ff6b6b;
+            --deep-purple: #6c5ce7;
+            --light-coral: #ff8e8e;
+            --light-purple: #a29bfe;
+            --white: #ffffff;
+            --light-gray: #f8f9fa;
+            --medium-gray: #6c757d;
+            --dark-gray: #343a40;
+            --text-dark: #2d3436;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, var(--coral-pink) 0%, var(--deep-purple) 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--coral-pink), var(--deep-purple));
+            color: white;
+            padding: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: white;
+            color: var(--deep-purple);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            padding: 2rem;
+            background: var(--light-gray);
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--deep-purple);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card p {
+            color: var(--medium-gray);
+            font-size: 0.9rem;
+        }
+
+        .stat-card.pending h3 { color: var(--warning); }
+        .stat-card.approved h3 { color: var(--success); }
+        .stat-card.rejected h3 { color: var(--danger); }
+
+        .content {
+            padding: 2rem;
+        }
+
+        .filters {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 0.75rem 1.5rem;
+            border: 2px solid var(--light-purple);
+            background: white;
+            color: var(--deep-purple);
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn:hover,
+        .filter-btn.active {
+            background: var(--deep-purple);
+            color: white;
+            border-color: var(--deep-purple);
+        }
+
+        .verifications-list {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .verification-card {
+            background: white;
+            border: 2px solid var(--light-gray);
+            border-radius: 15px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .verification-card:hover {
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            border-color: var(--light-purple);
+        }
+
+        .verification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--light-gray);
+        }
+
+        .user-info h3 {
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .user-info p {
+            color: var(--medium-gray);
+            font-size: 0.9rem;
+        }
+
+        .verification-status {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-approved {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-rejected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .documents-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .documents-section h4 {
+            color: var(--text-dark);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .documents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .document-item {
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px solid var(--light-gray);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .document-item:hover {
+            border-color: var(--deep-purple);
+            transform: scale(1.02);
+        }
+
+        .document-item img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .document-label {
+            padding: 0.5rem;
+            background: var(--light-gray);
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-dark);
+            font-weight: 500;
+        }
+
+        .verification-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-approve {
+            background: var(--success);
+            color: white;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .btn-approve:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+
+        .btn-reject {
+            background: var(--danger);
+            color: white;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .btn-reject:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+
+        .rejection-reason {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid var(--light-gray);
+            border-radius: 10px;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .rejection-reason.show {
+            display: block;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow: auto;
+            position: relative;
+        }
+
+        .modal-image {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .message {
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--medium-gray);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--medium-gray);
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: var(--light-purple);
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .documents-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .verification-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1><i class="fas fa-shield-alt"></i> Panel de Verificaciones</h1>
+                <p style="margin-top: 0.5rem; opacity: 0.9;">Administración de Verificaciones de Identidad</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="refreshData()">
+                    <i class="fas fa-sync-alt"></i> Actualizar
+                </button>
+                <a href="index.html" class="btn btn-primary">
+                    <i class="fas fa-home"></i> Inicio
+                </a>
+            </div>
+        </div>
+
+        <div class="stats-container" id="statsContainer">
+            <div class="stat-card pending">
+                <h3 id="pendingCount">0</h3>
+                <p>Pendientes</p>
+            </div>
+            <div class="stat-card approved">
+                <h3 id="approvedCount">0</h3>
+                <p>Aprobadas</p>
+            </div>
+            <div class="stat-card rejected">
+                <h3 id="rejectedCount">0</h3>
+                <p>Rechazadas</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="totalCount">0</h3>
+                <p>Total</p>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="filters">
+                <button class="filter-btn active" onclick="filterByStatus('all')">Todas</button>
+                <button class="filter-btn" onclick="filterByStatus('pending')">Pendientes</button>
+                <button class="filter-btn" onclick="filterByStatus('approved')">Aprobadas</button>
+                <button class="filter-btn" onclick="filterByStatus('rejected')">Rechazadas</button>
+            </div>
+
+            <div id="messageContainer"></div>
+
+            <div id="verificationsList" class="verifications-list">
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i> Cargando verificaciones...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para ver imágenes -->
+    <div class="modal" id="imageModal" onclick="closeModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="close-modal" onclick="closeModal()">&times;</button>
+            <img id="modalImage" class="modal-image" src="" alt="Documento">
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000';
+        let currentFilter = 'all';
+        let allVerifications = [];
+
+        // Verificar autenticación al cargar
+        window.addEventListener('DOMContentLoaded', () => {
+            checkAuth();
+        });
+
+        async function checkAuth() {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                showMessage('Debes iniciar sesión para acceder al panel de administración', 'error');
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 2000);
+                return;
+            }
+            loadData();
+        }
+
+        async function loadData() {
+            try {
+                await Promise.all([loadStats(), loadVerifications()]);
+            } catch (error) {
+                console.error('Error loading data:', error);
+                showMessage('Error al cargar los datos. Verifica tu conexión.', 'error');
+            }
+        }
+
+        async function loadStats() {
+            const token = localStorage.getItem('authToken');
+            const response = await fetch(`${API_URL}/api/admin/verifications/stats`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                if (response.status === 403) {
+                    showMessage('No tienes permisos de administrador', 'error');
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 2000);
+                    return;
+                }
+                throw new Error('Error al cargar estadísticas');
+            }
+
+            const stats = await response.json();
+            document.getElementById('pendingCount').textContent = stats.pending || 0;
+            document.getElementById('approvedCount').textContent = stats.approved || 0;
+            document.getElementById('rejectedCount').textContent = stats.rejected || 0;
+            document.getElementById('totalCount').textContent = stats.total || 0;
+        }
+
+        async function loadVerifications() {
+            const token = localStorage.getItem('authToken');
+            // Load all verifications (not just pending)
+            const response = await fetch(`${API_URL}/api/admin/verifications/pending?status=all`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                if (response.status === 403) {
+                    showMessage('No tienes permisos de administrador', 'error');
+                    return;
+                }
+                throw new Error('Error al cargar verificaciones');
+            }
+
+            const data = await response.json();
+            allVerifications = data.verifications || [];
+            renderVerifications();
+        }
+
+        function renderVerifications() {
+            const container = document.getElementById('verificationsList');
+            
+            if (allVerifications.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <h3>No hay verificaciones pendientes</h3>
+                        <p>Todas las verificaciones han sido procesadas</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const filtered = currentFilter === 'all' 
+                ? allVerifications 
+                : allVerifications.filter(v => v.status === currentFilter);
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-filter"></i>
+                        <h3>No hay verificaciones con este filtro</h3>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map(verification => {
+                const verificationData = verification.verification_data || {};
+                const documents = typeof verificationData === 'object' ? verificationData : {};
+                const date = new Date(verification.created_at).toLocaleDateString('es-ES', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
+                return `
+                    <div class="verification-card" data-id="${verification.id}">
+                        <div class="verification-header">
+                            <div class="user-info">
+                                <h3>${verification.username}</h3>
+                                <p><i class="fas fa-envelope"></i> ${verification.email}</p>
+                                <p><i class="fas fa-calendar"></i> ${date}</p>
+                                <p><i class="fas fa-id-card"></i> Tipo: ${getVerificationTypeName(verification.verification_type)}</p>
+                            </div>
+                            <span class="verification-status status-${verification.status}">
+                                ${getStatusText(verification.status)}
+                            </span>
+                        </div>
+
+                        <div class="documents-section">
+                            <h4><i class="fas fa-images"></i> Documentos</h4>
+                            <div class="documents-grid">
+                                ${documents.id_front_url ? `
+                                    <div class="document-item" onclick="openModal('${API_URL}${documents.id_front_url}')">
+                                        <img src="${API_URL}${documents.id_front_url}" alt="Frente del documento" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'200\' height=\'200\'%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\'%3EImagen no disponible%3C/text%3E%3C/svg%3E'">
+                                        <div class="document-label">Frente del Documento</div>
+                                    </div>
+                                ` : ''}
+                                ${documents.id_back_url ? `
+                                    <div class="document-item" onclick="openModal('${API_URL}${documents.id_back_url}')">
+                                        <img src="${API_URL}${documents.id_back_url}" alt="Reverso del documento" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'200\' height=\'200\'%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\'%3EImagen no disponible%3C/text%3E%3C/svg%3E'">
+                                        <div class="document-label">Reverso del Documento</div>
+                                    </div>
+                                ` : ''}
+                                ${documents.selfie_url ? `
+                                    <div class="document-item" onclick="openModal('${API_URL}${documents.selfie_url}')">
+                                        <img src="${API_URL}${documents.selfie_url}" alt="Selfie" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'200\' height=\'200\'%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\'%3EImagen no disponible%3C/text%3E%3C/svg%3E'">
+                                        <div class="document-label">Selfie con Documento</div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            ${documents.additional_info ? `
+                                <div style="margin-top: 1rem; padding: 1rem; background: var(--light-gray); border-radius: 10px;">
+                                    <strong>Información adicional:</strong>
+                                    <p style="margin-top: 0.5rem;">${documents.additional_info}</p>
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        ${verification.status === 'pending' ? `
+                            <div class="verification-actions">
+                                <button class="btn btn-approve" onclick="approveVerification(${verification.id})">
+                                    <i class="fas fa-check"></i> Aprobar
+                                </button>
+                                <button class="btn btn-reject" onclick="showRejectionReason(${verification.id})">
+                                    <i class="fas fa-times"></i> Rechazar
+                                </button>
+                            </div>
+                            <textarea 
+                                class="rejection-reason" 
+                                id="rejectionReason_${verification.id}"
+                                placeholder="Razón del rechazo (requerida)..."
+                                rows="3"
+                            ></textarea>
+                        ` : verification.status === 'rejected' && verification.rejection_reason ? `
+                            <div style="padding: 1rem; background: #f8d7da; border-radius: 10px; color: #721c24;">
+                                <strong>Razón del rechazo:</strong>
+                                <p style="margin-top: 0.5rem;">${verification.rejection_reason}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getVerificationTypeName(type) {
+            const types = {
+                'id_card': 'Cédula de Identidad',
+                'passport': 'Pasaporte',
+                'driver_license': 'Licencia de Conducir'
+            };
+            return types[type] || type;
+        }
+
+        function getStatusText(status) {
+            const statuses = {
+                'pending': 'Pendiente',
+                'approved': 'Aprobada',
+                'rejected': 'Rechazada'
+            };
+            return statuses[status] || status;
+        }
+
+        function filterByStatus(status) {
+            currentFilter = status;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            renderVerifications();
+        }
+
+        async function approveVerification(id) {
+            if (!confirm('¿Estás seguro de que deseas aprobar esta verificación?')) {
+                return;
+            }
+
+            const token = localStorage.getItem('authToken');
+            try {
+                const response = await fetch(`${API_URL}/api/admin/verifications/${id}/approve`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Error al aprobar la verificación');
+                }
+
+                showMessage('Verificación aprobada exitosamente', 'success');
+                setTimeout(() => {
+                    loadData();
+                }, 1000);
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        }
+
+        function showRejectionReason(id) {
+            const textarea = document.getElementById(`rejectionReason_${id}`);
+            textarea.classList.toggle('show');
+            
+            if (textarea.classList.contains('show')) {
+                textarea.focus();
+                // Agregar botón de confirmar rechazo
+                const card = textarea.closest('.verification-card');
+                const actions = card.querySelector('.verification-actions');
+                if (!actions.querySelector('.btn-confirm-reject')) {
+                    const confirmBtn = document.createElement('button');
+                    confirmBtn.className = 'btn btn-reject btn-confirm-reject';
+                    confirmBtn.innerHTML = '<i class="fas fa-times"></i> Confirmar Rechazo';
+                    confirmBtn.onclick = () => rejectVerification(id);
+                    actions.appendChild(confirmBtn);
+                }
+            }
+        }
+
+        async function rejectVerification(id) {
+            const reason = document.getElementById(`rejectionReason_${id}`).value.trim();
+            
+            if (!reason) {
+                showMessage('Debes proporcionar una razón para rechazar la verificación', 'error');
+                return;
+            }
+
+            if (!confirm('¿Estás seguro de que deseas rechazar esta verificación?')) {
+                return;
+            }
+
+            const token = localStorage.getItem('authToken');
+            try {
+                const response = await fetch(`${API_URL}/api/admin/verifications/${id}/reject`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ reason })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Error al rechazar la verificación');
+                }
+
+                showMessage('Verificación rechazada', 'success');
+                setTimeout(() => {
+                    loadData();
+                }, 1000);
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        }
+
+        function openModal(imageSrc) {
+            document.getElementById('modalImage').src = imageSrc;
+            document.getElementById('imageModal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('imageModal').classList.remove('show');
+        }
+
+        function showMessage(message, type) {
+            const container = document.getElementById('messageContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = message;
+            container.innerHTML = '';
+            container.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 5000);
+        }
+
+        function refreshData() {
+            loadData();
+            showMessage('Datos actualizados', 'success');
+        }
+
+        // Cerrar modal con ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
+

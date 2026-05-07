@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Perfil - Deseo Libre</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Colores principales del logo */
+            --coral-pink: #ff6b6b;
+            --deep-purple: #6c5ce7;
+            --light-coral: #ff8e8e;
+            --light-purple: #a29bfe;
+            --soft-pink: #ffe0e6;
+            --soft-purple: #e8e4ff;
+            --dark-coral: #e55656;
+            --dark-purple: #5f3dc4;
+            
+            /* Colores neutros */
+            --white: #ffffff;
+            --light-gray: #f8f9fa;
+            --medium-gray: #6c757d;
+            --dark-gray: #343a40;
+            --text-dark: #2d3436;
+            
+            /* Sombras */
+            --shadow-light: rgba(255, 107, 107, 0.1);
+            --shadow-medium: rgba(108, 92, 231, 0.2);
+            --shadow-dark: rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background: linear-gradient(135deg, var(--coral-pink) 0%, var(--deep-purple) 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+        }
+
+        .logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            font-weight: 600;
+            background: linear-gradient(45deg, var(--coral-pink), var(--deep-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-decoration: none;
+        }
+
+        .nav-menu {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+
+        .nav-menu a {
+            font-family: 'Inter', sans-serif;
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .nav-menu a:hover {
+            color: #764ba2;
+        }
+
+        .user-menu {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            padding: 1rem;
+            min-width: 200px;
+            z-index: 1000;
+            display: none;
+        }
+
+        .user-dropdown a {
+            display: block;
+            padding: 0.5rem 0;
+            color: #333;
+            text-decoration: none;
+            border-bottom: 1px solid #eee;
+        }
+
+        .user-dropdown a:last-child {
+            border-bottom: none;
+        }
+
+        .user-dropdown a:hover {
+            color: #764ba2;
+        }
+
+        .btn {
+            font-family: 'Inter', sans-serif;
+            padding: 0.5rem 1.5rem;
+            border: none;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, var(--coral-pink), var(--deep-purple));
+            color: var(--white);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--deep-purple);
+            border: 2px solid var(--deep-purple);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Main Content */
+        main {
+            padding: 3rem 0;
+        }
+
+        .profile-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 3rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 10px 30px var(--shadow-light);
+            border: 1px solid var(--soft-pink);
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .profile-avatar {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, var(--coral-pink), var(--deep-purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            font-size: 4rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .profile-info h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.5rem;
+            font-weight: 600;
+            background: linear-gradient(45deg, var(--coral-pink), var(--deep-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .profile-info p {
+            font-family: 'Inter', sans-serif;
+            color: #666;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+
+        .profile-stats {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            background: linear-gradient(45deg, var(--coral-pink), var(--deep-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-family: 'Inter', sans-serif;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .profile-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-group label {
+            font-family: 'Inter', sans-serif;
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            font-family: 'Inter', sans-serif;
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #eee;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #764ba2;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+        }
+
+        .content-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 3rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 10px 30px var(--shadow-light);
+            border: 1px solid var(--soft-purple);
+        }
+
+        .section-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            font-weight: 600;
+            background: linear-gradient(45deg, var(--coral-pink), var(--deep-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .verification-status {
+            background: linear-gradient(45deg, var(--coral-pink), var(--deep-purple));
+            color: var(--white);
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .verification-status.verified {
+            background: linear-gradient(45deg, #4caf50, #45a049);
+        }
+
+        .verification-status.pending {
+            background: linear-gradient(45deg, #ff9800, #f57c00);
+        }
+
+        .verification-status.unverified {
+            background: linear-gradient(45deg, #f44336, #d32f2f);
+        }
+
+        .verification-btn {
+            background: var(--coral-pink);
+            color: var(--white);
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 25px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+
+        .verification-btn:hover {
+            background: var(--dark-coral);
+            transform: translateY(-2px);
+        }
+
+        .file-upload-area {
+            border: 2px dashed var(--coral-pink);
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .file-upload-area:hover {
+            border-color: var(--deep-purple);
+            background: var(--soft-pink);
+        }
+
+        .file-upload-area.dragover {
+            border-color: var(--deep-purple);
+            background: var(--soft-purple);
+        }
+
+        .upload-hint {
+            font-size: 0.8rem;
+            color: var(--medium-gray);
+            margin: 0.3rem 0;
+        }
+
+        .file-preview {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 10px;
+            margin-top: 1rem;
+        }
+
+        .file-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+
+        .file-preview video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: var(--coral-pink);
+            margin-bottom: 1rem;
+        }
+
+        .content-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .content-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .content-media {
+            width: 100%;
+            height: 200px;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 3rem;
+        }
+
+        .content-media img,
+        .content-media video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .content-info {
+            padding: 1.5rem;
+        }
+
+        .content-info h3 {
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .content-info p {
+            color: #666;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .content-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: #999;
+        }
+
+        .content-type {
+            background: #764ba2;
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 10px;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: #ccc;
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            border-left: 4px solid #c62828;
+        }
+
+        .success-message {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            border-left: 4px solid #2e7d32;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .nav-menu {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .profile-header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .profile-form {
+                grid-template-columns: 1fr;
+            }
+
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="index.html" class="logo">Deseo Libre</a>
+                <nav>
+                    <ul class="nav-menu">
+                        <li><a href="index.html">Inicio</a></li>
+                        <li><a href="feed.html">Feed</a></li>
+                        <li><a href="profile.html">Mi Perfil</a></li>
+                        <li><a href="index.html#servicios">Servicios</a></li>
+                        <li><a href="index.html#comunidades">Comunidades</a></li>
+                    </ul>
+                </nav>
+                <div class="user-menu">
+                    <span id="userGreeting">Hola, <span id="username"></span></span>
+                    <div class="user-dropdown">
+                        <a href="profile.html">Mi Perfil</a>
+                        <a href="feed.html">Feed</a>
+                        <a href="#" onclick="logout()">Cerrar Sesión</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="profile-container">
+                <div class="profile-header">
+                    <div class="profile-avatar" id="profileAvatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="profile-info">
+                        <h1 id="profileName">Mi Perfil</h1>
+                        <p id="profileBio">Completa tu perfil para que otros usuarios puedan conocerte mejor</p>
+                        <div class="profile-stats">
+                            <div class="stat">
+                                <div class="stat-number" id="postsCount">0</div>
+                                <div class="stat-label">Publicaciones</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-number" id="likesCount">0</div>
+                                <div class="stat-label">Likes</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Verification Status -->
+                        <div class="verification-status" id="verificationStatus">
+                            <div id="verificationMessage">Verificando estado...</div>
+                            <button class="verification-btn" id="verificationBtn" style="display: none;">
+                                Verificar Identidad
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <form id="profileForm">
+                    <div class="profile-form">
+                        <div class="form-group">
+                            <label for="displayName">Nombre para mostrar:</label>
+                            <input type="text" id="displayName" placeholder="Tu nombre público">
+                        </div>
+                        <div class="form-group">
+                            <label for="phoneNumber">Número de teléfono:</label>
+                            <input type="tel" id="phoneNumber" placeholder="+34 123 456 789">
+                        </div>
+                        <div class="form-group">
+                            <label for="location">Ubicación:</label>
+                            <input type="text" id="location" placeholder="Ciudad, País">
+                        </div>
+                        <div class="form-group">
+                            <label for="services">Servicios que ofreces:</label>
+                            <input type="text" id="services" placeholder="Ej: Masajes, Acompañante, Contenido">
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="bio">Biografía:</label>
+                            <textarea id="bio" placeholder="Cuéntanos sobre ti, tus servicios y lo que ofreces..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="profileImage">URL de imagen de perfil:</label>
+                            <input type="url" id="profileImage" placeholder="https://ejemplo.com/mi-foto.jpg">
+                        </div>
+                        <div class="form-group">
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="isPublic" checked>
+                                <label for="isPublic">Perfil público (visible para otros usuarios)</label>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Guardar Perfil</button>
+                </form>
+            </div>
+
+            <div class="content-section">
+                <h2 class="section-title">Mis Publicaciones</h2>
+                <div class="content-grid" id="myContentGrid">
+                    <div class="empty-state">
+                        <i class="fas fa-plus-circle"></i>
+                        <h3>No tienes publicaciones aún</h3>
+                        <p>Comienza compartiendo contenido para que otros usuarios puedan conocerte</p>
+                        <button class="btn btn-primary" onclick="showCreatePostModal()">Crear Primera Publicación</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Create Post Modal -->
+    <div id="createPostModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2>Crear Nueva Publicación</h2>
+            <form id="createPostForm">
+                <div class="form-group">
+                    <label for="postTitle">Título:</label>
+                    <input type="text" id="postTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="postDescription">Descripción:</label>
+                    <textarea id="postDescription"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="postType">Tipo de contenido:</label>
+                    <select id="postType" required>
+                        <option value="">Selecciona tipo</option>
+                        <option value="photo">Foto</option>
+                        <option value="video">Video</option>
+                        <option value="audio">Audio</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="postCategory">Categoría:</label>
+                    <select id="postCategory" required>
+                        <option value="">Selecciona una categoría</option>
+                        <option value="acompañantes-mujeres">👩 Acompañantes Mujeres</option>
+                        <option value="acompañantes-hombres">👨 Acompañantes Hombres</option>
+                        <option value="acompañantes-trans">🏳️‍⚧️ Acompañantes Trans</option>
+                        <option value="sugar-daddy">💎 Sugar Daddy</option>
+                        <option value="sugar-mommy">💎 Sugar Mommy</option>
+                        <option value="contenido-exclusivo">📸 Contenido Exclusivo</option>
+                        <option value="audios-eroticos">🎙️ Audios Eróticos</option>
+                        <option value="articulos-eroticos">🛍️ Artículos Eróticos</option>
+                        <option value="swinger">🎭 Swinger</option>
+                        <option value="masajes">💆 Masajes</option>
+                        <option value="lesbiana">🌈 Comunidad Lésbica</option>
+                        <option value="hetero">👫 Comunidad Hetero</option>
+                        <option value="gay">🌈 Comunidad Gay</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Archivo:</label>
+                    <div class="file-upload-area" id="fileUploadArea">
+                        <div class="upload-icon">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                        </div>
+                        <p>Arrastra y suelta tu archivo aquí o haz clic para seleccionar</p>
+                        <p class="upload-hint">Formatos permitidos: JPG, PNG, GIF, MP4, AVI, MOV, MP3, WAV, M4A</p>
+                        <p class="upload-hint">Tamaño máximo: 10MB</p>
+                        <input type="file" id="postFile" class="file-input" accept="image/*,video/*,audio/*">
+                        <div id="fileName" style="display: none; margin-top: 1rem; font-weight: bold;"></div>
+                        <div id="filePreview" style="display: none; margin-top: 1rem;"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="postPrice">Precio (opcional):</label>
+                    <input type="number" id="postPrice" step="0.01" placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="isPremium">
+                        <label for="isPremium">Contenido premium</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="isPublicPost" checked>
+                        <label for="isPublicPost">Público</label>
+                    </div>
+                </div>
+                <div class="modal-buttons">
+                    <button type="submit" class="btn btn-primary">Publicar</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeCreatePostModal()">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentUser = null;
+        let authToken = localStorage.getItem('authToken');
+
+        // Check authentication on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!authToken) {
+                window.location.href = 'index.html';
+                return;
+            }
+            verifyToken();
+        });
+
+        // API functions
+        async function apiCall(url, options = {}) {
+            const defaultOptions = {
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            };
+
+            // Only add Content-Type for JSON, not for FormData
+            if (!(options.body instanceof FormData)) {
+                defaultOptions.headers['Content-Type'] = 'application/json';
+            }
+
+            // Merge options, but be careful with headers
+            const finalOptions = { 
+                ...defaultOptions, 
+                ...options,
+                headers: {
+                    ...defaultOptions.headers,
+                    ...(options.headers || {})
+                }
+            };
+            
+            try {
+                const response = await fetch(url, finalOptions);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Error en la solicitud');
+                }
+                
+                return data;
+            } catch (error) {
+                console.error('API Error:', error);
+                showError(error.message);
+                throw error;
+            }
+        }
+
+        // Verification functions
+        async function checkVerificationStatus() {
+            try {
+                const response = await apiCall('/api/auth/verification-status');
+                updateVerificationUI(response);
+            } catch (error) {
+                console.error('Error checking verification status:', error);
+                updateVerificationUI({ is_verified: false, verification_status: 'unverified' });
+            }
+        }
+
+        function updateVerificationUI(status) {
+            const statusDiv = document.getElementById('verificationStatus');
+            const messageDiv = document.getElementById('verificationMessage');
+            const btnDiv = document.getElementById('verificationBtn');
+
+            statusDiv.className = 'verification-status';
+            
+            if (status.is_verified) {
+                statusDiv.classList.add('verified');
+                messageDiv.textContent = '✅ Identidad verificada - Puedes subir contenido';
+                btnDiv.style.display = 'none';
+            } else if (status.verification_status === 'pending') {
+                statusDiv.classList.add('pending');
+                messageDiv.textContent = '⏳ Verificación en proceso...';
+                btnDiv.style.display = 'none';
+            } else {
+                statusDiv.classList.add('unverified');
+                messageDiv.textContent = '❌ Identidad no verificada - Verifica tu identidad para subir contenido';
+                btnDiv.style.display = 'block';
+            }
+        }
+
+        async function startVerification() {
+            try {
+                const verificationData = {
+                    method: 'phone',
+                    phone: '+1234567890' // In real implementation, get from user
+                };
+                
+                const response = await apiCall('/api/auth/start-verification', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        verificationType: 'phone',
+                        verificationData: verificationData
+                    })
+                });
+
+                showSuccess('Proceso de verificación iniciado. Te enviaremos un código de verificación.');
+                
+                // Show verification code input
+                const code = prompt('Ingresa el código de verificación que recibiste (usa VERIFY123 para pruebas):');
+                if (code) {
+                    await completeVerification(response.verificationId, code);
+                }
+            } catch (error) {
+                console.error('Error starting verification:', error);
+            }
+        }
+
+        async function completeVerification(verificationId, code) {
+            try {
+                const response = await apiCall('/api/auth/complete-verification', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        verificationId: verificationId,
+                        verificationCode: code
+                    })
+                });
+
+                showSuccess('¡Verificación completada exitosamente!');
+                checkVerificationStatus();
+            } catch (error) {
+                console.error('Error completing verification:', error);
+            }
+        }
+
+        // File upload functions
+        function showFilePreview(file) {
+            const filePreview = document.getElementById('filePreview');
+            const reader = new FileReader();
+            
+            if (file.type.startsWith('image/')) {
+                reader.onload = function(e) {
+                    filePreview.innerHTML = `<img src="${e.target.result}" alt="Preview" class="file-preview">`;
+                    filePreview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else if (file.type.startsWith('video/')) {
+                reader.onload = function(e) {
+                    filePreview.innerHTML = `<video controls class="file-preview"><source src="${e.target.result}" type="${file.type}"></video>`;
+                    filePreview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else if (file.type.startsWith('audio/')) {
+                filePreview.innerHTML = `<div class="file-preview" style="background: var(--soft-pink); display: flex; align-items: center; justify-content: center; color: var(--deep-purple);"><i class="fas fa-music" style="font-size: 2rem;"></i></div>`;
+                filePreview.style.display = 'block';
+            }
+        }
+
+        function setupFileUpload() {
+            const fileUploadArea = document.getElementById('fileUploadArea');
+            const fileInput = document.getElementById('postFile');
+            const fileName = document.getElementById('fileName');
+
+            if (!fileUploadArea || !fileInput) return;
+
+            // Click to upload
+            fileUploadArea.addEventListener('click', () => {
+                fileInput.click();
+            });
+
+            // File selection
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    fileName.textContent = `Archivo seleccionado: ${file.name}`;
+                    fileName.style.display = 'block';
+                    
+                    // Show file preview
+                    showFilePreview(file);
+                }
+            });
+
+            // Drag and drop
+            fileUploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                fileUploadArea.classList.add('dragover');
+            });
+
+            fileUploadArea.addEventListener('dragleave', () => {
+                fileUploadArea.classList.remove('dragover');
+            });
+
+            fileUploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                fileUploadArea.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    fileInput.files = files;
+                    fileName.textContent = `Archivo seleccionado: ${files[0].name}`;
+                    fileName.style.display = 'block';
+                    
+                    // Show file preview
+                    showFilePreview(files[0]);
+                }
+            });
+        }
+
+        // Authentication functions
+        async function verifyToken() {
+            try {
+                const response = await apiCall('/api/auth/verify');
+                currentUser = response.user;
+                updateUI();
+                loadProfile();
+                loadMyContent();
+                checkVerificationStatus();
+            } catch (error) {
+                localStorage.removeItem('authToken');
+                window.location.href = 'index.html';
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            window.location.href = 'index.html';
+        }
+
+        // Profile functions
+        async function loadProfile() {
+            try {
+                const response = await apiCall('/api/profile');
+                const profile = response.profile;
+                
+                document.getElementById('profileName').textContent = profile.display_name || profile.username;
+                document.getElementById('profileBio').textContent = profile.bio || 'Completa tu perfil para que otros usuarios puedan conocerte mejor';
+                document.getElementById('displayName').value = profile.display_name || '';
+                document.getElementById('phoneNumber').value = profile.phone_number || '';
+                document.getElementById('location').value = profile.location || '';
+                document.getElementById('services').value = profile.services || '';
+                document.getElementById('bio').value = profile.bio || '';
+                document.getElementById('profileImage').value = profile.profile_image_url || '';
+                document.getElementById('isPublic').checked = profile.is_public;
+
+                if (profile.profile_image_url) {
+                    const avatar = document.getElementById('profileAvatar');
+                    avatar.innerHTML = `<img src="${profile.profile_image_url}" alt="Avatar">`;
+                }
+            } catch (error) {
+                console.error('Error loading profile:', error);
+            }
+        }
+
+        async function saveProfile() {
+            const profileData = {
+                display_name: document.getElementById('displayName').value,
+                phone_number: document.getElementById('phoneNumber').value,
+                location: document.getElementById('location').value,
+                services: document.getElementById('services').value,
+                bio: document.getElementById('bio').value,
+                profile_image_url: document.getElementById('profileImage').value,
+                is_public: document.getElementById('isPublic').checked
+            };
+
+            try {
+                await apiCall('/api/profile', {
+                    method: 'POST',
+                    body: JSON.stringify(profileData)
+                });
+                showSuccess('Perfil guardado exitosamente');
+                loadProfile();
+            } catch (error) {
+                console.error('Error saving profile:', error);
+            }
+        }
+
+        // Content functions
+        async function loadMyContent() {
+            try {
+                const response = await apiCall('/api/content/my');
+                const posts = response.posts;
+                
+                const grid = document.getElementById('myContentGrid');
+                
+                if (posts.length === 0) {
+                    grid.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-plus-circle"></i>
+                            <h3>No tienes publicaciones aún</h3>
+                            <p>Comienza compartiendo contenido para que otros usuarios puedan conocerte</p>
+                            <button class="btn btn-primary" onclick="showCreatePostModal()">Crear Primera Publicación</button>
+                        </div>
+                    `;
+                } else {
+                    grid.innerHTML = posts.map(post => `
+                        <div class="content-card">
+                            <div class="content-media">
+                                ${getMediaIcon(post.content_type)}
+                            </div>
+                            <div class="content-info">
+                                <h3>${post.title}</h3>
+                                <p>${post.description || 'Sin descripción'}</p>
+                                <div class="content-meta">
+                                    <span class="content-type">${post.content_type}</span>
+                                    <span>${new Date(post.created_at).toLocaleDateString()}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading content:', error);
+            }
+        }
+
+        function getMediaIcon(type) {
+            switch(type) {
+                case 'photo': return '<i class="fas fa-image"></i>';
+                case 'video': return '<i class="fas fa-video"></i>';
+                case 'audio': return '<i class="fas fa-music"></i>';
+                default: return '<i class="fas fa-file"></i>';
+            }
+        }
+
+        async function createPost() {
+            const fileInput = document.getElementById('postFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showError('Por favor selecciona un archivo');
+                return;
+            }
+
+            // Validate file size (10MB limit)
+            if (file.size > 10 * 1024 * 1024) {
+                showError('El archivo es demasiado grande. El tamaño máximo es 10MB');
+                return;
+            }
+
+            // Validate file type
+            const allowedTypes = /jpeg|jpg|png|gif|mp4|avi|mov|wav|mp3|m4a/;
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+            if (!allowedTypes.test(fileExtension)) {
+                showError('Tipo de archivo no permitido. Solo se permiten imágenes, videos y audios.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('title', document.getElementById('postTitle').value);
+            formData.append('description', document.getElementById('postDescription').value);
+            formData.append('content_type', document.getElementById('postType').value);
+            formData.append('category', document.getElementById('postCategory').value);
+            formData.append('price', document.getElementById('postPrice').value || 0);
+            formData.append('is_premium', document.getElementById('isPremium').checked);
+            formData.append('is_public', document.getElementById('isPublicPost').checked);
+
+            try {
+                showSuccess('Subiendo archivo...');
+                await apiCall('/api/content', {
+                    method: 'POST',
+                    body: formData
+                });
+                showSuccess('¡Publicación creada exitosamente!');
+                closeCreatePostModal();
+                loadMyContent();
+            } catch (error) {
+                console.error('Error creating post:', error);
+                if (error.message.includes('Usuario no verificado')) {
+                    showError('Debes verificar tu identidad para subir contenido. Haz clic en "Verificar Identidad"');
+                } else {
+                    showError('Error al crear la publicación: ' + error.message);
+                }
+            }
+        }
+
+        // UI functions
+        function updateUI() {
+            if (currentUser) {
+                document.getElementById('username').textContent = currentUser.username;
+            }
+        }
+
+        function showCreatePostModal() {
+            document.getElementById('createPostModal').style.display = 'block';
+        }
+
+        function closeCreatePostModal() {
+            document.getElementById('createPostModal').style.display = 'none';
+            document.getElementById('createPostForm').reset();
+        }
+
+        function showError(message) {
+            const existingErrors = document.querySelectorAll('.error-message');
+            existingErrors.forEach(error => error.remove());
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            
+            document.body.insertBefore(errorDiv, document.body.firstChild);
+            
+            setTimeout(() => {
+                errorDiv.remove();
+            }, 5000);
+        }
+
+        function showSuccess(message) {
+            const existingSuccess = document.querySelectorAll('.success-message');
+            existingSuccess.forEach(success => success.remove());
+
+            const successDiv = document.createElement('div');
+            successDiv.className = 'success-message';
+            successDiv.textContent = message;
+            
+            document.body.insertBefore(successDiv, document.body.firstChild);
+            
+            setTimeout(() => {
+                successDiv.remove();
+            }, 5000);
+        }
+
+        // Event listeners
+        document.getElementById('profileForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveProfile();
+        });
+
+        document.getElementById('createPostForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            createPost();
+        });
+
+        // Verification button event listener
+        document.getElementById('verificationBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            startVerification();
+        });
+
+        // Setup file upload functionality
+        setupFileUpload();
+
+        // Close modal when clicking outside
+        window.addEventListener('click', function(e) {
+            if (e.target.id === 'createPostModal') {
+                closeCreatePostModal();
+            }
+        });
+    </script>
+</body>
+</html>

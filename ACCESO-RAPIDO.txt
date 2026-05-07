@@ -1,0 +1,84 @@
+==========================================
+  GUÍA RÁPIDA DE ACCESO - DESEO LIBRE
+==========================================
+
+EL SERVIDOR YA ESTÁ CORRIENDO ✓
+
+PROBLEMA: "Não é possível acessar esse site"
+SOLUCIONES:
+
+1. LIMPIA EL CACHÉ DEL NAVEGADOR:
+   - Presiona: Ctrl + Shift + Delete
+   - Marca "Cookies" e "Imágenes en caché"
+   - Click en "Borrar datos"
+   - Cierra y abre el navegador
+
+2. PRUEBA EN MODO INCÓGNITO:
+   - Chrome: Ctrl + Shift + N
+   - Firefox: Ctrl + Shift + P
+   - Edge: Ctrl + Shift + N
+   - Luego escribe: http://localhost:3000
+
+3. PRUEBA OTRO NAVEGADOR:
+   Si usas Chrome, intenta con Firefox o Edge
+
+4. VERIFICA QUE EL SERVIDOR ESTÉ CORRIENDO:
+   Ejecuta en PowerShell:
+   
+   netstat -ano | Select-String ":3000"
+   
+   Deberías ver: "LISTENING"
+
+5. SI NO FUNCIONA, REINICIA EL SERVIDOR:
+   
+   En PowerShell:
+   cd "C:\Users\pablo\OneDrive\Desktop\Cursor 3"
+   Get-Process -Name node -ErrorAction SilentlyContinue | Stop-Process -Force
+   node server.js
+
+==========================================
+  URLS PARA ACCEDER
+==========================================
+
+PÁGINA PRINCIPAL:
+http://localhost:3000
+
+TAMBIÉN PUEDES INTENTAR:
+http://127.0.0.1:3000
+
+CATEGORÍAS DIRECTAS:
+- Acompañantes Mujeres: http://localhost:3000/feed-acompañantes-mujeres.html
+- Feed General: http://localhost:3000/feed.html
+- Mi Perfil: http://localhost:3000/profile.html
+
+==========================================
+  DIAGNÓSTICO ACTUAL
+==========================================
+
+✓ Servidor está CORRIENDO
+✓ Puerto 3000 está ABIERTO
+✓ Página index.html EXISTE
+✓ Responde con Status 200 OK
+
+El servidor funciona correctamente.
+El problema es con el navegador/caché.
+
+==========================================
+  SOLUCIÓN MÁS RÁPIDA
+==========================================
+
+1. Cierra TODOS los navegadores
+2. Abre PowerShell
+3. Ejecuta:
+
+cd "C:\Users\pablo\OneDrive\Desktop\Cursor 3"
+Get-Process -Name node | Stop-Process -Force
+Start-Sleep -Seconds 2
+node server.js
+
+4. Espera 5 segundos
+5. Abre el navegador en MODO INCÓGNITO
+6. Escribe: http://localhost:3000
+
+==========================================
+

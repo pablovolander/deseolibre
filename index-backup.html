@@ -1,0 +1,1717 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deseo Libre - Red Social para Adultos</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Colores principales del logo */
+            --coral-pink: #ff6b6b;
+            --deep-purple: #6c5ce7;
+            --light-coral: #ff8e8e;
+            --light-purple: #a29bfe;
+            --soft-pink: #ffe0e6;
+            --soft-purple: #e8e4ff;
+            --dark-coral: #e55656;
+            --dark-purple: #5f3dc4;
+            
+            /* Colores neutros */
+            --white: #ffffff;
+            --light-gray: #f8f9fa;
+            --medium-gray: #6c757d;
+            --dark-gray: #343a40;
+            --text-dark: #2d3436;
+            
+            /* Sombras */
+            --shadow-light: rgba(255, 107, 107, 0.1);
+            --shadow-medium: rgba(108, 92, 231, 0.2);
+            --shadow-dark: rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background: linear-gradient(135deg, var(--coral-pink) 0%, var(--deep-purple) 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        header {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 107, 107, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.2rem 0;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding-left: 2rem;
+            padding-right: 2rem;
+        }
+
+        .logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--coral-pink), var(--deep-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-decoration: none;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+            letter-spacing: -0.02em;
+        }
+
+        .logo:hover {
+            transform: scale(1.05);
+            filter: brightness(1.1);
+        }
+
+        nav {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            margin: 0 2rem;
+        }
+
+        .nav-menu {
+            display: flex;
+            list-style: none;
+            gap: 1.5rem;
+            margin: 0;
+            padding: 0;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .nav-menu li {
+            position: relative;
+        }
+
+        .nav-menu a {
+            font-family: 'Inter', sans-serif;
+            text-decoration: none;
+            color: var(--text-dark);
+            font-weight: 600;
+            font-size: 0.95rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            display: block;
+            white-space: nowrap;
+            letter-spacing: 0.01em;
+        }
+
+        .nav-menu a:hover {
+            background: linear-gradient(135deg, var(--coral-pink), var(--deep-purple));
+            color: white;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
+        }
+
+        .nav-menu a.active {
+            background: linear-gradient(135deg, var(--coral-pink), var(--deep-purple));
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.25);
+        }
+
+        .auth-buttons {
+            display: flex;
+            gap: 0.8rem;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .auth-buttons .btn {
+            padding: 0.6rem 1.2rem;
+            font-size: 0.9rem;
+        }
+
+        /* Mobile menu button */
+        .mobile-menu-btn {
+            display: none;
+            flex-direction: column;
+            justify-content: space-around;
+            width: 35px;
+            height: 35px;
+            background: linear-gradient(45deg, var(--soft-pink), var(--soft-purple));
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            padding: 6px;
+            z-index: 1002;
+            box-shadow: 0 4px 15px var(--shadow-light);
+            transition: all 0.3s ease;
+        }
+
+        .mobile-menu-btn:hover {
+            background: linear-gradient(45deg, var(--coral-pink), var(--deep-purple));
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px var(--shadow-medium);
+        }
+
+        .mobile-menu-btn span {
+            width: 100%;
+            height: 3px;
+            background: var(--white);
+            border-radius: 2px;
+            transition: all 0.3s ease;
+            transform-origin: center;
+            display: block;
+        }
+
+        .mobile-menu-btn.active {
+            background: linear-gradient(45deg, var(--coral-pink), var(--deep-purple));
+        }
+
+        .mobile-menu-btn.active span:nth-child(1) {
+            transform: rotate(45deg) translate(7px, 7px);
+        }
+
+        .mobile-menu-btn.active span:nth-child(2) {
+            opacity: 0;
+            transform: scale(0);
+        }
+
+        .mobile-menu-btn.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(7px, -7px);
+        }
+
+        .btn {
+            font-family: 'Inter', sans-serif;
+            padding: 0.5rem 1.5rem;
+            border: none;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--coral-pink), var(--deep-purple));
+            color: var(--white);
+            border: none;
+            box-shadow: 0 4px 20px rgba(255, 107, 107, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(255, 107, 107, 0.5);
+            filter: brightness(1.05);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--deep-purple);
+            border: 2px solid var(--deep-purple);
+        }
+
+        .btn-secondary:hover {
+            background: var(--light-purple);
+            color: var(--deep-purple);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(108, 92, 231, 0.2);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px var(--shadow-medium);
+        }
+
+        /* Main Content */
+        main {
+            padding: 1.5rem 0;
+        }
+
+        .hero {
+            text-align: center;
+            color: var(--white);
+            margin-bottom: 3rem;
+            padding: 0;
+        }
+
+        .hero-content {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 25px;
+            padding: 3rem 4rem;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+            max-width: 950px;
+            margin: 0 auto;
+        }
+
+        .hero h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+            text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.3);
+            background: linear-gradient(135deg, #ffffff 0%, #ffe0e6 50%, #ffffff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.95; }
+        }
+
+        .hero-tagline {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.8rem;
+            font-weight: 500;
+            font-style: italic;
+            margin-bottom: 1.8rem;
+            opacity: 1;
+            color: rgba(255, 255, 255, 0.98);
+            letter-spacing: 0.03em;
+            text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.3);
+            animation: fadeIn 1.5s ease-out;
+        }
+
+        .hero-paragraph {
+            font-family: 'Inter', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 400;
+            line-height: 1.9;
+            color: rgba(255, 255, 255, 0.95);
+            margin: 0 auto 2rem;
+            max-width: 800px;
+            text-align: center;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+            animation: fadeInUp 1.5s ease-out;
+        }
+
+        .hero .btn {
+            font-size: 1.15rem;
+            padding: 1.1rem 2.5rem;
+            font-weight: 600;
+            box-shadow: 0 4px 20px rgba(255, 107, 107, 0.4);
+            margin-top: 0.5rem;
+        }
+
+        .hero .btn:hover {
+            box-shadow: 0 6px 30px rgba(255, 107, 107, 0.6);
+            transform: translateY(-2px);
+        }
+
+        /* Nuevos estilos para el hero mejorado */
+        .hero-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.2rem;
+            margin-bottom: 1.5rem;
+            animation: fadeInDown 1s ease-out;
+        }
+
+        .hero-icon {
+            font-size: 4.5rem;
+            display: inline-block;
+            animation: pulse 2.5s infinite ease-in-out;
+            filter: drop-shadow(3px 3px 10px rgba(0, 0, 0, 0.4));
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hero-paragraph strong {
+            font-weight: 700;
+            color: rgba(255, 255, 255, 1);
+            text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.4);
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 1.2rem;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 2.5rem;
+            animation: fadeInUp 2s ease-out;
+        }
+
+        .hero-cta .btn {
+            margin: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 6px 30px rgba(255, 255, 255, 0.3);
+        }
+
+        /* Services Section */
+        .services-section, .communities-section {
+            background: transparent;
+            padding: 2rem 0;
+            margin-bottom: 3rem;
+        }
+
+        .section-title {
+            font-family: 'Playfair Display', serif;
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 2rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .services-grid, .communities-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+        }
+
+        .service-card, .community-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            border: 2px solid transparent;
+            text-decoration: none;
+            display: block;
+            color: inherit;
+        }
+
+        .service-card:hover, .community-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            border-color: var(--coral-pink);
+        }
+
+        .service-icon, .community-icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+        }
+
+        .service-title, .community-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 10px;
+        }
+
+        .service-description, .community-description {
+            font-size: 0.95rem;
+            color: var(--medium-gray);
+            line-height: 1.5;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .services-grid, .communities-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Footer */
+        footer {
+            background: linear-gradient(135deg, var(--dark-coral), var(--dark-purple));
+            color: var(--white);
+            padding: 3rem 0;
+            margin-top: 3rem;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+
+        .footer-section h3 {
+            font-family: 'Playfair Display', serif;
+            margin-bottom: 1rem;
+            color: var(--light-coral);
+            font-weight: 600;
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section ul li {
+            margin-bottom: 0.5rem;
+        }
+
+        .footer-section ul li a {
+            font-family: 'Inter', sans-serif;
+            color: #ccc;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-section ul li a:hover {
+            color: var(--light-coral);
+        }
+
+        .social-links {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .social-links a {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background: var(--coral-pink);
+            color: var(--white);
+            text-align: center;
+            line-height: 40px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .social-links a:hover {
+            background: var(--deep-purple);
+            transform: translateY(-2px);
+        }
+
+        .footer-bottom {
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #333;
+            color: #999;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            padding: 2rem;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Prevent body scroll when modal is open */
+        body.modal-open {
+            overflow: hidden;
+        }
+
+        .modal h2 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 600;
+            background: linear-gradient(45deg, var(--coral-pink), var(--deep-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        .modal p {
+            font-family: 'Inter', sans-serif;
+            margin-bottom: 2rem;
+            color: #666;
+        }
+
+        .age-checkbox {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin: 2rem 0;
+            font-size: 1.1rem;
+        }
+
+        .age-checkbox input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--coral-pink);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .modal-btn {
+            font-family: 'Inter', sans-serif;
+            padding: 0.8rem 2rem;
+            border: none;
+            border-radius: 25px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .modal-btn-primary {
+            background: linear-gradient(45deg, var(--coral-pink), var(--deep-purple));
+            color: var(--white);
+        }
+
+        .modal-btn-secondary {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .modal-btn {
+            font-family: 'Inter', sans-serif;
+            padding: 0.8rem 2rem;
+            border: none;
+            border-radius: 25px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0.5rem;
+            min-width: 120px;
+        }
+
+        .modal-btn-primary {
+            background: linear-gradient(45deg, var(--coral-pink), var(--deep-purple));
+            color: var(--white);
+        }
+
+        .modal-btn-secondary {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .modal-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .user-menu {
+            position: relative;
+            display: none;
+            align-items: center;
+            gap: 1rem;
+            flex-shrink: 0;
+        }
+
+        .user-menu.show {
+            display: flex;
+        }
+
+        #userGreeting {
+            font-family: 'Inter', sans-serif;
+            color: var(--text-dark);
+            font-weight: 500;
+            font-size: 1rem;
+        }
+
+        .user-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: var(--white);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px var(--shadow-medium);
+            padding: 1rem;
+            min-width: 180px;
+            z-index: 1001;
+            border: 1px solid var(--soft-pink);
+            margin-top: 0.5rem;
+            display: none;
+        }
+
+        .user-dropdown.show {
+            display: block;
+        }
+
+        .user-dropdown a {
+            font-family: 'Inter', sans-serif;
+            display: block;
+            padding: 0.8rem 1rem;
+            color: var(--text-dark);
+            text-decoration: none;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            margin-bottom: 0.5rem;
+        }
+
+        .user-dropdown a:hover {
+            background: var(--soft-pink);
+            color: var(--deep-purple);
+        }
+
+        .user-dropdown a:last-child {
+            margin-bottom: 0;
+            border-top: 1px solid var(--soft-pink);
+            padding-top: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .login-form, .register-form {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 2rem auto;
+            max-width: 400px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        .form-group label {
+            font-family: 'Inter', sans-serif;
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            font-family: 'Inter', sans-serif;
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #eee;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--coral-pink);
+        }
+
+        .form-toggle {
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .form-toggle a {
+            font-family: 'Inter', sans-serif;
+            color: var(--coral-pink);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .form-toggle a:hover {
+            text-decoration: underline;
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            border-left: 4px solid #c62828;
+        }
+
+        .success-message {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            border-left: 4px solid #2e7d32;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .header-content {
+                padding-left: 0.8rem;
+                padding-right: 0.8rem;
+            }
+
+            nav {
+                margin: 0 1rem;
+            }
+
+            .nav-menu {
+                gap: 1rem;
+            }
+
+            .nav-menu a {
+                padding: 0.5rem 0.8rem;
+                font-size: 0.85rem;
+            }
+
+            .auth-buttons {
+                gap: 0.6rem;
+            }
+
+            .auth-buttons .btn {
+                padding: 0.5rem 1rem;
+                font-size: 0.85rem;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .nav-menu {
+                gap: 0.8rem;
+            }
+
+            .nav-menu a {
+                padding: 0.5rem 0.7rem;
+                font-size: 0.8rem;
+            }
+
+            .auth-buttons .btn {
+                padding: 0.5rem 0.8rem;
+                font-size: 0.8rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+                padding: 1rem;
+                position: relative;
+            }
+
+            .logo {
+                font-size: 1.8rem;
+            }
+
+            .mobile-menu-btn {
+                display: flex;
+            }
+
+            nav {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: var(--white);
+                border-radius: 0 0 15px 15px;
+                box-shadow: 0 10px 30px var(--shadow-medium);
+                border: 1px solid var(--soft-pink);
+                margin: 0;
+                padding: 1rem;
+                transform: translateY(-100%);
+                opacity: 0;
+                visibility: hidden;
+                transition: all 0.3s ease;
+            }
+
+            nav.active {
+                transform: translateY(0);
+                opacity: 1;
+                visibility: visible;
+            }
+
+            .nav-menu {
+                flex-direction: column;
+                gap: 0.5rem;
+                width: 100%;
+            }
+
+            .nav-menu a {
+                padding: 1rem;
+                font-size: 1rem;
+                text-align: center;
+                border-radius: 10px;
+            }
+
+            .auth-buttons {
+                display: none;
+            }
+
+            .user-menu {
+                display: none;
+            }
+
+            /* Mobile auth buttons inside nav */
+            .nav .auth-buttons {
+                display: flex;
+                flex-direction: column;
+                gap: 0.8rem;
+                margin-top: 1rem;
+                padding-top: 1rem;
+                border-top: 1px solid var(--soft-pink);
+            }
+
+            .nav .auth-buttons .btn {
+                width: 100%;
+                padding: 0.8rem;
+                font-size: 1rem;
+            }
+
+            .hero-content {
+                padding: 2rem 2.5rem;
+            }
+
+            .hero h1 {
+                font-size: 3.5rem;
+            }
+
+            .hero-tagline {
+                font-size: 1.4rem;
+            }
+
+            .hero-paragraph {
+                font-size: 1.05rem;
+            }
+
+            .hero-icon {
+                font-size: 3.5rem;
+            }
+
+            .hero-cta {
+                gap: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero-content {
+                padding: 1.8rem 2rem;
+            }
+
+            .hero h1 {
+                font-size: 2.8rem;
+                line-height: 1.2;
+            }
+
+            .hero-tagline {
+                font-size: 1.1rem;
+            }
+
+            .hero-paragraph {
+                font-size: 1rem;
+                text-align: center;
+            }
+
+            .hero-icon {
+                font-size: 3rem;
+            }
+
+            .hero-logo {
+                gap: 0.8rem;
+            }
+
+            .hero-cta {
+                flex-direction: column;
+                gap: 0.8rem;
+                margin-top: 2rem;
+            }
+
+            .hero-cta .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .header-content {
+                padding: 0.8rem;
+            }
+
+            .logo {
+                font-size: 1.6rem;
+            }
+
+            .nav-menu {
+                gap: 0.5rem;
+            }
+
+            .nav-menu a {
+                padding: 0.5rem 0.8rem;
+                font-size: 0.8rem;
+            }
+
+            .auth-buttons {
+                flex-direction: column;
+                gap: 0.5rem;
+                width: 100%;
+            }
+
+            .btn {
+                width: 100%;
+                padding: 0.7rem;
+            }
+        }
+
+            .hero-content {
+                padding: 1.5rem 1.8rem;
+            }
+
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero-paragraph {
+                font-size: 0.85rem;
+            }
+
+            .services-section,
+            .communities-section {
+                padding: 2rem;
+            }
+
+            .section-title {
+                font-size: 2rem;
+            }
+
+            .modal-content {
+                margin: 2% auto;
+                padding: 1.5rem;
+                width: 95%;
+                max-height: 95vh;
+                overflow-y: auto;
+            }
+
+            .modal-btn {
+                width: 100%;
+                margin: 0.5rem 0;
+            }
+
+            .form-group input {
+                font-size: 16px; /* Prevents zoom on iOS */
+            }
+
+            .modal-buttons {
+                flex-direction: column;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .modal-content {
+                margin: 1% auto;
+                padding: 1rem;
+                border-radius: 15px;
+            }
+
+            .modal h2 {
+                font-size: 1.5rem;
+            }
+
+            .modal p {
+                font-size: 0.9rem;
+            }
+
+            .form-group {
+                margin-bottom: 1rem;
+            }
+
+            .form-group input {
+                padding: 0.7rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="#" class="logo">❤️‍🔥 Deseo Libre</a>
+                
+                <!-- Mobile menu button -->
+                <button class="mobile-menu-btn" id="mobileMenuBtn">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                
+                <nav class="nav" id="nav">
+                    <ul class="nav-menu">
+                        <li><a href="home.html">Inicio</a></li>
+                        <li><a href="profile.html">Mi Perfil</a></li>
+                        <li><a href="#servicios">Servicios</a></li>
+                    </ul>
+                </nav>
+                
+                <div class="auth-buttons" id="authButtons">
+                    <a href="#" class="btn btn-secondary" onclick="showLoginForm()">Iniciar Sesión</a>
+                    <a href="#" class="btn btn-primary" onclick="showRegisterForm()">Registrarse</a>
+                </div>
+                
+                <div class="user-menu" id="userMenu">
+                    <span id="userGreeting">Hola, <span id="username"></span></span>
+                    <div class="user-dropdown">
+                        <a href="profile.html">Mi Perfil</a>
+                        <a href="home.html">Inicio</a>
+                        <a href="#" onclick="logout()">Cerrar Sesión</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <section class="hero">
+                <div class="hero-content">
+                    <div class="hero-logo">
+                        <span class="hero-icon">❤️‍🔥</span>
+                        <h1>Deseo Libre</h1>
+                    </div>
+                    <p class="hero-tagline">Donde el deseo encuentra su libertad</p>
+                    <p class="hero-paragraph">
+                        Conecta sin límites. Expresa sin tabúes. <strong>Vive tu deseo con autenticidad.</strong>
+                        <br><br>
+                        Somos la plataforma donde personas reales comparten contenido exclusivo, experiencias únicas y conexiones genuinas. 
+                        Un espacio seguro para <strong>descubrir, crear y disfrutar</strong> — todo con respeto, privacidad y empoderamiento.
+                    </p>
+                    <div class="hero-cta">
+                        <a href="home.html" class="btn btn-primary">
+                            <i class="fas fa-fire"></i> Explorar Ahora
+                        </a>
+                        <a href="#servicios" class="btn btn-secondary">
+                            <i class="fas fa-info-circle"></i> Conocer Más
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <section id="servicios" class="services-section">
+                <h2 class="section-title">Nuestros Servicios</h2>
+                <div class="services-grid">
+                    <a href="feed-acompañantes-mujeres.html" class="service-card">
+                        <div class="service-icon">💄</div>
+                        <div class="service-title">Acompañantes Mujeres</div>
+                        <div class="service-description">Conecta con acompañantes mujeres verificadas</div>
+                    </a>
+                    <a href="feed-acompañantes-hombres.html" class="service-card">
+                        <div class="service-icon">🍆</div>
+                        <div class="service-title">Acompañantes Hombres</div>
+                        <div class="service-description">Conecta con acompañantes hombres verificados</div>
+                    </a>
+                    <a href="feed-acompañantes-trans.html" class="service-card">
+                        <div class="service-icon">🏳️‍⚧️</div>
+                        <div class="service-title">Acompañantes Trans</div>
+                        <div class="service-description">Conecta con acompañantes trans verificados</div>
+                    </a>
+                    <a href="feed-masajes.html" class="service-card">
+                        <div class="service-icon">💆</div>
+                        <div class="service-title">Masajes</div>
+                        <div class="service-description">Descubre masajistas profesionales y su contenido personalizado</div>
+                    </a>
+                    <a href="feed-contenido-exclusivo.html" class="service-card">
+                        <div class="service-icon">⭐</div>
+                        <div class="service-title">Contenido Exclusivo</div>
+                        <div class="service-description">Sube y descubre fotos y videos personalizados de creadores verificados</div>
+                    </a>
+                    <a href="feed-audios-eroticos.html" class="service-card">
+                        <div class="service-icon">🎙️</div>
+                        <div class="service-title">Audios Eróticos</div>
+                        <div class="service-description">Comparte y escucha audios íntimos de nuestra comunidad</div>
+                    </a>
+                    <a href="feed-sugar-daddy.html" class="service-card">
+                        <div class="service-icon">💼</div>
+                        <div class="service-title">Sugar Daddy</div>
+                        <div class="service-description">Conecta con sugar daddies verificados</div>
+                    </a>
+                    <a href="feed-sugar-mommy.html" class="service-card">
+                        <div class="service-icon">👑</div>
+                        <div class="service-title">Sugar Mommy</div>
+                        <div class="service-description">Conecta con sugar mommies verificadas</div>
+                    </a>
+                    <a href="feed-articulos-eroticos.html" class="service-card">
+                        <div class="service-icon">🛍️</div>
+                        <div class="service-title">Artículos Eróticos</div>
+                        <div class="service-description">Descubre y comparte reviews de juguetes y accesorios</div>
+                    </a>
+                </div>
+            </section>
+
+            <section id="comunidades" class="communities-section">
+                <h2 class="section-title">Comunidades</h2>
+                <div class="communities-grid">
+                    <a href="feed-swinger.html" class="community-card">
+                        <div class="community-icon">🔄</div>
+                        <div class="community-title">Parejas Swinger</div>
+                        <div class="community-description">Conecta con parejas verificadas y ve su contenido exclusivo</div>
+                    </a>
+                    <a href="feed-lesbiana.html" class="community-card">
+                        <div class="community-icon">👭</div>
+                        <div class="community-title">Comunidad Lésbica</div>
+                        <div class="community-description">Espacio seguro para mujeres con contenido exclusivo</div>
+                    </a>
+                    <a href="feed-hetero.html" class="community-card">
+                        <div class="community-icon">👨‍❤️‍👩</div>
+                        <div class="community-title">Comunidad Hetero</div>
+                        <div class="community-description">Parejas heterosexuales con contenido y servicios exclusivos</div>
+                    </a>
+                    <a href="feed-gay.html" class="community-card">
+                        <div class="community-icon">🏳️‍🌈</div>
+                        <div class="community-title">Comunidad Gay</div>
+                        <div class="community-description">Hombres con contenido y servicios exclusivos verificados</div>
+                    </a>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer id="contacto">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Deseo Libre</h3>
+                    <p>La plataforma líder en servicios para adultos, donde la privacidad y la satisfacción son nuestra prioridad.</p>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-telegram"></i></a>
+                    </div>
+                </div>
+                <div class="footer-section">
+                    <h3>Servicios</h3>
+                    <ul>
+                        <li><a href="feed-acompañantes-mujeres.html">Acompañantes Mujeres</a></li>
+                        <li><a href="feed-acompañantes-hombres.html">Acompañantes Hombres</a></li>
+                        <li><a href="feed-acompañantes-trans.html">Acompañantes Trans</a></li>
+                        <li><a href="feed-masajes.html">Masajes</a></li>
+                        <li><a href="feed-contenido-exclusivo.html">Contenido Exclusivo</a></li>
+                        <li><a href="feed-audios-eroticos.html">Audios Eróticos</a></li>
+                        <li><a href="feed-sugar-daddy.html">Sugar Daddy</a></li>
+                        <li><a href="feed-sugar-mommy.html">Sugar Mommy</a></li>
+                        <li><a href="feed-articulos-eroticos.html">Artículos Eróticos</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Comunidades</h3>
+                    <ul>
+                        <li><a href="feed-swinger.html">Parejas Swinger</a></li>
+                        <li><a href="feed-lesbiana.html">Comunidad Lésbica</a></li>
+                        <li><a href="feed-hetero.html">Comunidad Hetero</a></li>
+                        <li><a href="feed-gay.html">Comunidad Gay</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Información</h3>
+                    <ul>
+                        <li><a href="#sobre">Sobre Nosotros</a></li>
+                        <li><a href="#contacto">Contacto</a></li>
+                        <li><a href="policies.html">Políticas</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Legal</h3>
+                    <ul>
+                        <li><a href="policies.html">Políticas y Términos</a></li>
+                        <li><a href="policies.html#privacy">Política de Privacidad</a></li>
+                        <li><a href="policies.html#age">Verificación de Edad</a></li>
+                        <li><a href="policies.html#reporting">Sistema de Reportes</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Deseo Libre. Todos los derechos reservados. | Solo para mayores de 18 años</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Login Form Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <h2>Iniciar Sesión</h2>
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="loginEmail">Email:</label>
+                    <input type="email" id="loginEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Contraseña:</label>
+                    <input type="password" id="loginPassword" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
+                <div class="form-toggle">
+                    <p>¿No tienes cuenta? <a href="#" onclick="showRegisterForm()">Regístrate aquí</a></p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Register Form Modal -->
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <h2>Registrarse</h2>
+            <form id="registerForm" class="register-form">
+                <div class="form-group">
+                    <label for="registerUsername">Nombre de usuario:</label>
+                    <input type="text" id="registerUsername" required>
+                </div>
+                <div class="form-group">
+                    <label for="registerEmail">Email:</label>
+                    <input type="email" id="registerEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword">Contraseña:</label>
+                    <input type="password" id="registerPassword" required minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary">Registrarse</button>
+                <div class="form-toggle">
+                    <p>¿Ya tienes cuenta? <a href="#" onclick="showLoginForm()">Inicia sesión aquí</a></p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Age Verification Modal -->
+    <div id="ageVerificationModal" class="modal">
+        <div class="modal-content">
+            <h2>Verificación de Edad</h2>
+            <p>Para acceder a nuestros servicios, debes confirmar que eres mayor de 18 años.</p>
+            <div class="age-checkbox">
+                <input type="checkbox" id="ageConfirmation" required>
+                <label for="ageConfirmation">Confirmo que soy mayor de 18 años</label>
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-primary" onclick="verifyAge()">Confirmar</button>
+                <button class="modal-btn modal-btn-secondary" onclick="closeAgeModal()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentUser = null;
+        let authToken = localStorage.getItem('authToken');
+
+        // Check if user is logged in on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check age verification first
+            const ageVerified = localStorage.getItem('ageVerified');
+            if (!ageVerified) {
+                // Show age verification modal after a short delay
+                setTimeout(() => showAgeVerificationModal(), 500);
+            }
+            
+            if (authToken) {
+                verifyToken();
+            }
+            setupMobileMenu();
+        });
+
+        // Mobile menu functionality
+        function setupMobileMenu() {
+            const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+            const nav = document.getElementById('nav');
+            const authButtons = document.getElementById('authButtons');
+
+            if (mobileMenuBtn) {
+                mobileMenuBtn.addEventListener('click', function() {
+                    this.classList.toggle('active');
+                    nav.classList.toggle('active');
+                    
+                    // Move auth buttons inside nav for mobile
+                    if (window.innerWidth <= 768) {
+                        if (nav.classList.contains('active')) {
+                            nav.appendChild(authButtons);
+                            authButtons.style.display = 'flex';
+                            authButtons.style.flexDirection = 'column';
+                            authButtons.style.gap = '0.8rem';
+                            authButtons.style.marginTop = '1rem';
+                            authButtons.style.paddingTop = '1rem';
+                            authButtons.style.borderTop = '1px solid var(--soft-pink)';
+                        }
+                    }
+                });
+            }
+
+            // Close menu when clicking outside
+            document.addEventListener('click', function(e) {
+                if (nav && mobileMenuBtn && 
+                    !nav.contains(e.target) && 
+                    !mobileMenuBtn.contains(e.target) &&
+                    nav.classList.contains('active')) {
+                    nav.classList.remove('active');
+                    mobileMenuBtn.classList.remove('active');
+                }
+            });
+
+            // Close menu when clicking on a link
+            const navLinks = document.querySelectorAll('.nav-menu a');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth <= 768) {
+                        nav.classList.remove('active');
+                        mobileMenuBtn.classList.remove('active');
+                    }
+                });
+            });
+        }
+
+        // API functions
+        async function apiCall(url, options = {}) {
+            const defaultOptions = {
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+        };
+
+            if (authToken) {
+                defaultOptions.headers['Authorization'] = `Bearer ${authToken}`;
+            }
+
+            const finalOptions = { ...defaultOptions, ...options };
+            
+            try {
+                const response = await fetch(url, finalOptions);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Error en la solicitud');
+                }
+                
+                return data;
+            } catch (error) {
+                console.error('API Error:', error);
+                showError(error.message);
+                throw error;
+            }
+        }
+
+        // Authentication functions
+        async function login(email, password) {
+            try {
+                const response = await apiCall('/api/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ email, password })
+                });
+
+                authToken = response.token;
+                localStorage.setItem('authToken', authToken);
+                currentUser = response.user;
+                
+                updateUI();
+                closeModal('loginModal');
+                showSuccess('¡Bienvenido de nuevo!');
+                
+                // Check if age verification is needed
+                if (!currentUser.age_verified) {
+                    setTimeout(() => showAgeVerificationModal(), 1000);
+                }
+                
+            } catch (error) {
+                console.error('Login error:', error);
+            }
+        }
+
+        async function register(username, email, password) {
+            try {
+                const response = await apiCall('/api/auth/register', {
+                    method: 'POST',
+                    body: JSON.stringify({ username, email, password })
+                });
+
+                authToken = response.token;
+                localStorage.setItem('authToken', authToken);
+                currentUser = response.user;
+                
+                updateUI();
+                closeModal('registerModal');
+                showSuccess('¡Registro exitoso!');
+                
+                // Show age verification modal
+                setTimeout(() => showAgeVerificationModal(), 1000);
+                
+            } catch (error) {
+                console.error('Register error:', error);
+            }
+        }
+
+        async function verifyToken() {
+            try {
+                const response = await apiCall('/api/auth/verify');
+                currentUser = response.user;
+                updateUI();
+            } catch (error) {
+                // Token is invalid, clear it
+                localStorage.removeItem('authToken');
+                authToken = null;
+                currentUser = null;
+                updateUI();
+            }
+        }
+
+        async function verifyAge() {
+            const confirmed = document.getElementById('ageConfirmation').checked;
+            
+            if (!confirmed) {
+                showError('Debes confirmar tu mayoría de edad para continuar');
+                return;
+            }
+
+            // Save age verification in localStorage for non-authenticated users
+            localStorage.setItem('ageVerified', 'true');
+            localStorage.setItem('ageVerifiedDate', new Date().toISOString());
+
+            // If user is authenticated, also verify on the backend
+            if (authToken) {
+                try {
+                    await apiCall('/api/auth/verify-age', {
+                        method: 'POST',
+                        body: JSON.stringify({ confirmed: true })
+                    });
+
+                    if (currentUser) {
+                        currentUser.age_verified = true;
+                    }
+                } catch (error) {
+                    console.error('Age verification error:', error);
+                }
+            }
+
+            closeAgeModal();
+            showSuccess('¡Bienvenido a Deseo Libre! Edad verificada correctamente.');
+        }
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            authToken = null;
+            currentUser = null;
+            updateUI();
+            showSuccess('Sesión cerrada exitosamente');
+        }
+
+        // UI functions
+        function updateUI() {
+            const authButtons = document.getElementById('authButtons');
+            const userMenu = document.getElementById('userMenu');
+            const usernameSpan = document.getElementById('username');
+
+            if (currentUser) {
+                authButtons.style.display = 'none';
+                userMenu.style.display = 'block';
+                usernameSpan.textContent = currentUser.username;
+            } else {
+                authButtons.style.display = 'flex';
+                userMenu.style.display = 'none';
+            }
+        }
+
+        function showLoginForm() {
+            closeAllModals();
+            const modal = document.getElementById('loginModal');
+            modal.style.display = 'block';
+            modal.classList.add('show');
+            document.body.classList.add('modal-open');
+            // Focus on first input
+            setTimeout(() => {
+                const firstInput = modal.querySelector('input');
+                if (firstInput) firstInput.focus();
+            }, 100);
+        }
+
+        function showRegisterForm() {
+            closeAllModals();
+            const modal = document.getElementById('registerModal');
+            modal.style.display = 'block';
+            modal.classList.add('show');
+            document.body.classList.add('modal-open');
+            // Focus on first input
+            setTimeout(() => {
+                const firstInput = modal.querySelector('input');
+                if (firstInput) firstInput.focus();
+            }, 100);
+        }
+
+        function showAgeVerificationModal() {
+            const modal = document.getElementById('ageVerificationModal');
+            modal.style.display = 'block';
+            modal.classList.add('show');
+            document.body.classList.add('modal-open');
+        }
+
+        function closeAgeModal() {
+            const modal = document.getElementById('ageVerificationModal');
+            modal.style.display = 'none';
+            modal.classList.remove('show');
+            document.body.classList.remove('modal-open');
+            document.getElementById('ageConfirmation').checked = false;
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.style.display = 'none';
+            modal.classList.remove('show');
+            document.body.classList.remove('modal-open');
+        }
+
+        function closeAllModals() {
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                modal.style.display = 'none';
+                modal.classList.remove('show');
+            });
+            document.body.classList.remove('modal-open');
+        }
+
+        function showProfile() {
+            window.location.href = 'profile.html';
+        }
+
+        function showError(message) {
+            // Remove existing error messages
+            const existingErrors = document.querySelectorAll('.error-message');
+            existingErrors.forEach(error => error.remove());
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            
+            document.body.insertBefore(errorDiv, document.body.firstChild);
+            
+            setTimeout(() => {
+                errorDiv.remove();
+            }, 5000);
+        }
+
+        function showSuccess(message) {
+            // Remove existing success messages
+            const existingSuccess = document.querySelectorAll('.success-message');
+            existingSuccess.forEach(success => success.remove());
+
+            const successDiv = document.createElement('div');
+            successDiv.className = 'success-message';
+            successDiv.textContent = message;
+            
+            document.body.insertBefore(successDiv, document.body.firstChild);
+            
+            setTimeout(() => {
+                successDiv.remove();
+            }, 5000);
+        }
+
+        // Event listeners
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            login(email, password);
+        });
+
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('registerUsername').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            register(username, email, password);
+        });
+
+        // Close modals when clicking outside
+        window.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                closeAllModals();
+            }
+        });
+
+        // Close modals with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeAllModals();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feed - Deseo Libre</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="/css/components.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background: var(--light-gray);
+            min-height: 100vh;
+        }
+
+        /* HEADER */
+        header {
+            background: var(--white);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 20px;
+        }
+
+        .logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, var(--coral-pink), var(--deep-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-decoration: none;
+        }
+
+        .nav-menu {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-menu a {
+            text-decoration: none;
+            color: var(--text-dark);
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: color 0.3s ease;
+            position: relative;
+        }
+
+        .nav-menu a:hover {
+            color: var(--deep-purple);
+        }
+
+        .notification-badge {
+            position: relative;
+        }
+
+        .notification-badge .badge-count {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--coral-pink);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .user-avatar-small {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--light-purple);
+            cursor: pointer;
+        }
+
+        /* MAIN CONTENT */
+        .main-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 300px 1fr 300px;
+            gap: 20px;
+        }
+
+        /* SIDEBAR LEFT */
+        .sidebar-left {
+            position: sticky;
+            top: 80px;
+            height: fit-content;
+        }
+
+        .profile-widget {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px var(--shadow-dark);
+            text-align: center;
+        }
+
+        .profile-widget img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin-bottom: 15px;
+            border: 3px solid var(--light-purple);
+        }
+
+        .profile-widget h3 {
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+        }
+
+        .profile-widget p {
+            font-size: 0.9rem;
+            color: var(--medium-gray);
+            margin-bottom: 15px;
+        }
+
+        .profile-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--light-gray);
+        }
+
+        .profile-stats div {
+            text-align: center;
+        }
+
+        .profile-stats strong {
+            display: block;
+            font-size: 1.2rem;
+            color: var(--deep-purple);
+        }
+
+        .profile-stats span {
+            font-size: 0.8rem;
+            color: var(--medium-gray);
+        }
+
+        .menu-widget {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 2px 8px var(--shadow-dark);
+        }
+
+        .menu-widget ul {
+            list-style: none;
+        }
+
+        .menu-widget li {
+            margin-bottom: 10px;
+        }
+
+        .menu-widget a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--text-dark);
+            transition: background 0.2s;
+        }
+
+        .menu-widget a:hover {
+            background: var(--soft-purple);
+        }
+
+        .menu-widget i {
+            font-size: 1.2rem;
+            width: 25px;
+            color: var(--deep-purple);
+        }
+
+        /* FEED CENTER */
+        .feed-center {
+            min-height: 100vh;
+        }
+
+        .feed-tabs {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px var(--shadow-dark);
+            display: flex;
+            gap: 10px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            background: none;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--medium-gray);
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, var(--coral-pink), var(--deep-purple));
+            color: var(--white);
+        }
+
+        .tab-btn:hover:not(.active) {
+            background: var(--light-gray);
+        }
+
+        .feed-container {
+            margin-bottom: 30px;
+        }
+
+        .load-more-btn {
+            width: 100%;
+            padding: 15px;
+            background: var(--white);
+            border: 2px solid var(--deep-purple);
+            border-radius: 12px;
+            color: var(--deep-purple);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .load-more-btn:hover {
+            background: var(--deep-purple);
+            color: var(--white);
+        }
+
+        /* SIDEBAR RIGHT */
+        .sidebar-right {
+            position: sticky;
+            top: 80px;
+            height: fit-content;
+        }
+
+        .suggestions-widget {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px var(--shadow-dark);
+            margin-bottom: 20px;
+        }
+
+        .suggestions-widget h3 {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: var(--text-dark);
+        }
+
+        .suggestion-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: background 0.2s;
+        }
+
+        .suggestion-item:hover {
+            background: var(--light-gray);
+        }
+
+        .suggestion-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--light-purple);
+        }
+
+        .suggestion-info {
+            flex: 1;
+        }
+
+        .suggestion-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-dark);
+        }
+
+        .suggestion-username {
+            font-size: 0.8rem;
+            color: var(--medium-gray);
+        }
+
+        .follow-btn-small {
+            padding: 6px 15px;
+            background: var(--deep-purple);
+            color: var(--white);
+            border: none;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .follow-btn-small:hover {
+            transform: scale(1.05);
+        }
+
+        /* NOTIFICATIONS DROPDOWN */
+        .notifications-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            width: 400px;
+            max-height: 500px;
+            overflow-y: auto;
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            margin-top: 10px;
+            display: none;
+        }
+
+        .notifications-dropdown.show {
+            display: block;
+        }
+
+        .notifications-header {
+            padding: 15px;
+            border-bottom: 1px solid var(--light-gray);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .notifications-header h3 {
+            font-size: 1.1rem;
+        }
+
+        .mark-all-read {
+            font-size: 0.85rem;
+            color: var(--deep-purple);
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        /* IMPROVED EMPTY STATE */
+        .empty-state-improved {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .welcome-hero {
+            margin-bottom: 40px;
+        }
+
+        .welcome-hero h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, var(--coral-pink), var(--deep-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .welcome-hero p {
+            font-size: 1.1rem;
+            color: var(--medium-gray);
+        }
+
+        /* CATEGORIES SECTION */
+        .explore-categories {
+            margin-bottom: 40px;
+        }
+
+        .explore-categories h2 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: var(--text-dark);
+        }
+
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .category-card {
+            background: linear-gradient(135deg, var(--coral-pink), var(--deep-purple));
+            color: white;
+            padding: 25px 15px;
+            border-radius: 12px;
+            text-align: center;
+            text-decoration: none;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .category-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--deep-purple), var(--coral-pink));
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .category-card:hover::before {
+            opacity: 1;
+        }
+
+        .category-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(108, 92, 231, 0.3);
+        }
+
+        .category-card i {
+            font-size: 2.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .category-card span {
+            font-weight: 600;
+            font-size: 0.95rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .category-card small {
+            font-size: 0.8rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* CTA SECTION */
+        .cta-section {
+            background: var(--soft-purple);
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 40px;
+        }
+
+        .cta-section h3 {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            color: var(--text-dark);
+        }
+
+        .btn-large {
+            background: linear-gradient(135deg, var(--coral-pink), var(--deep-purple));
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 30px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
+        }
+
+        .btn-large:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 25px rgba(108, 92, 231, 0.4);
+        }
+
+        /* TIPS SECTION */
+        .tips-section {
+            margin-top: 40px;
+        }
+
+        .tips-section h3 {
+            font-size: 1.3rem;
+            margin-bottom: 25px;
+            color: var(--text-dark);
+        }
+
+        .tips-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .tip-item {
+            background: var(--light-gray);
+            padding: 25px;
+            border-radius: 12px;
+            transition: all 0.3s;
+        }
+
+        .tip-item:hover {
+            background: var(--soft-purple);
+            transform: translateY(-3px);
+        }
+
+        .tip-item i {
+            font-size: 2.5rem;
+            color: var(--deep-purple);
+            margin-bottom: 15px;
+        }
+
+        .tip-item h4 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: var(--text-dark);
+        }
+
+        .tip-item p {
+            font-size: 0.9rem;
+            color: var(--medium-gray);
+            margin: 0;
+        }
+
+        /* LOADING SPINNER */
+        .loading-spinner {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading-spinner i {
+            font-size: 3rem;
+            color: var(--deep-purple);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar-left,
+            .sidebar-right {
+                display: none;
+            }
+
+            .categories-grid {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            }
+
+            .tips-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav-menu {
+                gap: 1rem;
+            }
+
+            .nav-menu a span {
+                display: none;
+            }
+
+            .feed-tabs {
+                overflow-x: auto;
+            }
+
+            .tab-btn {
+                white-space: nowrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <header>
+        <div class="header-content">
+            <a href="index.html" class="logo">Deseo Libre</a>
+            <nav>
+                <ul class="nav-menu">
+                    <li><a href="home.html"><i class="fas fa-home"></i> <span>Inicio</span></a></li>
+                    <li><a href="#" onclick="showSearch()"><i class="fas fa-search"></i> <span>Buscar</span></a></li>
+                    <li class="notification-badge">
+                        <a href="#" onclick="toggleNotifications(event)">
+                            <i class="fas fa-bell"></i>
+                            <span class="badge-count" id="notificationCount" style="display: none;">0</span>
+                        </a>
+                        <div class="notifications-dropdown" id="notificationsDropdown">
+                            <div class="notifications-header">
+                                <h3>Notificaciones</h3>
+                                <a href="#" class="mark-all-read" onclick="markAllAsRead(event)">Marcar todo como leído</a>
+                            </div>
+                            <div id="notificationsList"></div>
+                        </div>
+                    </li>
+                    <li><a href="profile.html"><img src="" alt="Avatar" class="user-avatar-small" id="headerAvatar"></a></li>
+                    
+                </ul>
+            </nav>
+            <a href="#" id="logoutBtnHeader" onclick="handleLogoutClick(event)" style="margin-left:12px;padding:8px 14px;border-radius:20px;border:2px solid var(--deep-purple);text-decoration:none;color:var(--deep-purple);font-weight:600;white-space:nowrap;">Salir</a>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        <!-- SIDEBAR LEFT -->
+        <aside class="sidebar-left">
+            <div class="profile-widget">
+                <img src="" alt="Avatar" id="sidebarAvatar">
+                <h3 id="sidebarName">Usuario</h3>
+                <p id="sidebarUsername">@usuario</p>
+                <div class="profile-stats">
+                    <div>
+                        <strong id="sidebarPosts">0</strong>
+                        <span>Posts</span>
+                    </div>
+                    <div>
+                        <strong id="sidebarFollowers">0</strong>
+                        <span>Seguidores</span>
+                    </div>
+                    <div>
+                        <strong id="sidebarFollowing">0</strong>
+                        <span>Siguiendo</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="menu-widget">
+                <ul>
+                    <li><a href="profile.html"><i class="fas fa-user"></i> Mi Perfil</a></li>
+                    <li><a href="#"><i class="fas fa-bookmark"></i> Guardados</a></li>
+                    <li><a href="#"><i class="fas fa-cog"></i> Configuración</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <!-- FEED CENTER -->
+        <main class="feed-center">
+            <div class="feed-tabs">
+                <button class="tab-btn active" data-tab="recommended" onclick="switchTab('recommended')">
+                    <i class="fas fa-star"></i> Recomendados
+                </button>
+                <button class="tab-btn" data-tab="following" onclick="switchTab('following')">
+                    <i class="fas fa-users"></i> Siguiendo
+                </button>
+                <button class="tab-btn" data-tab="trending" onclick="switchTab('trending')">
+                    <i class="fas fa-fire"></i> Tendencias
+                </button>
+            </div>
+
+            <div class="feed-container" id="feedContainer"></div>
+
+            <button class="load-more-btn" id="loadMoreBtn" onclick="loadMorePosts()" style="display: none;">
+                <i class="fas fa-chevron-down"></i> Cargar más publicaciones
+            </button>
+        </main>
+
+        <!-- SIDEBAR RIGHT -->
+        <aside class="sidebar-right">
+            <div class="suggestions-widget">
+                <h3>Sugerencias para seguir</h3>
+                <div id="suggestionsContainer"></div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="/js/components.js"></script>
+    <script>
+        // API_URL ya está declarado en components.js
+        let currentTab = 'recommended';
+        let currentPage = 1;
+        let isLoading = false;
+        let hasMore = true;
+
+        // Check authentication
+        const authToken = localStorage.getItem('authToken');
+        if (!authToken) {
+            window.location.href = 'index.html';
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadUserInfo();
+            await loadFeed();
+            await loadSuggestions();
+            await loadNotifications();
+            
+            // Setup infinite scroll
+            setupInfiniteScroll();
+        });
+
+        function handleLogoutClick(e) {
+            e.preventDefault();
+            try {
+                localStorage.removeItem('authToken');
+                window.location.href = 'index.html';
+            } catch (_) {}
+        }
+
+        async function loadUserInfo() {
+            try {
+                const response = await fetch(`${API_URL}/api/auth/verify`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const user = data.user;
+
+                    // Update profile widgets
+                    const avatar = user.profile_picture ? `${API_URL}${user.profile_picture}` : `${API_URL}/uploads/default-avatar.png`;
+                    document.getElementById('headerAvatar').src = avatar;
+                    document.getElementById('sidebarAvatar').src = avatar;
+                    document.getElementById('sidebarName').textContent = user.full_name || user.username;
+                    document.getElementById('sidebarUsername').textContent = `@${user.username}`;
+
+                    // Load user stats
+                    await loadUserStats(user.id);
+                }
+            } catch (error) {
+                console.error('Error loading user info:', error);
+            }
+        }
+
+        async function loadUserStats(userId) {
+            try {
+                const response = await fetch(`${API_URL}/api/user/public/${userId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const user = data.user;
+                    
+                    document.getElementById('sidebarPosts').textContent = user.posts_count || 0;
+                    document.getElementById('sidebarFollowers').textContent = user.followers_count || 0;
+                    document.getElementById('sidebarFollowing').textContent = user.following_count || 0;
+                }
+            } catch (error) {
+                console.error('Error loading user stats:', error);
+            }
+        }
+
+        async function loadFeed() {
+            if (isLoading) return;
+            
+            isLoading = true;
+            const container = document.getElementById('feedContainer');
+            
+            if (currentPage === 1) {
+                showLoadingSpinner(container);
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/api/feed/${currentTab}?page=${currentPage}&limit=10`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (currentPage === 1) {
+                        container.innerHTML = '';
+                    }
+
+                    if (data.posts && data.posts.length > 0) {
+                        data.posts.forEach(post => {
+                            const postCard = createPostCard(post, {
+                                showUser: true,
+                                showActions: true
+                            });
+                            container.appendChild(postCard);
+                        });
+
+                        hasMore = data.pagination.page < data.pagination.pages;
+                        document.getElementById('loadMoreBtn').style.display = hasMore ? 'block' : 'none';
+                    } else if (currentPage === 1) {
+                        showImprovedEmptyState(container);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading feed:', error);
+                if (currentPage === 1) {
+                    showErrorState(container, 'Error al cargar el feed');
+                }
+            } finally {
+                isLoading = false;
+            }
+        }
+
+        function switchTab(tab) {
+            if (currentTab === tab) return;
+            
+            currentTab = tab;
+            currentPage = 1;
+            hasMore = true;
+
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.tab === tab) {
+                    btn.classList.add('active');
+                }
+            });
+
+            loadFeed();
+        }
+
+        function loadMorePosts() {
+            currentPage++;
+            loadFeed();
+        }
+
+        function setupInfiniteScroll() {
+            window.addEventListener('scroll', () => {
+                if (isLoading || !hasMore) return;
+
+                const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+                
+                if (scrollTop + clientHeight >= scrollHeight - 500) {
+                    loadMorePosts();
+                }
+            });
+        }
+
+        async function loadSuggestions() {
+            try {
+                const response = await fetch(`${API_URL}/api/users/suggested?limit=5`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const container = document.getElementById('suggestionsContainer');
+                    container.innerHTML = '';
+
+                    data.suggested_users.forEach(user => {
+                        const item = document.createElement('div');
+                        item.className = 'suggestion-item';
+                        item.innerHTML = `
+                            <img src="${API_URL}${user.profile_picture || '/uploads/default-avatar.png'}" 
+                                 alt="${user.username}" 
+                                 class="suggestion-avatar"
+                                 onclick="window.location.href='profile.html?userId=${user.id}'">
+                            <div class="suggestion-info" onclick="window.location.href='profile.html?userId=${user.id}'">
+                                <div class="suggestion-name">${user.full_name || user.username}</div>
+                                <div class="suggestion-username">@${user.username}</div>
+                            </div>
+                            <button class="follow-btn-small" onclick="handleFollowSuggestion(${user.id}, this)">
+                                Seguir
+                            </button>
+                        `;
+                        container.appendChild(item);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading suggestions:', error);
+            }
+        }
+
+        async function handleFollowSuggestion(userId, button) {
+            try {
+                const response = await fetch(`${API_URL}/api/users/${userId}/follow`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    button.textContent = 'Siguiendo';
+                    button.style.background = 'var(--light-gray)';
+                    button.style.color = 'var(--text-dark)';
+                    button.disabled = true;
+                }
+            } catch (error) {
+                console.error('Error following user:', error);
+            }
+        }
+
+        async function loadNotifications() {
+            try {
+                const response = await fetch(`${API_URL}/api/notifications?limit=20`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const badge = document.getElementById('notificationCount');
+                    const container = document.getElementById('notificationsList');
+
+                    if (data.unread_count > 0) {
+                        badge.textContent = data.unread_count;
+                        badge.style.display = 'flex';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+
+                    container.innerHTML = '';
+                    if (data.notifications && data.notifications.length > 0) {
+                        data.notifications.forEach(notification => {
+                            container.appendChild(createNotificationItem(notification));
+                        });
+                    } else {
+                        container.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--medium-gray);">No hay notificaciones</div>';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading notifications:', error);
+            }
+        }
+
+        function toggleNotifications(event) {
+            event.preventDefault();
+            const dropdown = document.getElementById('notificationsDropdown');
+            dropdown.classList.toggle('show');
+        }
+
+        async function markAllAsRead(event) {
+            event.preventDefault();
+            try {
+                const response = await fetch(`${API_URL}/api/notifications/read-all`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    loadNotifications();
+                }
+            } catch (error) {
+                console.error('Error marking notifications as read:', error);
+            }
+        }
+
+        function showSearch() {
+            // Implementación básica de búsqueda (mejorada)
+            const searchQuery = prompt('🔍 Buscar usuarios o contenido:');
+            if (searchQuery && searchQuery.trim()) {
+                window.location.href = `feed.html?search=${encodeURIComponent(searchQuery.trim())}`;
+            }
+        }
+
+        // Show improved empty state
+        function showImprovedEmptyState(container) {
+            const categories = [
+                { name: 'Acompañantes Mujeres', icon: 'fa-female', url: 'feed-acompañantes-mujeres.html' },
+                { name: 'Acompañantes Hombres', icon: 'fa-male', url: 'feed-acompañantes-hombres.html' },
+                { name: 'Acompañantes Trans', icon: 'fa-transgender', url: 'feed-acompañantes-trans.html' },
+                { name: 'Sugar Daddy', icon: 'fa-gem', url: 'feed-sugar-daddy.html' },
+                { name: 'Sugar Mommy', icon: 'fa-gem', url: 'feed-sugar-mommy.html' },
+                { name: 'Contenido Exclusivo', icon: 'fa-camera', url: 'feed-contenido-exclusivo.html' },
+                { name: 'Audios Eróticos', icon: 'fa-microphone', url: 'feed-audios-eroticos.html' },
+                { name: 'Swinger', icon: 'fa-exchange-alt', url: 'feed-swinger.html' },
+                { name: 'Masajes', icon: 'fa-spa', url: 'feed-masajes.html' },
+                { name: 'Lesbiana', icon: 'fa-venus-double', url: 'feed-lesbiana.html' },
+                { name: 'Hetero', icon: 'fa-venus-mars', url: 'feed-hetero.html' },
+                { name: 'Gay', icon: 'fa-mars-double', url: 'feed-gay.html' },
+                { name: 'Crea tu sexy avatar (SFW)', icon: 'fa-wand-magic-sparkles', url: 'ai-studio.html' }
+            ];
+
+            const categoriesHTML = categories.map(cat => `
+                <a href="${cat.url}" class="category-card">
+                    <i class="fas ${cat.icon}"></i>
+                    <span>${cat.name}</span>
+                    <small>Explorar</small>
+                </a>
+            `).join('');
+
+            container.innerHTML = `
+                <div class="empty-state-improved">
+                    <!-- Hero Section -->
+                    <div class="welcome-hero">
+                        <h1>🌟 Bienvenido a tu Feed de Deseo Libre</h1>
+                        <p>Descubre contenido exclusivo de nuestra comunidad</p>
+                    </div>
+                    
+                    <!-- Explorar Categorías -->
+                    <div class="explore-categories">
+                        <h2>Explorar por Categoría</h2>
+                        <div class="categories-grid">
+                            ${categoriesHTML}
+                        </div>
+                    </div>
+                    
+                    <!-- Call to Action -->
+                    <div class="cta-section">
+                        <h3>¿Quieres ser uno de los primeros?</h3>
+                        <p style="color: var(--medium-gray); margin-bottom: 20px;">
+                            Comparte tu contenido y comienza a ganar seguidores
+                        </p>
+                        <button onclick="window.location.href='profile.html'" class="btn-large">
+                            <i class="fas fa-plus-circle"></i>
+                            Crear Mi Primera Publicación
+                        </button>
+                    </div>
+                    
+                    <!-- Tips -->
+                    <div class="tips-section">
+                        <h3>💡 Cómo empezar:</h3>
+                        <div class="tips-grid">
+                            <div class="tip-item">
+                                <i class="fas fa-user-check"></i>
+                                <h4>1. Completa tu perfil</h4>
+                                <p>Agrega foto, bio y detalles</p>
+                            </div>
+                            <div class="tip-item">
+                                <i class="fas fa-upload"></i>
+                                <h4>2. Sube contenido</h4>
+                                <p>Fotos, videos o audios</p>
+                            </div>
+                            <div class="tip-item">
+                                <i class="fas fa-users"></i>
+                                <h4>3. Conecta</h4>
+                                <p>Sigue a otros usuarios</p>
+                            </div>
+                            <div class="tip-item">
+                                <i class="fas fa-heart"></i>
+                                <h4>4. Interactúa</h4>
+                                <p>Comenta y da likes</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Show loading spinner
+        function showLoadingSpinner(container) {
+            container.innerHTML = `
+                <div class="loading-spinner">
+                    <i class="fas fa-circle-notch fa-spin"></i>
+                    <p style="margin-top: 20px; color: var(--medium-gray);">Cargando contenido...</p>
+                </div>
+            `;
+        }
+
+        // Show error state
+        function showErrorState(container, message) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px; background: var(--white); border-radius: 12px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 4rem; color: var(--coral-pink); margin-bottom: 20px;"></i>
+                    <h3 style="color: var(--text-dark); margin-bottom: 10px;">${message}</h3>
+                    <p style="color: var(--medium-gray); margin-bottom: 20px;">Por favor, intenta de nuevo</p>
+                    <button onclick="location.reload()" class="btn-large">
+                        <i class="fas fa-redo"></i> Recargar
+                    </button>
+                </div>
+            `;
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', (event) => {
+            if (!event.target.closest('.notification-badge')) {
+                document.getElementById('notificationsDropdown').classList.remove('show');
+            }
+        });
+    </script>
+</body>
+</html>
+

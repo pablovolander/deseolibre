@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>Reels - Deseo Libre</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/responsive.css">
+    <style>
+        :root {
+            --ink: #131722;
+            --charcoal: #1f2430;
+            --overlay: rgba(22, 26, 38, 0.9);
+            --card-bg: rgba(27, 32, 46, 0.9);
+            --accent: #ff6b6b;
+            --accent-secondary: #6c5ce7;
+            --text-primary: rgba(255, 255, 255, 0.95);
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --text-muted: rgba(255, 255, 255, 0.55);
+            --border-color: rgba(255, 255, 255, 0.12);
+            --success: #2ecc71;
+            --warning: #f0b429;
+            --error: #ff4d6d;
+            --btn-gradient: linear-gradient(135deg, rgba(255, 107, 150, 0.95), rgba(108, 92, 231, 0.92));
+            --btn-gradient-hover: linear-gradient(135deg, rgba(255, 120, 168, 1), rgba(131, 115, 255, 0.98));
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at 12% 18%, rgba(255, 107, 107, 0.55), transparent 55%),
+                        radial-gradient(circle at 80% 85%, rgba(255, 143, 143, 0.35), transparent 52%),
+                        linear-gradient(145deg, rgba(255, 107, 150, 0.35), rgba(255, 107, 107, 0.18), rgba(19, 23, 34, 0.92));
+            color: var(--text-primary);
+        }
+
+        header {
+            backdrop-filter: blur(12px);
+            background: rgba(18, 22, 32, 0.82);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 26px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        header h1 {
+            font-family: 'Playfair Display', serif;
+            margin: 0;
+            font-size: 28px;
+            letter-spacing: 0.5px;
+            background: linear-gradient(45deg, #ffd1dc, #b19cff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            margin-left: 20px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .nav-links a:hover {
+            color: #ffffff;
+        }
+
+        main {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px 16px 120px;
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 32px;
+        }
+
+        @media (max-width: 1024px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 26px;
+            box-shadow: 0 38px 70px rgba(0, 0, 0, 0.45);
+        }
+
+        .panel h2 {
+            margin-top: 0;
+            font-size: 22px;
+            letter-spacing: 0.4px;
+        }
+
+        .category-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            padding: 18px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+        }
+
+        .category-btn {
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            background: linear-gradient(150deg, rgba(255, 107, 107, 0.22), rgba(255, 255, 255, 0.05));
+            color: rgba(255, 255, 255, 0.92);
+            padding: 12px 16px;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+            letter-spacing: 0.2px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            text-align: center;
+        }
+
+        .category-btn.active {
+            color: var(--text-primary);
+            background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+            border-color: transparent;
+            box-shadow: 0 8px 20px rgba(108, 92, 231, 0.35);
+        }
+
+        .category-btn:hover {
+            color: var(--text-primary);
+            background: linear-gradient(150deg, rgba(255, 107, 107, 0.32), rgba(255, 255, 255, 0.12));
+            border-color: rgba(255, 255, 255, 0.38);
+        }
+
+        .upload-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .upload-form label {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .upload-form input,
+        .upload-form textarea,
+        .upload-form select {
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            padding: 12px 14px;
+            font-size: 15px;
+        }
+
+        .upload-form textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .upload-form input[type="file"] {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        #reel-category {
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            padding: 12px;
+            font-weight: 600;
+        }
+
+        #reel-category option {
+            background: #1b1326;
+            color: #ffffff;
+        }
+
+        .upload-form button {
+            border: none;
+            border-radius: 999px;
+            padding: 14px 18px;
+            background: var(--btn-gradient);
+            color: var(--text-primary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 20px 45px rgba(255, 107, 107, 0.38);
+        }
+
+        .upload-form button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 28px 55px rgba(255, 107, 107, 0.45);
+            background: var(--btn-gradient-hover);
+        }
+
+        .reels-feed {
+            display: grid;
+            gap: 24px;
+        }
+
+        .reel-card {
+            border-radius: 28px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(19, 23, 34, 0.9);
+            box-shadow: 0 40px 70px rgba(0, 0, 0, 0.45);
+            position: relative;
+        }
+
+        .reel-video-container {
+            position: relative;
+            padding-top: 177.77%; /* 9:16 ratio */
+            background: #000;
+        }
+
+        .reel-video-container video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border: none;
+            outline: none;
+        }
+
+        .reel-info {
+            padding: 18px 20px 22px;
+        }
+
+        .reel-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .reel-header img {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .reel-user {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .reel-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0 0 6px;
+        }
+
+        .reel-description {
+            margin: 0 0 12px;
+            color: var(--text-muted);
+            line-height: 1.55;
+        }
+
+        .reel-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .reel-actions {
+            margin-top: 18px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .reel-actions button {
+            background: var(--btn-gradient);
+            border: none;
+            color: var(--text-primary);
+            padding: 10px 16px;
+            border-radius: 999px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            transition: background 0.2s ease, transform 0.2s ease;
+            box-shadow: 0 18px 40px rgba(255, 107, 107, 0.38);
+        }
+
+        .reel-actions button:hover {
+            background: var(--btn-gradient-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 24px 55px rgba(255, 107, 107, 0.45);
+        }
+
+        .reel-actions button.liked {
+            background: var(--btn-gradient-hover);
+        }
+
+        .reel-actions .delete-reel-btn {
+            background: linear-gradient(135deg, rgba(255, 90, 120, 0.95), rgba(241, 85, 119, 0.95));
+            box-shadow: 0 18px 40px rgba(255, 90, 120, 0.45);
+        }
+
+        .reel-actions .delete-reel-btn:hover {
+            background: linear-gradient(135deg, rgba(255, 110, 145, 1), rgba(255, 140, 170, 1));
+        }
+
+        .no-reels {
+            padding: 40px;
+            text-align: center;
+            color: var(--text-secondary);
+            border: 1px dashed var(--border-color);
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .comments-section {
+            margin-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding-top: 16px;
+        }
+
+        .comment-item {
+            margin-bottom: 12px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .comment-item img {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .comment-content {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 10px 14px;
+        }
+
+        .comment-author {
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .comment-form {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .comment-form input {
+            flex: 1;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-primary);
+        }
+
+        .comment-form button {
+            border-radius: 999px;
+            border: none;
+            padding: 12px 18px;
+            background: var(--btn-gradient);
+            color: var(--text-primary);
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 16px 36px rgba(255, 107, 107, 0.35);
+        }
+
+        .comment-form button:hover {
+            background: var(--btn-gradient-hover);
+            box-shadow: 0 20px 48px rgba(255, 107, 107, 0.45);
+        }
+
+        .empty-state-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .status-message {
+            margin-top: 12px;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .status-message.success {
+            color: var(--success);
+        }
+
+        .status-message.error {
+            color: var(--error);
+        }
+
+        .status-message.warning {
+            color: var(--warning);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Reels</h1>
+        <nav class="nav-links">
+            <a href="home.html">Inicio</a>
+            <a href="feed.html">Feed</a>
+            <a href="profile.html">Mi Perfil</a>
+        </nav>
+    </header>
+
+    <main>
+        <aside class="panel" id="upload-panel">
+            <h2>Subir nuevo reel</h2>
+            <p class="status-message" id="upload-hint">
+                Comparte videos cortos verticales. Máximo 200MB. Usa categorías para llegar al público correcto.
+            </p>
+            <form class="upload-form" id="reel-upload-form">
+                <label>
+                    Título
+                    <input type="text" name="title" id="reel-title" maxlength="120" placeholder="Nombre del reel" required>
+                </label>
+                <label>
+                    Descripción
+                    <textarea name="description" id="reel-description" maxlength="500" placeholder="Describe tu contenido (opcional)"></textarea>
+                </label>
+                <label>
+                    Categoría
+                    <select name="category" id="reel-category" required></select>
+                </label>
+                <label>
+                    Video (MP4, WEBM, MOV, MKV...)
+                    <input type="file" name="video" id="reel-video" accept="video/mp4,video/webm,video/ogg,video/*" required>
+                </label>
+                <label>
+                    Miniatura (opcional)
+                    <input type="file" name="thumbnail" id="reel-thumbnail" accept="image/*">
+                </label>
+                <label>
+                    Duración (segundos, opcional)
+                    <input type="number" name="duration_seconds" id="reel-duration" min="0" placeholder="Ej. 45">
+                </label>
+                <label style="flex-direction: row; align-items: center; gap: 10px;">
+                    <input type="checkbox" name="is_public" id="reel-public" checked>
+                    <span>Reel público (visible para otros usuarios)</span>
+                </label>
+                <button type="submit">
+                    <i class="fas fa-upload"></i>
+                    Publicar Reel
+                </button>
+                <p class="status-message" id="upload-status"></p>
+            </form>
+        </aside>
+
+        <section class="panel">
+            <h2>Explorar por categoría</h2>
+            <div class="category-selector" id="category-selector"></div>
+            <div class="reels-feed" id="reels-feed"></div>
+            <div class="status-message" id="feed-status"></div>
+        </section>
+    </main>
+
+    <script>
+        const API_URL = 'http://localhost:3000';
+        const CATEGORY_DEFINITIONS = [
+            { id: 'acompañantes-mujeres', label: 'Acompañantes Mujeres' },
+            { id: 'acompañantes-hombres', label: 'Acompañantes Hombres' },
+            { id: 'acompañantes-trans', label: 'Acompañantes Trans' },
+            { id: 'sugar-daddy', label: 'Sugar Daddy' },
+            { id: 'sugar-mommy', label: 'Sugar Mommy' },
+            { id: 'contenido-exclusivo', label: 'Contenido Exclusivo' },
+            { id: 'audios-eroticos', label: 'Audios Eróticos' },
+            { id: 'articulos-eroticos', label: 'Artículos Eróticos' },
+            { id: 'swinger', label: 'Swinger' },
+            { id: 'masajes', label: 'Masajes' },
+            { id: 'lesbiana', label: 'Lesbiana' },
+            { id: 'hetero', label: 'Hetero' },
+            { id: 'gay', label: 'Gay' }
+        ];
+
+        const reelsFeed = document.getElementById('reels-feed');
+        const feedStatus = document.getElementById('feed-status');
+        const categorySelector = document.getElementById('category-selector');
+        const categorySelectInput = document.getElementById('reel-category');
+        const uploadForm = document.getElementById('reel-upload-form');
+        const uploadStatus = document.getElementById('upload-status');
+        const uploadHint = document.getElementById('upload-hint');
+
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = null;
+        let currentCategory = CATEGORY_DEFINITIONS[0].id;
+        let isLoadingReels = false;
+
+        function setStatusMessage(element, message, type = null) {
+            if (!element) return;
+            element.textContent = message;
+            element.classList.remove('success', 'error', 'warning');
+            if (type && ['success', 'error', 'warning'].includes(type)) {
+                element.classList.add(type);
+            }
+        }
+
+        function ensureAuthenticated() {
+            if (!authToken) {
+                alert('Debes iniciar sesión para acceder a los reels.');
+                window.location.href = 'index.html';
+                return false;
+            }
+            return true;
+        }
+
+        async function fetchCurrentUser() {
+            if (!authToken) {
+                return null;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/api/auth/verify`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.status === 401 || response.status === 403) {
+                    localStorage.removeItem('authToken');
+                    alert('Tu sesión ha expirado. Inicia sesión nuevamente.');
+                    window.location.href = 'index.html';
+                    return null;
+                }
+
+                if (!response.ok) {
+                    return null;
+                }
+
+                const data = await response.json();
+                currentUser = data.user || null;
+                return currentUser;
+            } catch (error) {
+                console.error('Error al obtener el usuario actual:', error);
+                return null;
+            }
+        }
+
+        function renderCategoryControls() {
+            CATEGORY_DEFINITIONS.forEach(category => {
+                const button = document.createElement('button');
+                button.className = 'category-btn';
+                button.textContent = category.label;
+                button.dataset.category = category.id;
+                button.addEventListener('click', () => {
+                    if (isLoadingReels || currentCategory === category.id) return;
+                    setActiveCategory(category.id);
+                });
+                categorySelector.appendChild(button);
+
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.textContent = category.label;
+                categorySelectInput.appendChild(option);
+            });
+
+            if (CATEGORY_DEFINITIONS.length) {
+                categorySelectInput.value = CATEGORY_DEFINITIONS[0].id;
+            }
+
+            setActiveCategory(currentCategory, false);
+        }
+
+        function setActiveCategory(categoryId, load = true) {
+            currentCategory = categoryId;
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.category === categoryId);
+            });
+            if (load) {
+                loadReelsForCategory(categoryId);
+            }
+        }
+
+        async function loadReelsForCategory(categoryId) {
+            if (!ensureAuthenticated()) return;
+
+            isLoadingReels = true;
+            reelsFeed.innerHTML = '';
+            setStatusMessage(feedStatus, 'Cargando reels...');
+
+            try {
+                const response = await fetch(`${API_URL}/api/reels/category/${encodeURIComponent(categoryId)}?limit=15`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.status === 401 || response.status === 403) {
+                    localStorage.removeItem('authToken');
+                    alert('Tu sesión ha expirado. Inicia sesión nuevamente.');
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error('No fue posible cargar los reels');
+                }
+
+                const data = await response.json();
+                renderReels(data.reels || []);
+                if (data.reels && data.reels.length) {
+                    setStatusMessage(feedStatus, `Mostrando ${data.reels.length} reels recientes`);
+                } else {
+                    setStatusMessage(feedStatus, 'Aún no hay reels en esta categoría. ¡Sé el primero en publicar!', 'warning');
+                }
+            } catch (error) {
+                console.error(error);
+                setStatusMessage(feedStatus, 'Ocurrió un error cargando los reels. Intenta nuevamente.', 'error');
+            } finally {
+                isLoadingReels = false;
+            }
+        }
+
+        function renderReels(reels) {
+            reelsFeed.innerHTML = '';
+
+            if (!reels.length) {
+                const empty = document.createElement('div');
+                empty.className = 'no-reels';
+                empty.innerHTML = `
+                    <div class="empty-state-icon">🎬</div>
+                    <strong>No hay reels en esta categoría.</strong>
+                    <p>Comparte tu primer reel y destaca en Deseo Libre.</p>
+                `;
+                reelsFeed.appendChild(empty);
+                return;
+            }
+
+            reels.forEach(reel => {
+                const card = document.createElement('article');
+                card.className = 'reel-card';
+                card.dataset.reelId = reel.id;
+                card.innerHTML = createReelMarkup(reel);
+
+                const video = card.querySelector('video');
+                if (video) {
+                    video.addEventListener('play', () => registerView(reel.id));
+                }
+
+                const likeButton = card.querySelector('.like-btn');
+                likeButton.addEventListener('click', () => toggleLike(reel.id, likeButton));
+
+                const commentToggle = card.querySelector('.comment-toggle-btn');
+                commentToggle.addEventListener('click', () => toggleCommentsSection(reel.id, card));
+
+                const commentForm = card.querySelector('.comment-form');
+                commentForm.addEventListener('submit', (event) => submitComment(event, reel.id, card));
+
+                const deleteButton = card.querySelector('.delete-reel-btn');
+                if (deleteButton) {
+                    deleteButton.addEventListener('click', () => deleteReel(reel.id, card, deleteButton));
+                }
+
+                reelsFeed.appendChild(card);
+            });
+        }
+
+        function createReelMarkup(reel) {
+            const profilePicture = reel.profile_picture
+                ? `${API_URL}${reel.profile_picture}`
+                : `${API_URL}/uploads/default-avatar.png`;
+
+            const videoUrl = reel.video_url.startsWith('http') ? reel.video_url : `${API_URL}${reel.video_url}`;
+            const liked = !!reel.is_liked_by_me;
+            const username = escapeHtml(reel.username || 'Usuario');
+            const isOwner = currentUser && reel.user_id === currentUser.id;
+            const ownerControls = isOwner ? `
+                        <button class="delete-reel-btn" data-reel-id="${reel.id}">
+                            <i class="fas fa-trash"></i>
+                            <span>Eliminar</span>
+                        </button>
+                    ` : '';
+
+            return `
+                <div class="reel-video-container">
+                    <video controls playsinline preload="metadata" muted loop>
+                        <source src="${videoUrl}" type="video/mp4">
+                        Tu navegador no soporta la reproducción de video.
+                    </video>
+                </div>
+                <div class="reel-info">
+                    <div class="reel-header">
+                        <img src="${profilePicture}" alt="${username}">
+                        <div class="reel-user">
+                            <strong>${username}</strong>
+                            <span class="reel-meta">
+                                <i class="fas fa-tag"></i>
+                                ${getCategoryLabel(reel.category)}
+                                ${reel.duration_seconds ? ` • ${reel.duration_seconds}s` : ''}
+                            </span>
+                        </div>
+                    </div>
+                    ${reel.title ? `<h3 class="reel-title">${escapeHtml(reel.title)}</h3>` : ''}
+                    ${reel.description ? `<p class="reel-description">${escapeHtml(reel.description)}</p>` : ''}
+                    <div class="reel-meta">
+                        <span><i class="far fa-eye"></i> ${reel.views_count || 0}</span>
+                        <span><i class="far fa-heart"></i> ${reel.likes_count || 0}</span>
+                        <span><i class="far fa-comment"></i> ${reel.comments_count || 0}</span>
+                    </div>
+                    <div class="reel-actions">
+                        <button class="like-btn ${liked ? 'liked' : ''}" data-liked="${liked}" data-count="${reel.likes_count || 0}">
+                            <i class="fas fa-heart"></i>
+                            <span>${liked ? 'Te gusta' : 'Me gusta'}</span>
+                            <strong>${reel.likes_count || 0}</strong>
+                        </button>
+                        <button class="comment-toggle-btn">
+                            <i class="fas fa-comment"></i>
+                            <span>Comentarios</span>
+                        </button>
+                        ${ownerControls}
+                    </div>
+                    <div class="comments-section" data-loaded="false" style="display: none;">
+                        <div class="comment-list"></div>
+                        <form class="comment-form">
+                            <input type="text" name="comment" placeholder="Escribe un comentario" maxlength="240" required>
+                            <button type="submit">Enviar</button>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function toggleLike(reelId, button) {
+            if (!ensureAuthenticated()) return;
+
+            const liked = button.dataset.liked === 'true';
+            const likeCount = parseInt(button.dataset.count, 10) || 0;
+
+            try {
+                const endpoint = `${API_URL}/api/reels/${reelId}/like`;
+                const response = await fetch(endpoint, {
+                    method: liked ? 'DELETE' : 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (!response.ok) {
+                    throw new Error('No se pudo actualizar el like');
+                }
+
+                button.dataset.liked = liked ? 'false' : 'true';
+                const newCount = liked ? Math.max(likeCount - 1, 0) : likeCount + 1;
+                button.dataset.count = newCount;
+                button.classList.toggle('liked', !liked);
+                button.querySelector('span').textContent = liked ? 'Me gusta' : 'Te gusta';
+                button.querySelector('strong').textContent = newCount;
+            } catch (error) {
+                console.error(error);
+                alert('No se pudo actualizar tu reacción. Intenta nuevamente.');
+            }
+        }
+
+        async function toggleCommentsSection(reelId, card) {
+            const section = card.querySelector('.comments-section');
+            const commentsList = section.querySelector('.comment-list');
+            const isVisible = section.style.display === 'block';
+
+            section.style.display = isVisible ? 'none' : 'block';
+
+            if (!isVisible && section.dataset.loaded === 'false') {
+                commentsList.innerHTML = '<p class="status-message">Cargando comentarios...</p>';
+
+                try {
+                    const response = await fetch(`${API_URL}/api/reels/${reelId}/comments`, {
+                        headers: { 'Authorization': `Bearer ${authToken}` }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('No se pudieron cargar los comentarios');
+                    }
+
+                    const data = await response.json();
+                    renderComments(commentsList, data.comments || []);
+                    section.dataset.loaded = 'true';
+                } catch (error) {
+                    console.error(error);
+                    commentsList.innerHTML = '<p class="status-message error">No se pudieron cargar los comentarios.</p>';
+                }
+            }
+        }
+
+        function renderComments(container, comments) {
+            if (!comments.length) {
+                container.innerHTML = '<p class="status-message warning">Aún no hay comentarios. Sé el primero en opinar.</p>';
+                return;
+            }
+
+            container.innerHTML = '';
+            comments.forEach(comment => {
+                const item = document.createElement('div');
+                item.className = 'comment-item';
+                const avatar = comment.profile_picture
+                    ? `${API_URL}${comment.profile_picture}`
+                    : `${API_URL}/uploads/default-avatar.png`;
+                item.innerHTML = `
+                    <img src="${avatar}" alt="${comment.username}">
+                    <div class="comment-content">
+                        <div class="comment-author">${comment.username}</div>
+                        <div>${escapeHtml(comment.comment)}</div>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        async function submitComment(event, reelId, card) {
+            event.preventDefault();
+            if (!ensureAuthenticated()) return;
+
+            const form = event.currentTarget;
+            const input = form.querySelector('input[name="comment"]');
+            const commentText = input.value.trim();
+            if (!commentText) return;
+
+            try {
+                const response = await fetch(`${API_URL}/api/reels/${reelId}/comment`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ comment: commentText })
+                });
+
+                if (!response.ok) {
+                    throw new Error('No se pudo enviar el comentario');
+                }
+
+                const data = await response.json();
+                const section = card.querySelector('.comments-section');
+                const list = section.querySelector('.comment-list');
+                if (section.dataset.loaded === 'false') {
+                    section.dataset.loaded = 'true';
+                    list.innerHTML = '';
+                }
+
+                const comment = data.comment;
+                const avatar = comment.profile_picture
+                    ? `${API_URL}${comment.profile_picture}`
+                    : `${API_URL}/uploads/default-avatar.png`;
+                const item = document.createElement('div');
+                item.className = 'comment-item';
+                item.innerHTML = `
+                    <img src="${avatar}" alt="${comment.username}">
+                    <div class="comment-content">
+                        <div class="comment-author">${comment.username}</div>
+                        <div>${escapeHtml(comment.comment)}</div>
+                    </div>
+                `;
+                list.prepend(item);
+
+                input.value = '';
+
+                const commentsMeta = card.querySelector('.reel-meta span:nth-child(3)');
+                if (commentsMeta) {
+                    const current = parseInt(commentsMeta.textContent.replace(/[^0-9]/g, ''), 10) || 0;
+                    commentsMeta.innerHTML = `<i class="far fa-comment"></i> ${current + 1}`;
+                }
+            } catch (error) {
+                console.error(error);
+                alert('No fue posible enviar tu comentario. Inténtalo nuevamente.');
+            }
+        }
+
+        async function registerView(reelId) {
+            if (!ensureAuthenticated()) return;
+
+            try {
+                await fetch(`${API_URL}/api/reels/${reelId}/view`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+            } catch (error) {
+                console.warn('No se pudo registrar la vista del reel:', error);
+            }
+        }
+
+        async function deleteReel(reelId, card, button) {
+            if (!ensureAuthenticated()) return;
+
+            const confirmed = confirm('¿Estás seguro de que deseas eliminar este reel? Esta acción es permanente.');
+            if (!confirmed) {
+                return;
+            }
+
+            const originalButtonHtml = button ? button.innerHTML : '';
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span> Eliminando...</span>';
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/api/reels/${reelId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'No se pudo eliminar el reel');
+                }
+
+                setStatusMessage(feedStatus, data.message || 'Reel eliminado correctamente', 'success');
+                loadReelsForCategory(currentCategory);
+            } catch (error) {
+                console.error(error);
+                alert(error.message || 'No se pudo eliminar el reel. Intenta nuevamente.');
+                if (button) {
+                    button.disabled = false;
+                    button.innerHTML = originalButtonHtml;
+                }
+            }
+        }
+
+        uploadForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (!ensureAuthenticated()) return;
+
+            const formData = new FormData(uploadForm);
+            if (!formData.get('is_public')) {
+                formData.set('is_public', 'false');
+            }
+
+            setStatusMessage(uploadStatus, 'Subiendo reel...');
+
+            try {
+                const response = await fetch(`${API_URL}/api/reels`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    throw new Error(data.error || 'No se pudo subir el reel');
+                }
+
+                setStatusMessage(uploadStatus, '✅ Reel publicado correctamente', 'success');
+                uploadForm.reset();
+                const checkbox = document.getElementById('reel-public');
+                checkbox.checked = true;
+
+                loadReelsForCategory(currentCategory);
+            } catch (error) {
+                console.error(error);
+                setStatusMessage(uploadStatus, `❌ ${error.message}`, 'error');
+            }
+        });
+
+        function escapeHtml(string) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return String(string).replace(/[&<>"']/g, (m) => map[m]);
+        }
+
+        function getCategoryLabel(categoryId) {
+            const category = CATEGORY_DEFINITIONS.find(cat => cat.id === categoryId);
+            return category ? category.label : categoryId;
+        }
+
+        async function initReelsPage() {
+            if (!ensureAuthenticated()) return;
+            await fetchCurrentUser();
+            renderCategoryControls();
+            uploadHint.textContent = 'Los reels están disponibles solo para miembros verificados. Asegúrate de respetar las políticas de contenido.';
+            loadReelsForCategory(currentCategory);
+        }
+
+        initReelsPage();
+    </script>
+</body>
+</html>
+

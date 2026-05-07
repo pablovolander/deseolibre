@@ -1,0 +1,103 @@
+═══════════════════════════════════════════════════════════
+  INSTRUCCIONES RÁPIDAS - DESEO LIBRE
+═══════════════════════════════════════════════════════════
+
+PASO 1: INICIAR EL SERVIDOR
+────────────────────────────
+Haz doble clic en:
+  ➤ TEST-COMPLETO.bat
+
+Espera a ver:
+  "Servidor Deseo Libre ejecutándose en puerto 3000"
+
+NO CIERRES ESA VENTANA (el servidor debe estar corriendo)
+
+
+PASO 2: ABRIR EN EL NAVEGADOR
+──────────────────────────────
+Abre tu navegador (Chrome, Edge, Firefox) y ve a:
+  ➤ http://localhost:3000
+
+
+PASO 3: REGISTRARTE
+────────────────────
+1. Clic en "Registrarse" (botón arriba a la derecha)
+2. Rellena:
+   - Usuario: cualquiera (sin espacios)
+   - Email: cualquiera@test.com
+   - Contraseña: mínimo 6 caracteres
+3. Acepta que eres +18
+4. Clic en "Registrarse"
+
+
+PASO 4: VERIFICAR IDENTIDAD
+────────────────────────────
+Después de registrarte:
+1. Ve a: http://localhost:3000/verificar-identidad.html
+2. Clic en "Verificar Ahora (Desarrollo)"
+
+
+PASO 5: SUBIR CONTENIDO
+────────────────────────
+1. Ve a: http://localhost:3000/profile.html
+2. Clic en el botón "+" o "Crear Publicación"
+3. Rellena el formulario:
+   - Título: lo que quieras
+   - Descripción: lo que quieras
+   - Tipo: Foto/Video/Audio
+   - CATEGORÍA: ¡IMPORTANTE! Selecciona una (ej: Acompañantes Hombres)
+   - Sube un archivo
+4. Marca "Público" (checkbox)
+5. Clic en "Publicar"
+
+
+PASO 6: VER TU PUBLICACIÓN
+───────────────────────────
+Si elegiste "Acompañantes Hombres", ve a:
+  ➤ http://localhost:3000/feed-acompañantes-hombres.html
+
+Tu publicación DEBE aparecer allí.
+
+
+═══════════════════════════════════════════════════════════
+  SI NO FUNCIONA
+═══════════════════════════════════════════════════════════
+
+1. Verifica que el servidor esté corriendo (ventana abierta)
+2. Presiona F12 en el navegador
+3. Ve a la pestaña "Console"
+4. Copia TODOS los errores en ROJO
+5. Envíamelos
+
+
+═══════════════════════════════════════════════════════════
+  CATEGORÍAS DISPONIBLES
+═══════════════════════════════════════════════════════════
+
+• Acompañantes Mujeres     → feed-acompañantes-mujeres.html
+• Acompañantes Hombres     → feed-acompañantes-hombres.html
+• Acompañantes Trans       → feed-acompañantes-trans.html
+• Sugar Daddy              → feed-sugar-daddy.html
+• Sugar Mommy              → feed-sugar-mommy.html
+• Contenido Exclusivo      → feed-contenido-exclusivo.html
+• Audios Eróticos          → feed-audios-eroticos.html
+• Artículos Eróticos       → feed-articulos-eroticos.html
+• Swinger                  → feed-swinger.html
+• Masajes                  → feed-masajes.html
+• Lesbiana                 → feed-lesbiana.html
+• Hetero                   → feed-hetero.html
+• Gay                      → feed-gay.html
+
+
+═══════════════════════════════════════════════════════════
+
+NOTA: La categoría que seleccionas al subir la foto DEBE 
+coincidir con la página de feed donde la buscas.
+
+Ejemplo:
+  • Subes foto con categoría "Acompañantes Hombres"
+  • La buscas en: feed-acompañantes-hombres.html
+  • Si buscas en otra categoría, NO la verás
+
+═══════════════════════════════════════════════════════════
+

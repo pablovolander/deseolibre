@@ -1,0 +1,208 @@
+==========================================
+   CÓMO EMPEZAR A SUBIR FOTOS Y VIDEOS
+==========================================
+
+✅ EL SERVIDOR YA ESTÁ CORRIENDO
+
+==========================================
+  PASOS RÁPIDOS (5 MINUTOS)
+==========================================
+
+PASO 1: ABRE TU NAVEGADOR
+--------------------------
+Abre Chrome, Firefox o Edge y ve a:
+
+    http://localhost:3000
+
+==========================================
+
+PASO 2: INICIA SESIÓN
+----------------------
+Si ya tienes cuenta:
+- Click en "Iniciar Sesión"
+- Ingresa usuario y contraseña
+
+Si NO tienes cuenta:
+- Click en "Registrarse"
+- Completa el formulario
+- Click en "Registrarse"
+
+==========================================
+
+PASO 3: VERIFICA TU EDAD
+-------------------------
+Aparecerá un modal automáticamente:
+- Marca "Confirmo que soy mayor de 18 años"
+- Click en "Verificar y Continuar"
+
+==========================================
+
+PASO 4: VERIFICA TU IDENTIDAD
+------------------------------
+Para poder subir contenido, necesitas verificar tu identidad:
+
+Opción A: Click en el modal que aparece
+Opción B: Ve a "Mi Perfil" → "Verificar Identidad"
+
+Sube 3 fotos:
+1. DNI (frontal)
+2. DNI (reverso)
+3. Selfie con tu DNI
+
+==========================================
+
+PASO 5: VE A TU PERFIL
+-----------------------
+- Click en "Mi Perfil" (esquina superior derecha)
+- Verás tu página de perfil
+
+==========================================
+
+PASO 6: CREA TU PRIMERA PUBLICACIÓN
+------------------------------------
+- Click en "+ Crear Publicación"
+- Llena el formulario:
+
+  TÍTULO:
+  Ej: "Mi sesión de fotos"
+
+  DESCRIPCIÓN:
+  Ej: "Fotos profesionales"
+
+  TIPO DE CONTENIDO:
+  Elige: Foto / Video / Audio
+
+  CATEGORÍA:
+  Elige la que corresponda
+
+  ARCHIVO:
+  - Click en "Click para subir archivo"
+  - Selecciona tu foto/video
+  - Debe pesar menos de 10MB
+
+  PRECIO: (opcional)
+  Deja en 0 si es gratis
+
+- Click en "Publicar"
+
+==========================================
+
+PASO 7: ¡LISTO!
+----------------
+- Verás "⏳ Subiendo archivo..."
+- Luego "✅ ¡Publicación creada exitosamente!"
+- Tu foto/video aparecerá en tu perfil
+
+==========================================
+  VERIFICAR QUE TODO FUNCIONE
+==========================================
+
+OPCIÓN 1: VER LOGS EN LA CONSOLA
+---------------------------------
+1. Presiona F12 en tu navegador
+2. Ve a la pestaña "Console"
+3. Verás mensajes con emojis:
+   🔄 = Cargando
+   ✅ = Éxito
+   ❌ = Error
+
+OPCIÓN 2: VER LOGS DEL SERVIDOR
+--------------------------------
+1. Ve a la ventana de PowerShell donde corre el servidor
+2. Verás mensajes cuando subes archivos
+
+==========================================
+  PROBLEMAS COMUNES
+==========================================
+
+PROBLEMA: "El archivo es muy grande"
+SOLUCIÓN: Comprime la imagen/video
+          Usa: https://tinypng.com (fotos)
+          o https://www.freeconvert.com/video-compressor (videos)
+
+PROBLEMA: "Usuario no verificado"
+SOLUCIÓN: Completa la verificación de identidad
+          Ve a: Mi Perfil → Verificar Identidad
+
+PROBLEMA: "Las fotos no aparecen"
+SOLUCIÓN: 1. Presiona F12
+          2. Ve a Console
+          3. Busca errores (mensajes con ❌)
+          4. Comparte captura de pantalla
+
+PROBLEMA: "No puedo acceder a localhost:3000"
+SOLUCIÓN: 1. Limpia caché: Ctrl + Shift + Delete
+          2. Prueba modo incógnito: Ctrl + Shift + N
+          3. Verifica servidor: netstat -ano | Select-String ":3000"
+
+==========================================
+  DOCUMENTACIÓN COMPLETA
+==========================================
+
+Para instrucciones detalladas, lee:
+
+📚 GUIA-SUBIR-CONTENIDO.md
+   - Guía completa paso a paso
+   - Capturas de pantalla
+   - Solución de problemas
+
+📚 MEJORAS-IMPLEMENTADAS-PERFIL.md
+   - Detalles técnicos
+   - Características implementadas
+   - Información para desarrolladores
+
+📚 ACCESO-RAPIDO.txt
+   - Soluciones rápidas
+   - Problemas de conexión
+
+==========================================
+  ATAJOS ÚTILES
+==========================================
+
+ABRIR CONSOLA DEL NAVEGADOR:
+F12
+
+LIMPIAR CACHÉ:
+Ctrl + Shift + Delete
+
+MODO INCÓGNITO:
+Ctrl + Shift + N (Chrome/Edge)
+Ctrl + Shift + P (Firefox)
+
+RECARGAR PÁGINA:
+Ctrl + R (normal)
+Ctrl + Shift + R (forzar recarga)
+
+==========================================
+  VERIFICAR SERVIDOR
+==========================================
+
+En PowerShell, ejecuta:
+
+netstat -ano | Select-String ":3000"
+
+Deberías ver:
+TCP    0.0.0.0:3000    ...    LISTENING
+
+Si NO ves eso, reinicia el servidor:
+
+cd "C:\Users\pablo\OneDrive\Desktop\Cursor 3"
+node server.js
+
+==========================================
+  CONTACTO Y SOPORTE
+==========================================
+
+Si necesitas ayuda:
+
+1. Abre la consola (F12)
+2. Toma captura de cualquier error
+3. Comparte la captura
+4. Describe qué estabas haciendo
+
+==========================================
+
+¡DISFRUTA SUBIENDO TU CONTENIDO! 🔥💋
+
+==========================================
+

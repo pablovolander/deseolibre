@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Server - Deseo Libre</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #e55656;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test del Servidor Deseo Libre</h1>
+    
+    <div class="test-section">
+        <h2>1. Test de Conexión Básica</h2>
+        <button onclick="testConnection()">Probar Conexión</button>
+        <div id="connectionResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Test de Registro</h2>
+        <input type="text" id="testUsername" placeholder="Username" value="testuser">
+        <input type="email" id="testEmail" placeholder="Email" value="test@example.com">
+        <input type="password" id="testPassword" placeholder="Password" value="123456">
+        <button onclick="testRegister()">Probar Registro</button>
+        <div id="registerResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Test de Login</h2>
+        <input type="email" id="loginEmail" placeholder="Email" value="test@example.com">
+        <input type="password" id="loginPassword" placeholder="Password" value="123456">
+        <button onclick="testLogin()">Probar Login</button>
+        <div id="loginResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Test de Subida de Archivo</h2>
+        <input type="file" id="testFile" accept="image/*,video/*,audio/*">
+        <button onclick="testUpload()">Probar Subida</button>
+        <div id="uploadResult" class="result"></div>
+    </div>
+
+    <script>
+        let authToken = null;
+
+        async function testConnection() {
+            const resultDiv = document.getElementById('connectionResult');
+            try {
+                const response = await fetch('/api/upload/info');
+                const data = await response.json();
+                resultDiv.innerHTML = '<div class="success">✅ Conexión exitosa! Servidor funcionando correctamente.</div>';
+                console.log('Server info:', data);
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error de conexión: ${error.message}</div>`;
+                console.error('Connection error:', error);
+            }
+        }
+
+        async function testRegister() {
+            const resultDiv = document.getElementById('registerResult');
+            const username = document.getElementById('testUsername').value;
+            const email = document.getElementById('testEmail').value;
+            const password = document.getElementById('testPassword').value;
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, email, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    authToken = data.token;
+                    resultDiv.innerHTML = '<div class="success">✅ Registro exitoso! Token obtenido.</div>';
+                    console.log('Register success:', data);
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ Error de registro: ${data.error}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error de conexión: ${error.message}</div>`;
+                console.error('Register error:', error);
+            }
+        }
+
+        async function testLogin() {
+            const resultDiv = document.getElementById('loginResult');
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    authToken = data.token;
+                    resultDiv.innerHTML = '<div class="success">✅ Login exitoso! Token obtenido.</div>';
+                    console.log('Login success:', data);
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ Error de login: ${data.error}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error de conexión: ${error.message}</div>`;
+                console.error('Login error:', error);
+            }
+        }
+
+        async function testUpload() {
+            const resultDiv = document.getElementById('uploadResult');
+            const fileInput = document.getElementById('testFile');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                resultDiv.innerHTML = '<div class="error">❌ Por favor selecciona un archivo</div>';
+                return;
+            }
+
+            if (!authToken) {
+                resultDiv.innerHTML = '<div class="error">❌ Necesitas estar logueado para subir archivos</div>';
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('title', 'Test Upload');
+                formData.append('description', 'Archivo de prueba');
+                formData.append('content_type', file.type.startsWith('image/') ? 'photo' : 
+                               file.type.startsWith('video/') ? 'video' : 'audio');
+                formData.append('price', '0');
+                formData.append('is_premium', 'false');
+                formData.append('is_public', 'true');
+                formData.append('category', 'general');
+
+                const response = await fetch('/api/content', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = '<div class="success">✅ Subida exitosa! Archivo subido correctamente.</div>';
+                    console.log('Upload success:', data);
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ Error de subida: ${data.error}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error de conexión: ${error.message}</div>`;
+                console.error('Upload error:', error);
+            }
+        }
+
+        // Auto-test connection on load
+        window.onload = function() {
+            testConnection();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,203 @@
+╔══════════════════════════════════════════════════════════════╗
+║        📤 GUÍA: Cómo Subir Fotos, Videos y Audios          ║
+╚══════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 PROCESO COMPLETO PASO A PASO:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PASO 1: ABRIR EL MODAL
+  ✅ Ve a tu perfil
+  ✅ Click en "Crear Publicación"
+  ✅ Se abre el modal
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PASO 2: SELECCIONAR ARCHIVO
+  ✅ Click en el área de carga (o arrastra el archivo)
+  ✅ Selecciona foto, video o audio
+  ✅ Verás la vista previa
+  ✅ Console muestra: "📁 Archivo seleccionado: Object"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PASO 3: LLENAR TODOS LOS CAMPOS (IMPORTANTE!)
+  
+  ✅ TÍTULO (requerido)
+     Ejemplo: "Mi sesión de fotos"
+  
+  ✅ DESCRIPCIÓN (requerido)
+     Ejemplo: "Fotos profesionales en la playa"
+  
+  ✅ TIPO DE CONTENIDO (requerido)
+     Selecciona: photo, video o audio
+  
+  ✅ CATEGORÍA (requerido)
+     Ejemplo: "acompañantes-mujeres"
+  
+  ✅ PRECIO (opcional)
+     Ejemplo: 10 (o deja en 0 si es gratis)
+  
+  ☐ ¿ES PREMIUM? (opcional)
+     Marca si quieres que sea premium
+  
+  ☐ ¿ES PÚBLICO? (opcional)
+     Marca si quieres que sea visible para todos
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PASO 4: HACER CLICK EN "PUBLICAR"
+  
+  ⚠️ IMPORTANTE: ¡Debes hacer click en el botón "Publicar"!
+  
+  NO basta con solo seleccionar el archivo.
+  
+  ✅ Click en el botón verde "Publicar"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PASO 5: ESPERAR LA CARGA
+  
+  Verás en la consola:
+  
+  📤 Iniciando creación de publicación...
+  📋 Datos del formulario: { ... }
+  ✅ Todas las validaciones pasaron
+  📁 Archivo seleccionado: { ... }
+  🚀 Enviando datos al servidor...
+  ✅ Publicación creada: { ... }
+  ✅ Publicación creada exitosamente!
+  
+  Y en el servidor:
+  
+  📁 Validando archivo: { ... }
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❌ ERRORES COMUNES:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ERROR 1: Solo ver "📁 Archivo seleccionado"
+  
+  CAUSA: No hiciste click en "Publicar"
+  SOLUCIÓN: Llena todos los campos y click en "Publicar"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ERROR 2: "El título es requerido"
+  
+  CAUSA: Falta llenar el título
+  SOLUCIÓN: Escribe un título para tu publicación
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ERROR 3: "Selecciona el tipo de contenido"
+  
+  CAUSA: No seleccionaste photo/video/audio
+  SOLUCIÓN: Selecciona el tipo correcto
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ERROR 4: "Selecciona una categoría"
+  
+  CAUSA: No seleccionaste categoría
+  SOLUCIÓN: Selecciona una categoría del dropdown
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎨 EJEMPLO COMPLETO:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Vamos a subir una foto:
+
+1. Click en "Crear Publicación" ✅
+
+2. Selecciona una foto del PC ✅
+   → Ves la foto en preview
+
+3. Llena los campos:
+   
+   Título: "Sesión en la playa"
+   ↓
+   Descripción: "Fotos profesionales tomadas en la playa"
+   ↓
+   Tipo: "photo"
+   ↓
+   Categoría: "acompañantes-mujeres"
+   ↓
+   Precio: "15"
+   ↓
+   Premium: ☑️
+   ↓
+   Público: ☑️
+
+4. Click en "Publicar" ✅
+
+5. Espera...
+   → "⏳ Subiendo archivo..."
+   → "✅ Publicación creada exitosamente!"
+
+6. El modal se cierra y ves tu nueva foto en el grid ✅
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔍 CÓMO VERIFICAR SI FUNCIONA:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Abre la consola del navegador (F12)
+
+2. Ve a la pestaña "Console"
+
+3. Intenta subir un archivo siguiendo TODOS los pasos
+
+4. Si NO ves "📤 Iniciando creación de publicación...":
+   → NO hiciste click en "Publicar"
+   → O hay un error de JavaScript
+
+5. Si ves "❌ Validación fallida: ...":
+   → Falta completar algún campo
+   → Lee el mensaje para saber cuál
+
+6. Si ves "✅ Todas las validaciones pasaron":
+   → ¡Bien! El formulario está completo
+   → Debería subirse correctamente
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ CHECKLIST ANTES DE PUBLICAR:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+☐ 1. Archivo seleccionado (foto/video/audio)
+☐ 2. Título escrito
+☐ 3. Descripción escrita
+☐ 4. Tipo seleccionado (photo/video/audio)
+☐ 5. Categoría seleccionada
+☐ 6. Click en "Publicar"
+
+Si marcaste todos ✅ debería funcionar.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 TIPS:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+• Asegúrate de que el servidor esté corriendo
+• Abre la consola (F12) para ver logs
+• Lee los mensajes de error (son descriptivos)
+• Completa TODOS los campos obligatorios
+• Haz click en "Publicar" (no solo seleccionar archivo)
+• Espera a que termine de subir (puede tardar)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎉 ¡Sigue estos pasos y funcionará perfectamente!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+

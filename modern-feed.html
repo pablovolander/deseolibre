@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feed - Deseo Libre</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #ff6b6b;
+            --secondary-color: #6c5ce7;
+            --success-color: #00b894;
+            --warning-color: #fdcb6e;
+            --error-color: #e17055;
+            --text-dark: #2d3436;
+            --text-light: #636e72;
+            --bg-light: #f8f9fa;
+            --white: #ffffff;
+            --border-color: #ddd;
+            --shadow: 0 2px 10px rgba(0,0,0,0.1);
+            --shadow-hover: 0 5px 20px rgba(0,0,0,0.15);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-light);
+            color: var(--text-dark);
+        }
+
+        .header {
+            background: var(--white);
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            padding: 15px 0;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .create-post-btn {
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            color: var(--white);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .create-post-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .user-menu {
+            position: relative;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.1);
+        }
+
+        .main-content {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .stories-section {
+            background: var(--white);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .stories-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--text-dark);
+        }
+
+        .stories-container {
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+
+        .story-item {
+            min-width: 80px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .story-item:hover {
+            transform: scale(1.05);
+        }
+
+        .story-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            margin: 0 auto 8px;
+            position: relative;
+        }
+
+        .story-avatar::after {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            z-index: -1;
+        }
+
+        .story-name {
+            font-size: 12px;
+            color: var(--text-light);
+            white-space: nowrap;
+        }
+
+        .feed-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .post-card {
+            background: var(--white);
+            border-radius: 15px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .post-card:hover {
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-2px);
+        }
+
+        .post-header {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .post-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+        }
+
+        .post-user-info {
+            flex: 1;
+        }
+
+        .post-username {
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 4px;
+        }
+
+        .post-time {
+            font-size: 14px;
+            color: var(--text-light);
+        }
+
+        .post-menu {
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .post-menu:hover {
+            background: var(--bg-light);
+        }
+
+        .post-content {
+            padding: 0 20px 20px;
+        }
+
+        .post-text {
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .post-media {
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .post-image {
+            width: 100%;
+            height: auto;
+            max-height: 500px;
+            object-fit: cover;
+        }
+
+        .post-video {
+            width: 100%;
+            height: auto;
+            max-height: 500px;
+        }
+
+        .post-audio {
+            background: var(--bg-light);
+            padding: 20px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .audio-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+        }
+
+        .audio-info {
+            flex: 1;
+        }
+
+        .audio-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .audio-duration {
+            font-size: 14px;
+            color: var(--text-light);
+        }
+
+        .post-actions {
+            padding: 0 20px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 20px;
+        }
+
+        .action-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-light);
+        }
+
+        .action-btn:hover {
+            background: var(--bg-light);
+            color: var(--primary-color);
+        }
+
+        .action-btn.liked {
+            color: var(--error-color);
+        }
+
+        .post-stats {
+            padding: 0 20px 15px;
+            font-size: 14px;
+            color: var(--text-light);
+        }
+
+        .loading-spinner {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-light);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-light);
+        }
+
+        .empty-state i {
+            font-size: 64px;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+        }
+
+        .empty-state h3 {
+            margin-bottom: 10px;
+            color: var(--text-dark);
+        }
+
+        .category-filter {
+            background: var(--white);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .filter-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--text-dark);
+        }
+
+        .filter-options {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .filter-option {
+            padding: 8px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            background: var(--white);
+        }
+
+        .filter-option:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .filter-option.active {
+            border-color: var(--primary-color);
+            background: var(--primary-color);
+            color: var(--white);
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 10px;
+            }
+            
+            .header-content {
+                padding: 0 15px;
+            }
+            
+            .create-post-btn {
+                padding: 10px 16px;
+                font-size: 14px;
+            }
+            
+            .stories-container {
+                gap: 10px;
+            }
+            
+            .story-item {
+                min-width: 70px;
+            }
+            
+            .story-avatar {
+                width: 50px;
+                height: 50px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="logo">Deseo Libre</a>
+            <div class="header-actions">
+                <a href="/create-post.html" class="create-post-btn">
+                    <i class="fas fa-plus"></i>
+                    Crear Post
+                </a>
+                <div class="user-menu">
+                    <div class="user-avatar" onclick="toggleUserMenu()">
+                        <i class="fas fa-user"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="stories-section">
+            <h3 class="stories-title">Historias</h3>
+            <div class="stories-container" id="storiesContainer">
+                <!-- Stories will be loaded here -->
+            </div>
+        </div>
+
+        <div class="category-filter">
+            <h3 class="filter-title">Filtrar por Categoría</h3>
+            <div class="filter-options">
+                <div class="filter-option active" data-category="all">Todas</div>
+                <div class="filter-option" data-category="acompañantes-mujeres">Acompañantes Mujeres</div>
+                <div class="filter-option" data-category="acompañantes-hombres">Acompañantes Hombres</div>
+                <div class="filter-option" data-category="acompañantes-trans">Acompañantes Trans</div>
+                <div class="filter-option" data-category="sugar-daddy">Sugar Daddy</div>
+                <div class="filter-option" data-category="sugar-mommy">Sugar Mommy</div>
+                <div class="filter-option" data-category="contenido-exclusivo">Contenido Exclusivo</div>
+                <div class="filter-option" data-category="audios-eroticos">Audios Eróticos</div>
+                <div class="filter-option" data-category="articulos-eroticos">Artículos Eróticos</div>
+                <div class="filter-option" data-category="swinger">Swinger</div>
+                <div class="filter-option" data-category="masajes">Masajes</div>
+                <div class="filter-option" data-category="lesbiana">Lesbiana</div>
+                <div class="filter-option" data-category="hetero">Hetero</div>
+                <div class="filter-option" data-category="gay">Gay</div>
+            </div>
+        </div>
+
+        <div class="feed-container" id="feedContainer">
+            <div class="loading-spinner">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Cargando contenido...</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Variables globales
+        let currentCategory = 'all';
+        let currentPage = 1;
+        let isLoading = false;
+        let hasMoreContent = true;
+        let authToken = localStorage.getItem('authToken');
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStories();
+            loadFeed();
+            setupEventListeners();
+        });
+
+        // Configurar event listeners
+        function setupEventListeners() {
+            // Filtros de categoría
+            document.querySelectorAll('.filter-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    document.querySelectorAll('.filter-option').forEach(opt => {
+                        opt.classList.remove('active');
+                    });
+                    option.classList.add('active');
+                    currentCategory = option.dataset.category;
+                    currentPage = 1;
+                    hasMoreContent = true;
+                    loadFeed();
+                });
+            });
+
+            // Scroll infinito
+            window.addEventListener('scroll', () => {
+                if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 1000) {
+                    if (!isLoading && hasMoreContent) {
+                        loadMoreContent();
+                    }
+                }
+            });
+        }
+
+        // Cargar historias
+        async function loadStories() {
+            try {
+                const response = await apiCall('/api/feed?limit=10');
+                const stories = response.posts.slice(0, 8); // Mostrar solo 8 historias
+                
+                const storiesContainer = document.getElementById('storiesContainer');
+                storiesContainer.innerHTML = '';
+
+                stories.forEach(post => {
+                    const storyItem = document.createElement('div');
+                    storyItem.className = 'story-item';
+                    storyItem.innerHTML = `
+                        <div class="story-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="story-name">${post.username}</div>
+                    `;
+                    storiesContainer.appendChild(storyItem);
+                });
+            } catch (error) {
+                console.error('Error loading stories:', error);
+            }
+        }
+
+        // Cargar feed
+        async function loadFeed() {
+            if (isLoading) return;
+            
+            isLoading = true;
+            const feedContainer = document.getElementById('feedContainer');
+            
+            if (currentPage === 1) {
+                feedContainer.innerHTML = `
+                    <div class="loading-spinner">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Cargando contenido...</p>
+                    </div>
+                `;
+            }
+
+            try {
+                const url = currentCategory === 'all' 
+                    ? `/api/feed?page=${currentPage}&limit=10`
+                    : `/api/feed/${currentCategory}?page=${currentPage}&limit=10`;
+                
+                const response = await apiCall(url);
+                
+                if (currentPage === 1) {
+                    feedContainer.innerHTML = '';
+                }
+
+                if (response.posts.length === 0 && currentPage === 1) {
+                    showEmptyState();
+                    return;
+                }
+
+                response.posts.forEach(post => {
+                    const postElement = createPostElement(post);
+                    feedContainer.appendChild(postElement);
+                });
+
+                hasMoreContent = response.posts.length === 10;
+                currentPage++;
+
+            } catch (error) {
+                console.error('Error loading feed:', error);
+                if (currentPage === 1) {
+                    showErrorState();
+                }
+            } finally {
+                isLoading = false;
+            }
+        }
+
+        // Cargar más contenido
+        async function loadMoreContent() {
+            await loadFeed();
+        }
+
+        // Crear elemento de post
+        function createPostElement(post) {
+            const postCard = document.createElement('div');
+            postCard.className = 'post-card';
+            
+            const timeAgo = getTimeAgo(post.created_at);
+            const mediaHtml = createMediaHtml(post);
+            
+            postCard.innerHTML = `
+                <div class="post-header">
+                    <div class="post-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="post-user-info">
+                        <div class="post-username">${post.username}</div>
+                        <div class="post-time">${timeAgo}</div>
+                    </div>
+                    <div class="post-menu">
+                        <i class="fas fa-ellipsis-h"></i>
+                    </div>
+                </div>
+                
+                <div class="post-content">
+                    ${post.description ? `<div class="post-text">${post.description}</div>` : ''}
+                    ${mediaHtml}
+                </div>
+                
+                <div class="post-stats">
+                    <span>${post.likes_count} me gusta</span>
+                    <span style="margin-left: 20px;">${post.comments_count} comentarios</span>
+                </div>
+                
+                <div class="post-actions">
+                    <div class="action-buttons">
+                        <button class="action-btn" onclick="toggleLike(${post.id})">
+                            <i class="fas fa-heart"></i>
+                            Me gusta
+                        </button>
+                        <button class="action-btn" onclick="showComments(${post.id})">
+                            <i class="fas fa-comment"></i>
+                            Comentar
+                        </button>
+                        <button class="action-btn" onclick="sharePost(${post.id})">
+                            <i class="fas fa-share"></i>
+                            Compartir
+                        </button>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="action-btn" onclick="savePost(${post.id})">
+                            <i class="fas fa-bookmark"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            return postCard;
+        }
+
+        // Crear HTML de media
+        function createMediaHtml(post) {
+            if (!post.file_url) return '';
+
+            const baseUrl = window.location.origin;
+            const fileUrl = `${baseUrl}${post.file_url}`;
+
+            switch (post.content_type) {
+                case 'photo':
+                    return `
+                        <div class="post-media">
+                            <img src="${fileUrl}" alt="${post.title}" class="post-image" onclick="openImageViewer('${fileUrl}')">
+                        </div>
+                    `;
+                case 'video':
+                    return `
+                        <div class="post-media">
+                            <video controls class="post-video">
+                                <source src="${fileUrl}" type="video/mp4">
+                                Tu navegador no soporta videos.
+                            </video>
+                        </div>
+                    `;
+                case 'audio':
+                    return `
+                        <div class="post-media">
+                            <div class="post-audio">
+                                <div class="audio-icon">
+                                    <i class="fas fa-music"></i>
+                                </div>
+                                <div class="audio-info">
+                                    <div class="audio-title">${post.title}</div>
+                                    <div class="audio-duration">Audio</div>
+                                </div>
+                                <audio controls>
+                                    <source src="${fileUrl}" type="audio/mpeg">
+                                    Tu navegador no soporta audio.
+                                </audio>
+                            </div>
+                        </div>
+                    `;
+                default:
+                    return '';
+            }
+        }
+
+        // Obtener tiempo transcurrido
+        function getTimeAgo(dateString) {
+            const now = new Date();
+            const postDate = new Date(dateString);
+            const diffInSeconds = Math.floor((now - postDate) / 1000);
+
+            if (diffInSeconds < 60) {
+                return 'Hace un momento';
+            } else if (diffInSeconds < 3600) {
+                const minutes = Math.floor(diffInSeconds / 60);
+                return `Hace ${minutes} minuto${minutes > 1 ? 's' : ''}`;
+            } else if (diffInSeconds < 86400) {
+                const hours = Math.floor(diffInSeconds / 3600);
+                return `Hace ${hours} hora${hours > 1 ? 's' : ''}`;
+            } else {
+                const days = Math.floor(diffInSeconds / 86400);
+                return `Hace ${days} día${days > 1 ? 's' : ''}`;
+            }
+        }
+
+        // Mostrar estado vacío
+        function showEmptyState() {
+            const feedContainer = document.getElementById('feedContainer');
+            feedContainer.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-images"></i>
+                    <h3>No hay contenido</h3>
+                    <p>No se encontraron publicaciones en esta categoría.</p>
+                    <a href="/create-post.html" class="create-post-btn" style="margin-top: 20px; display: inline-flex;">
+                        <i class="fas fa-plus"></i>
+                        Crear Primera Publicación
+                    </a>
+                </div>
+            `;
+        }
+
+        // Mostrar estado de error
+        function showErrorState() {
+            const feedContainer = document.getElementById('feedContainer');
+            feedContainer.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>Error al cargar</h3>
+                    <p>Hubo un problema al cargar el contenido. Inténtalo de nuevo.</p>
+                    <button onclick="loadFeed()" class="create-post-btn" style="margin-top: 20px; display: inline-flex;">
+                        <i class="fas fa-refresh"></i>
+                        Reintentar
+                    </button>
+                </div>
+            `;
+        }
+
+        // Funciones de interacción
+        function toggleLike(postId) {
+            // Implementar like/unlike
+            console.log('Toggle like for post:', postId);
+        }
+
+        function showComments(postId) {
+            // Implementar comentarios
+            console.log('Show comments for post:', postId);
+        }
+
+        function sharePost(postId) {
+            // Implementar compartir
+            console.log('Share post:', postId);
+        }
+
+        function savePost(postId) {
+            // Implementar guardar
+            console.log('Save post:', postId);
+        }
+
+        function openImageViewer(imageUrl) {
+            // Implementar visor de imágenes
+            window.open(imageUrl, '_blank');
+        }
+
+        function toggleUserMenu() {
+            // Implementar menú de usuario
+            console.log('Toggle user menu');
+        }
+
+        // API call
+        async function apiCall(url, options = {}) {
+            const defaultOptions = {
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            };
+
+            if (authToken) {
+                defaultOptions.headers['Authorization'] = `Bearer ${authToken}`;
+            }
+
+            const finalOptions = { ...defaultOptions, ...options };
+            
+            try {
+                const response = await fetch(url, finalOptions);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || `Error ${response.status}: ${response.statusText}`);
+                }
+                
+                return data;
+            } catch (error) {
+                console.error('API Error:', error);
+                throw error;
+            }
+        }
+    </script>
+</body>
+</html>

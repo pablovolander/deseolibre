@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificación de Identidad - Deseo Libre</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #ff6b6b 0%, #6c5ce7 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #6c5ce7;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .verification-method {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .method-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #ff6b6b;
+            margin-bottom: 1rem;
+        }
+
+        .method-description {
+            color: #666;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #ff6b6b, #6c5ce7);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(108, 92, 231, 0.3);
+        }
+
+        .btn-secondary {
+            background: #e8e4ff;
+            color: #6c5ce7;
+        }
+
+        .btn-secondary:hover {
+            background: #d4ceff;
+        }
+
+        .message {
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .status {
+            text-align: center;
+            padding: 2rem;
+            background: #f8f9fa;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+        }
+
+        .status-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .verified {
+            color: #28a745;
+        }
+
+        .unverified {
+            color: #dc3545;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #6c5ce7;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        code {
+            background: #f8f9fa;
+            padding: 0.3rem 0.6rem;
+            border-radius: 5px;
+            color: #6c5ce7;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-id-card"></i> Verificación de Identidad</h1>
+        
+        <div id="statusContainer"></div>
+        <div id="messageContainer"></div>
+        <div id="loadingContainer" class="loading">
+            <div class="spinner"></div>
+            <p>Procesando verificación...</p>
+        </div>
+
+        <div class="verification-method">
+            <div class="method-title">
+                <i class="fas fa-bolt"></i> Verificación Instantánea (Desarrollo)
+            </div>
+            <div class="method-description">
+                Método rápido para desarrollo. Te verifica instantáneamente sin necesidad de subir documentos.
+            </div>
+            <button class="btn btn-primary" onclick="quickVerify()">
+                <i class="fas fa-check-circle"></i> Verificar Ahora (Desarrollo)
+            </button>
+        </div>
+
+        <div class="verification-method">
+            <div class="method-title">
+                <i class="fas fa-file-upload"></i> Verificación Manual (Con Código)
+            </div>
+            <div class="method-description">
+                Inicia el proceso de verificación y usa el código <code>VERIFY123</code> para completarlo.
+            </div>
+            <button class="btn btn-secondary" onclick="startManualVerification()">
+                <i class="fas fa-key"></i> Iniciar Verificación Manual
+            </button>
+        </div>
+
+        <button class="btn btn-secondary" onclick="window.location.href='profile.html'">
+            <i class="fas fa-arrow-left"></i> Volver a Mi Perfil
+        </button>
+
+        <button class="btn btn-secondary" onclick="window.location.href='feed.html'">
+            <i class="fas fa-home"></i> Ir al Feed
+        </button>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('authToken');
+
+        // Check authentication
+        if (!authToken) {
+            alert('Debes iniciar sesión primero');
+            window.location.href = 'index.html';
+        }
+
+        // Load verification status on page load
+        window.addEventListener('DOMContentLoaded', checkStatus);
+
+        async function apiCall(url, options = {}) {
+            const defaultOptions = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                }
+            };
+
+            const finalOptions = { ...defaultOptions, ...options };
+            
+            try {
+                const response = await fetch(url, finalOptions);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Error en la solicitud');
+                }
+                
+                return data;
+            } catch (error) {
+                console.error('API Error:', error);
+                throw error;
+            }
+        }
+
+        async function checkStatus() {
+            try {
+                const response = await apiCall('/api/auth/verification-status');
+                displayStatus(response);
+            } catch (error) {
+                showMessage('Error al verificar estado: ' + error.message, 'error');
+            }
+        }
+
+        function displayStatus(status) {
+            const container = document.getElementById('statusContainer');
+            
+            if (status.is_verified) {
+                container.innerHTML = `
+                    <div class="status">
+                        <div class="status-icon verified">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <h2 style="color: #28a745;">✅ Identidad Verificada</h2>
+                        <p>Ya puedes subir contenido a la plataforma</p>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="status">
+                        <div class="status-icon unverified">
+                            <i class="fas fa-times-circle"></i>
+                        </div>
+                        <h2 style="color: #dc3545;">❌ Identidad No Verificada</h2>
+                        <p>Debes verificar tu identidad para subir contenido</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function quickVerify() {
+            const loading = document.getElementById('loadingContainer');
+            loading.classList.add('show');
+
+            try {
+                const response = await apiCall('/api/auth/quick-verify', {
+                    method: 'POST'
+                });
+
+                loading.classList.remove('show');
+                showMessage('¡Verificación completada! ' + response.message, 'success');
+                
+                // Refresh status
+                setTimeout(() => {
+                    checkStatus();
+                }, 1000);
+
+            } catch (error) {
+                loading.classList.remove('show');
+                showMessage('Error: ' + error.message, 'error');
+            }
+        }
+
+        async function startManualVerification() {
+            const loading = document.getElementById('loadingContainer');
+            loading.classList.add('show');
+
+            try {
+                // Step 1: Start verification
+                const startResponse = await apiCall('/api/auth/start-verification', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        verificationType: 'manual',
+                        verificationData: { method: 'code' }
+                    })
+                });
+
+                loading.classList.remove('show');
+                
+                // Step 2: Ask for code
+                const code = prompt('Ingresa el código de verificación.\n\nPara desarrollo, usa: VERIFY123');
+                
+                if (code) {
+                    loading.classList.add('show');
+                    
+                    // Step 3: Complete verification
+                    const completeResponse = await apiCall('/api/auth/complete-verification', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            verificationId: startResponse.verificationId,
+                            verificationCode: code
+                        })
+                    });
+
+                    loading.classList.remove('show');
+                    showMessage('¡Verificación completada exitosamente!', 'success');
+                    
+                    // Refresh status
+                    setTimeout(() => {
+                        checkStatus();
+                    }, 1000);
+                }
+
+            } catch (error) {
+                loading.classList.remove('show');
+                showMessage('Error: ' + error.message, 'error');
+            }
+        }
+
+        function showMessage(message, type) {
+            const container = document.getElementById('messageContainer');
+            container.innerHTML = `<div class="message ${type}">${message}</div>`;
+            
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
+
