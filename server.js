@@ -15,6 +15,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const isDevelopment = NODE_ENV !== 'production';
+const isVercel = process.env.VERCEL === '1';
+const publicDir = path.join(__dirname, 'public');
+const vercelUploadRoot = path.join('/tmp', 'deseo_libre_uploads');
 
 // JWT_SECRET debe estar configurado en producción
 let JWT_SECRET = process.env.JWT_SECRET;
@@ -118,13 +121,19 @@ app.use('/api/', globalLimiter);
 app.use(express.json({ limit: '50mb' })); // Increased limit for large JSON payloads
 app.use(express.urlencoded({ limit: '50mb', extended: true })); // For form data
 
-// Servir archivos estáticos de public (CSS, JS, uploads)
-app.use(express.static('public'));
+// En Vercel las subidas van a /tmp; servir /uploads desde ahí antes que public/
+if (isVercel) {
+    app.use('/uploads', express.static(path.join(vercelUploadRoot, 'uploads')));
+}
+// Servir archivos estáticos de public (CSS, JS, uploads locales)
+app.use(express.static(publicDir));
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        const uploadDir = 'public/uploads';
+        const uploadDir = isVercel
+            ? path.join(vercelUploadRoot, 'uploads')
+            : path.join(publicDir, 'uploads');
         if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir, { recursive: true });
         }
@@ -171,7 +180,9 @@ const upload = multer({
 // Configure multer for reel uploads
 const reelStorage = multer.diskStorage({
     destination: function (req, file, cb) {
-        const uploadDir = path.join('public', 'uploads', 'reels');
+        const uploadDir = isVercel
+            ? path.join(vercelUploadRoot, 'uploads', 'reels')
+            : path.join(publicDir, 'uploads', 'reels');
         if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir, { recursive: true });
         }
@@ -247,8 +258,9 @@ const deleteFileIfExists = (relativePath) => {
     });
 };
 
-// Database setup
-const db = new sqlite3.Database('./deseo_libre.db');
+// Database setup (en Vercel el FS de despliegue es de solo lectura; /tmp es escribible)
+const dbPath = isVercel ? path.join('/tmp', 'deseo_libre.db') : path.join(__dirname, 'deseo_libre.db');
+const db = new sqlite3.Database(dbPath);
 
 // Initialize database tables
 db.serialize(() => {
@@ -3814,25 +3826,28 @@ app.use('/api/*', (req, res) => {
     res.status(404).json({ error: 'Ruta API no encontrada' });
 });
 
-// Start server
-app.listen(PORT, () => {
-    console.log(`✅ Servidor Deseo Libre ejecutándose en puerto ${PORT}`);
-    console.log(`🌐 Modo: ${NODE_ENV}`);
-    if (isDevelopment) {
-        console.log(`🔗 Accede a: http://localhost:${PORT}`);
-    } else {
-        console.log(`🔒 Modo producción activado`);
-    }
-});
-
-// Graceful shutdown
-process.on('SIGINT', () => {
-    console.log('\nCerrando servidor...');
-    db.close((err) => {
-        if (err) {
-            console.error(err.message);
+// Servidor HTTP solo en ejecución local / hosting tradicional (no en Vercel serverless)
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`✅ Servidor Deseo Libre ejecutándose en puerto ${PORT}`);
+        console.log(`🌐 Modo: ${NODE_ENV}`);
+        if (isDevelopment) {
+            console.log(`🔗 Accede a: http://localhost:${PORT}`);
+        } else {
+            console.log(`🔒 Modo producción activado`);
         }
-        console.log('Base de datos cerrada.');
-        process.exit(0);
     });
-});
+
+    process.on('SIGINT', () => {
+        console.log('\nCerrando servidor...');
+        db.close((err) => {
+            if (err) {
+                console.error(err.message);
+            }
+            console.log('Base de datos cerrada.');
+            process.exit(0);
+        });
+    });
+}
+
+module.exports = app;
