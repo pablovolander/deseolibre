@@ -19,10 +19,14 @@ const isVercel = process.env.VERCEL === '1';
 const publicDir = path.join(__dirname, 'public');
 const vercelUploadRoot = path.join('/tmp', 'deseo_libre_uploads');
 
-// JWT_SECRET debe estar configurado en producción
+// JWT_SECRET debe estar configurado en producción (en Vercel usar variables de entorno del proyecto)
 let JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET && isDevelopment) {
     console.warn('⚠️  ADVERTENCIA: JWT_SECRET no configurado, usando valor por defecto (SOLO DESARROLLO)');
+    JWT_SECRET = 'deseo_libre_secret_key_2024_dev_only';
+    process.env.JWT_SECRET = JWT_SECRET;
+} else if (!JWT_SECRET && isVercel) {
+    console.warn('⚠️  JWT_SECRET no está en el dashboard de Vercel; usando valor por defecto. Configurá JWT_SECRET en Production.');
     JWT_SECRET = 'deseo_libre_secret_key_2024_dev_only';
     process.env.JWT_SECRET = JWT_SECRET;
 } else if (!JWT_SECRET) {
