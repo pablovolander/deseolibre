@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const os = require('os');
 const multer = require('multer');
 const fs = require('fs');
 const axios = require('axios');
@@ -17,7 +18,7 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 const isDevelopment = NODE_ENV !== 'production';
 const isVercel = process.env.VERCEL === '1';
 const publicDir = path.join(__dirname, 'public');
-const vercelUploadRoot = path.join('/tmp', 'deseo_libre_uploads');
+const vercelUploadRoot = path.join(os.tmpdir(), 'deseo_libre_uploads');
 
 // JWT_SECRET debe estar configurado en producción (en Vercel usar variables de entorno del proyecto)
 let JWT_SECRET = process.env.JWT_SECRET;
@@ -262,8 +263,8 @@ const deleteFileIfExists = (relativePath) => {
     });
 };
 
-// Database setup (en Vercel el FS de despliegue es de solo lectura; /tmp es escribible)
-const dbPath = isVercel ? path.join('/tmp', 'deseo_libre.db') : path.join(__dirname, 'deseo_libre.db');
+// Database setup (en Vercel el FS de despliegue es de solo lectura; tmp del sistema es escribible)
+const dbPath = isVercel ? path.join(os.tmpdir(), 'deseo_libre.db') : path.join(__dirname, 'deseo_libre.db');
 const db = new sqlite3.Database(dbPath);
 
 // Initialize database tables
