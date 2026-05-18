@@ -1313,6 +1313,7 @@
             }
         }
 </style>
+    <script src="/js/api-config.js"></script>
 </head>
 <body>
     <script>
@@ -1671,8 +1672,12 @@
             });
         }
 
-        // API functions
-        const LOCAL_API_BASE = (location.protocol === 'file:') ? 'http://localhost:3000' : '';
+        // API functions (api-config.js en <head>)
+        const LOCAL_API_BASE = (function () {
+            const base = typeof getApiBaseUrl === 'function' ? getApiBaseUrl() : (location.protocol === 'file:' ? 'http://localhost:3000' : '');
+            if (!base || base === window.location.origin) return '';
+            return base;
+        })();
 
         async function apiCall(url, options = {}) {
             const defaultOptions = {

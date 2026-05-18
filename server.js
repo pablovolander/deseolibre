@@ -11,6 +11,7 @@ const axios = require('axios');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const { restoreDatabaseIfNeeded, scheduleDatabasePersist } = require('./lib/db-persist');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -78,7 +79,7 @@ const globalLimiter = rateLimit({
 // Rate limiting más estricto para autenticación
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 5, // 5 intentos de login por IP cada 15 minutos
+    max: isDevelopment ? 50 : 25,
     message: 'Demasiados intentos de autenticación, intenta nuevamente en 15 minutos.',
     skipSuccessfulRequests: true,
 });
@@ -101,12 +102,32 @@ const corsOptions = {
                 callback(null, true); // Permisivo en desarrollo
             }
         } else {
-            // En producción, solo orígenes permitidos
-            const allowedOrigins = process.env.ALLOWED_ORIGINS 
-                ? process.env.ALLOWED_ORIGINS.split(',')
-                : [];
-            
-            if (!origin || allowedOrigins.includes(origin)) {
+            const allowedOrigins = process.env.ALLOWED_ORIGINS
+                ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
+                : null;
+
+            if (!origin) {
+                return callback(null, true);
+            }
+
+            if (!allowedOrigins) {
+                try {
+                    const { hostname } = new URL(origin);
+                    if (
+                        hostname.endsWith('.vercel.app') ||
+                        hostname.endsWith('.github.io') ||
+                        hostname === 'localhost' ||
+                        hostname === '127.0.0.1'
+                    ) {
+                        return callback(null, true);
+                    }
+                } catch (_) {
+                    return callback(null, true);
+                }
+                return callback(null, true);
+            }
+
+            if (allowedOrigins.includes(origin)) {
                 callback(null, true);
             } else {
                 callback(new Error('No permitido por CORS'));
@@ -265,10 +286,15 @@ const deleteFileIfExists = (relativePath) => {
 
 // Database setup (en Vercel el FS de despliegue es de solo lectura; tmp del sistema es escribible)
 const dbPath = isVercel ? path.join(os.tmpdir(), 'deseo_libre.db') : path.join(__dirname, 'deseo_libre.db');
-const db = new sqlite3.Database(dbPath);
+let db;
 
-// Initialize database tables
-db.serialize(() => {
+function persistDatabase() {
+    scheduleDatabasePersist(dbPath, isVercel);
+}
+
+function initializeDatabaseSchema(database) {
+    return new Promise((resolve) => {
+        database.serialize(() => {
     // Users table
     db.run(`CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -528,7 +554,32 @@ db.serialize(() => {
         if (err && !err.message.includes('duplicate column')) {
             console.error('Error adding posts_count:', err);
         }
+        resolve();
     });
+        });
+    });
+}
+
+const dbReady = (async () => {
+    await restoreDatabaseIfNeeded(dbPath, isVercel);
+    db = new sqlite3.Database(dbPath);
+    await initializeDatabaseSchema(db);
+    if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
+        console.log('Persistencia de base de datos en Vercel Blob activa');
+    } else if (isVercel) {
+        console.warn('En Vercel sin BLOB_READ_WRITE_TOKEN los usuarios no persisten entre reinicios. Añade un Blob store en el proyecto.');
+    }
+    return db;
+})();
+
+app.use('/api', async (req, res, next) => {
+    try {
+        await dbReady;
+        next();
+    } catch (error) {
+        console.error('Error al inicializar la base de datos:', error);
+        res.status(503).json({ error: 'Servicio temporalmente no disponible. Intenta de nuevo.' });
+    }
 });
 
 // Middleware to check if user is verified (can upload content)
@@ -635,6 +686,21 @@ const checkUserBan = (req, res, next) => {
 
 // Routes
 
+app.get('/api/health', async (req, res) => {
+    try {
+        await dbReady;
+        res.json({
+            ok: true,
+            environment: NODE_ENV,
+            vercel: isVercel,
+            database: dbPath,
+            blobPersistence: Boolean(isVercel && process.env.BLOB_READ_WRITE_TOKEN)
+        });
+    } catch (error) {
+        res.status(503).json({ ok: false, error: error.message });
+    }
+});
+
 // Register endpoint
 app.post('/api/auth/register', authLimiter, async (req, res) => {
     try {
@@ -644,13 +710,25 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
             return res.status(400).json({ error: 'Todos los campos son requeridos' });
         }
 
+        if (username.length < 3) {
+            return res.status(400).json({ error: 'El nombre de usuario debe tener al menos 3 caracteres' });
+        }
+
         if (password.length < 6) {
             return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
         }
 
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({ error: 'El email no es válido' });
+        }
+
+        await dbReady;
+
         // Check if user already exists
         db.get('SELECT id FROM users WHERE email = ? OR username = ?', [email, username], async (err, row) => {
             if (err) {
+                console.error('Error al buscar usuario en registro:', err);
                 return res.status(500).json({ error: 'Error interno del servidor' });
             }
 
@@ -666,10 +744,13 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
             db.run(
                 'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
                 [username, email, passwordHash],
-                function(err) {
-                    if (err) {
+                function(insertErr) {
+                    if (insertErr) {
+                        console.error('Error al insertar usuario:', insertErr);
                         return res.status(500).json({ error: 'Error al crear el usuario' });
                     }
+
+                    persistDatabase();
 
                     // Generate JWT token
                     const token = jwt.sign(
@@ -692,6 +773,7 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
             );
         });
     } catch (error) {
+        console.error('Error en registro:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
@@ -3833,14 +3915,19 @@ app.use('/api/*', (req, res) => {
 
 // Servidor HTTP solo en ejecución local / hosting tradicional (no en Vercel serverless)
 if (require.main === module) {
-    app.listen(PORT, () => {
-        console.log(`✅ Servidor Deseo Libre ejecutándose en puerto ${PORT}`);
-        console.log(`🌐 Modo: ${NODE_ENV}`);
-        if (isDevelopment) {
-            console.log(`🔗 Accede a: http://localhost:${PORT}`);
-        } else {
-            console.log(`🔒 Modo producción activado`);
-        }
+    dbReady.then(() => {
+        app.listen(PORT, () => {
+            console.log(`✅ Servidor Deseo Libre ejecutándose en puerto ${PORT}`);
+            console.log(`🌐 Modo: ${NODE_ENV}`);
+            if (isDevelopment) {
+                console.log(`🔗 Accede a: http://localhost:${PORT}`);
+            } else {
+                console.log(`🔒 Modo producción activado`);
+            }
+        });
+    }).catch((error) => {
+        console.error('No se pudo iniciar la base de datos:', error);
+        process.exit(1);
     });
 
     process.on('SIGINT', () => {

@@ -2,15 +2,15 @@
 // DESEO LIBRE - COMPONENTES REUTILIZABLES
 // ============================================
 
-// API_URL se detecta automáticamente según el entorno
-const API_URL = (function() {
-    // Si estamos en producción, usar el mismo origen
-    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        return window.location.origin;
-    }
-    // En desarrollo, usar localhost:3000
-    return 'http://localhost:3000';
-})();
+// API_URL: usar api-config.js si está cargado; si no, detectar entorno
+const API_URL = typeof getApiBaseUrl === 'function'
+    ? getApiBaseUrl()
+    : (function () {
+        if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            return window.location.origin;
+        }
+        return 'http://localhost:3000';
+    })();
 
 // ============================================
 // POST CARD COMPONENT
