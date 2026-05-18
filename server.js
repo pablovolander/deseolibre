@@ -1423,9 +1423,9 @@ app.post('/api/user/body-video', authenticateToken, uploadLimiter, upload.single
 
 // Content Management Endpoints
 
-// Create new content post (requires user verification)
+// Create new content post (requires login only)
 // Enhanced content upload endpoint
-app.post('/api/content', uploadLimiter, upload.single('file'), requireUserVerification, (req, res) => {
+app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file'), (req, res) => {
     const userId = req.user.userId;
     const { title, description, content_type, price, is_premium, is_public, category } = req.body;
     
@@ -2615,7 +2615,7 @@ app.get('/api/users/:userId/following', (req, res) => {
 // REELS ENDPOINTS
 // ============================================
 
-app.post('/api/reels', handleReelUpload, requireUserVerification, checkUserBan, (req, res) => {
+app.post('/api/reels', authenticateToken, handleReelUpload, checkUserBan, (req, res) => {
     const userId = req.user.userId;
     const { title, description, category, is_public, duration_seconds } = req.body;
 
@@ -3007,7 +3007,7 @@ app.post('/api/reels/:reelId/view', authenticateToken, requireAgeVerification, c
     );
 });
 
-app.delete('/api/reels/:reelId', authenticateToken, requireUserVerification, checkUserBan, (req, res) => {
+app.delete('/api/reels/:reelId', authenticateToken, checkUserBan, (req, res) => {
     const userId = req.user.userId;
     const reelId = parseInt(req.params.reelId, 10);
 

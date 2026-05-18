@@ -566,13 +566,7 @@
             }
 
             try {
-                const response = await apiCall('/api/user/me');
-                if (!response.is_verified) {
-                    showStatus('warning', 'Debes verificar tu identidad para publicar contenido');
-                    setTimeout(() => {
-                        window.location.href = '/profile.html';
-                    }, 2000);
-                }
+                await apiCall('/api/user/me');
             } catch (error) {
                 showStatus('error', 'Error de autenticación');
                 setTimeout(() => {
