@@ -1330,6 +1330,7 @@ app.post('/api/user/avatar', authenticateToken, uploadLimiter, upload.single('av
                 console.error('Error updating avatar:', err);
                 return res.status(500).json({ error: 'Error al actualizar avatar' });
             }
+            persistDatabase();
             res.json({ 
                 message: 'Avatar actualizado exitosamente',
                 avatar_url: avatarPath
@@ -1356,6 +1357,7 @@ app.post('/api/user/cover', authenticateToken, uploadLimiter, upload.single('cov
                 console.error('Error updating cover:', err);
                 return res.status(500).json({ error: 'Error al actualizar portada' });
             }
+            persistDatabase();
             res.json({ 
                 message: 'Foto de portada actualizada exitosamente',
                 cover_url: coverPath
@@ -1473,12 +1475,15 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
                 console.error('Database error:', err);
                 return res.status(500).json({ error: 'Error al crear contenido' });
             }
+
+            persistDatabase();
             
             res.json({ 
                 message: 'Contenido publicado exitosamente',
                 post_id: this.lastID,
                 file_url: fileUrl,
-                thumbnail_url: thumbnailUrl
+                thumbnail_url: thumbnailUrl,
+                category: category || 'general'
             });
         }
     );
