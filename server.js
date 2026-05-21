@@ -12,7 +12,7 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { restoreDatabaseIfNeeded, persistDatabase } = require('./lib/db-persist');
-const { persistUploadedFile, resolveMediaUrl } = require('./lib/media-storage');
+const { persistUploadedFile, resolveMediaUrl, streamPrivateMedia, getBlobAccess } = require('./lib/media-storage');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -138,6 +138,23 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+
+// Servir archivos de Blob privado (imágenes/videos subidos en Vercel)
+app.use('/api/media', async (req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+        return next();
+    }
+    const pathname = decodeURIComponent((req.path || '').replace(/^\//, ''));
+    if (!pathname) {
+        return res.status(400).json({ error: 'Falta ruta del archivo' });
+    }
+    try {
+        await streamPrivateMedia(pathname, res, req.method === 'HEAD');
+    } catch (error) {
+        console.error('Error al servir media privada:', error);
+        res.status(500).json({ error: 'No se pudo cargar el archivo' });
+    }
+});
 
 // Aplicar rate limiting global a todas las rutas API
 app.use('/api/', globalLimiter);
@@ -691,7 +708,8 @@ app.get('/api/health', async (req, res) => {
             environment: NODE_ENV,
             vercel: isVercel,
             database: dbPath,
-            blobPersistence: Boolean(isVercel && process.env.BLOB_READ_WRITE_TOKEN)
+            blobPersistence: Boolean(isVercel && process.env.BLOB_READ_WRITE_TOKEN),
+            blobAccess: getBlobAccess()
         });
     } catch (error) {
         res.status(503).json({ ok: false, error: error.message });

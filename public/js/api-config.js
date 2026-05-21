@@ -26,7 +26,22 @@
             return '';
         }
         if (path.startsWith('http://') || path.startsWith('https://')) {
+            if (path.includes('.private.blob.vercel-storage.com/')) {
+                try {
+                    const url = new URL(path);
+                    const pathname = decodeURIComponent(url.pathname.replace(/^\//, ''));
+                    if (pathname.startsWith('uploads/')) {
+                        const encoded = pathname.split('/').map((part) => encodeURIComponent(part)).join('/');
+                        return getApiUrl(`/api/media/${encoded}`);
+                    }
+                } catch {
+                    return path;
+                }
+            }
             return path;
+        }
+        if (path.startsWith('/api/media/')) {
+            return getApiUrl(path);
         }
         const base = getApiBaseUrl();
         return `${base}${path.startsWith('/') ? path : `/${path}`}`;
