@@ -1820,16 +1820,16 @@
             <form id="createPostForm" onsubmit="createPost(event)">
                 <div class="modal-body">
                 <div class="form-group">
-                    <label for="postTitle">Título:</label>
-                        <input type="text" id="postTitle" required placeholder="Ej: Sesión de fotos profesional">
+                    <label for="createPostTitle">Título:</label>
+                        <input type="text" id="createPostTitle" required placeholder="Ej: Sesión de fotos profesional">
                 </div>
                 <div class="form-group">
-                    <label for="postDescription">Descripción:</label>
-                        <textarea id="postDescription" required placeholder="Describe tu publicación..."></textarea>
+                    <label for="createPostDescription">Descripción:</label>
+                        <textarea id="createPostDescription" required placeholder="Describe tu publicación..."></textarea>
                 </div>
                 <div class="form-group">
-                    <label for="postType">Tipo de contenido:</label>
-                    <select id="postType" required>
+                    <label for="createPostType">Tipo de contenido:</label>
+                    <select id="createPostType" required>
                             <option value="">Selecciona un tipo</option>
                             <option value="photo">📷 Foto</option>
                             <option value="video">🎥 Video</option>
@@ -1837,8 +1837,8 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="postCategory">Categoría:</label>
-                        <select id="postCategory" required>
+                        <label for="createPostCategory">Categoría:</label>
+                        <select id="createPostCategory" required>
                             <option value="">Selecciona una categoría</option>
                             <option value="acompañantes-mujeres">👩 Acompañantes Mujeres</option>
                             <option value="acompañantes-hombres">👨 Acompañantes Hombres</option>
@@ -1846,7 +1846,6 @@
                             <option value="sugar-daddy">💎 Sugar Daddy</option>
                             <option value="sugar-mommy">💎 Sugar Mommy</option>
                             <option value="contenido-exclusivo">📸 Contenido Exclusivo</option>
-                            <option value="audios-eroticos">🎙️ Audios Eróticos</option>
                             <option value="swinger">🎭 Swinger</option>
                             <option value="masajes">💆 Masajes</option>
                             <option value="lesbiana">🌈 Comunidad Lésbica</option>
@@ -2081,11 +2080,11 @@
                     
                     <!-- Content -->
                     <div class="post-detail-content">
-                        <h2 id="postTitle"></h2>
-                        <p id="postDescription"></p>
+                        <h2 id="postDetailTitle"></h2>
+                        <p id="postDetailDescription"></p>
                         <div class="post-detail-tags">
-                            <span class="post-tag" id="postCategory"></span>
-                            <span class="post-tag" id="postType"></span>
+                            <span class="post-tag" id="postDetailCategory"></span>
+                            <span class="post-tag" id="postDetailType"></span>
                             <span class="post-tag post-tag-premium" id="postPremium" style="display:none;">
                                 <i class="fas fa-crown"></i> Premium
                             </span>
@@ -2650,10 +2649,10 @@
             console.log('📤 Iniciando creación de publicación...');
             console.log('🎯 Event:', event);
             
-            const title = document.getElementById('postTitle').value;
-            const description = document.getElementById('postDescription').value;
-            const contentType = document.getElementById('postType').value;
-            const category = document.getElementById('postCategory').value;
+            const title = document.getElementById('createPostTitle').value;
+            const description = document.getElementById('createPostDescription').value;
+            const contentType = document.getElementById('createPostType').value;
+            const category = document.getElementById('createPostCategory').value;
             const price = document.getElementById('postPrice').value || 0;
             const isPremium = document.getElementById('isPremium').checked;
             const isPublic = document.getElementById('isPublicPost').checked;
@@ -2723,8 +2722,8 @@
             formData.append('content_type', contentType);
             formData.append('category', category);
             formData.append('price', price);
-            formData.append('is_premium', isPremium);
-            formData.append('is_public', isPublic);
+            formData.append('is_premium', isPremium ? 'true' : 'false');
+            formData.append('is_public', isPublic ? 'true' : 'false');
             formData.append('file', file);
 
             // Mostrar notificación de carga
@@ -2738,7 +2737,11 @@
                 });
 
                 console.log('✅ Publicación creada:', response);
-                showNotification('¡Publicación creada exitosamente!', 'success');
+                const categoryLabel = getCategoryName(response.category || category);
+                showNotification(`¡Publicación creada en ${categoryLabel}!`, 'success');
+                if (currentUser) {
+                    currentUser.category = response.category || category;
+                }
                 closeCreatePostModal();
                 
                 // Recargar publicaciones
@@ -2833,31 +2836,17 @@
             modal.classList.add('active');
             
             // Asegurar que todos los campos sean visibles
-            const postType = document.getElementById('postType');
-            const postCategory = document.getElementById('postCategory');
-            
-            console.log('🔍 Verificando campos del modal:', {
-                postType: postType ? 'existe' : 'NO existe',
-                postCategory: postCategory ? 'existe' : 'NO existe'
-            });
-            
-            if (postType) {
-                postType.style.display = 'block';
-                postType.style.visibility = 'visible';
-                postType.style.opacity = '1';
-                console.log('✅ postType visible');
-            } else {
-                console.error('❌ postType NO encontrado');
+            const categorySelect = document.getElementById('createPostCategory');
+            if (categorySelect && currentUser?.category) {
+                const hasOption = Array.from(categorySelect.options).some(
+                    (opt) => opt.value === currentUser.category
+                );
+                if (hasOption) {
+                    categorySelect.value = currentUser.category;
+                }
             }
-            
-            if (postCategory) {
-                postCategory.style.display = 'block';
-                postCategory.style.visibility = 'visible';
-                postCategory.style.opacity = '1';
-                console.log('✅ postCategory visible');
-            } else {
-                console.error('❌ postCategory NO encontrado');
-            }
+
+            document.getElementById('isPublicPost').checked = true;
             
             // Asegurar que los form-groups sean visibles
             const formGroups = modal.querySelectorAll('.form-group');
@@ -3086,7 +3075,11 @@
                 'sugar-daddy': '💎 Sugar Daddy',
                 'sugar-mommy': '💎 Sugar Mommy',
                 'contenido-exclusivo': '📸 Contenido Exclusivo',
-                'masajes': '💆 Masajes'
+                'swinger': '🎭 Swinger',
+                'masajes': '💆 Masajes',
+                'lesbiana': '🌈 Comunidad Lésbica',
+                'hetero': '👫 Comunidad Hetero',
+                'gay': '🏳️‍🌈 Comunidad Gay'
             };
             return categories[category] || category;
         }
@@ -3111,8 +3104,8 @@
             console.log('📦 Datos del post:', post);
             
             // Llenar los datos del modal
-            document.getElementById('postTitle').textContent = post.title;
-            document.getElementById('postDescription').textContent = post.description;
+            document.getElementById('postDetailTitle').textContent = post.title;
+            document.getElementById('postDetailDescription').textContent = post.description;
             document.getElementById('postUsername').textContent = currentUser.username;
             document.getElementById('postLikes').textContent = post.likes_count || 0;
             document.getElementById('postComments').textContent = post.comments_count || 0;
@@ -3132,8 +3125,8 @@
             });
             
             // Categoría y tipo
-            document.getElementById('postCategory').textContent = post.category || 'General';
-            document.getElementById('postType').textContent = post.content_type === 'photo' ? '📷 Foto' : 
+            document.getElementById('postDetailCategory').textContent = getCategoryName(post.category) || post.category || 'General';
+            document.getElementById('postDetailType').textContent = post.content_type === 'photo' ? '📷 Foto' : 
                                                               post.content_type === 'video' ? '🎥 Video' : 
                                                               '🎙️ Audio';
             

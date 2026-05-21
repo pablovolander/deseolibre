@@ -43,7 +43,6 @@ const VALID_CONTENT_CATEGORIES = [
     'sugar-daddy',
     'sugar-mommy',
     'contenido-exclusivo',
-    'audios-eroticos',
     'swinger',
     'masajes',
     'lesbiana',
@@ -1265,7 +1264,7 @@ app.get('/api/upload/info', (req, res) => {
         },
         categories: [
             'acompañantes-mujeres', 'acompañantes-hombres', 'acompañantes-trans',
-            'sugar-daddy', 'sugar-mommy', 'contenido-exclusivo', 'audios-eroticos',
+            'sugar-daddy', 'sugar-mommy', 'contenido-exclusivo',
             'swinger', 'masajes', 'lesbiana', 'hetero', 'gay'
         ]
     });
@@ -1439,8 +1438,13 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
         return res.status(400).json({ error: 'Tipo de contenido inválido' });
     }
 
-    // Validate category
-    if (category && !VALID_CONTENT_CATEGORIES.includes(category)) {
+    const normalizedCategory = (category || '').trim();
+
+    if (!normalizedCategory) {
+        return res.status(400).json({ error: 'La categoría es requerida' });
+    }
+
+    if (!VALID_CONTENT_CATEGORIES.includes(normalizedCategory)) {
         return res.status(400).json({ error: 'Categoría inválida' });
     }
 
@@ -1468,12 +1472,20 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
         `INSERT INTO content_posts (user_id, title, description, content_type, file_url, thumbnail_url, price, is_premium, is_public, category) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [userId, title, description, content_type, fileUrl, thumbnailUrl, price || 0, 
-         is_premium === 'true' ? 1 : 0, is_public === 'true' ? 1 : 0, category || 'general'],
+         is_premium === 'true' || is_premium === true ? 1 : 0,
+         is_public === 'true' || is_public === true ? 1 : 0,
+         normalizedCategory],
         function(err) {
             if (err) {
                 console.error('Database error:', err);
                 return res.status(500).json({ error: 'Error al crear contenido' });
             }
+
+            db.run(
+                'UPDATE users SET category = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                [normalizedCategory, userId],
+                () => {}
+            );
 
             persistDatabase();
             
@@ -1482,7 +1494,7 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
                 post_id: this.lastID,
                 file_url: fileUrl,
                 thumbnail_url: thumbnailUrl,
-                category: category || 'general'
+                category: normalizedCategory
             });
         }
     );

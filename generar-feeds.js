@@ -9,7 +9,6 @@ const categories = [
     { id: 'sugar-daddy', name: 'Sugar Daddy', icon: '💎' },
     { id: 'sugar-mommy', name: 'Sugar Mommy', icon: '👑' },
     { id: 'contenido-exclusivo', name: 'Contenido Exclusivo', icon: '📸' },
-    { id: 'audios-eroticos', name: 'Audios Eróticos', icon: '🎙️' },
     { id: 'swinger', name: 'Swinger', icon: '💑' },
     { id: 'masajes', name: 'Masajes', icon: '💆' },
     { id: 'lesbiana', name: 'Comunidad Lésbica', icon: '🏳️‍🌈' },

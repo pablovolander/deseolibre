@@ -296,7 +296,6 @@ function getCategoryName(category) {
         'sugar-daddy': 'Sugar Daddy',
         'sugar-mommy': 'Sugar Mommy',
         'contenido-exclusivo': 'Contenido Exclusivo',
-        'audios-eroticos': 'Audios Eróticos',
         'swinger': 'Swinger',
         'masajes': 'Masajes',
         'lesbiana': 'Comunidad Lésbica',
