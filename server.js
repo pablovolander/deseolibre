@@ -153,16 +153,14 @@ if (isVercel) {
 // Servir archivos estáticos de public (CSS, JS, uploads locales)
 app.use(express.static(publicDir));
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
+// Configure multer for file uploads (memoria en Vercel = más fiable que disco en /tmp)
+const localUploadsDir = path.join(publicDir, 'uploads');
+const diskStorage = multer.diskStorage({
     destination: function (req, file, cb) {
-        const uploadDir = isVercel
-            ? path.join(vercelUploadRoot, 'uploads')
-            : path.join(publicDir, 'uploads');
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
+        if (!fs.existsSync(localUploadsDir)) {
+            fs.mkdirSync(localUploadsDir, { recursive: true });
         }
-        cb(null, uploadDir);
+        cb(null, localUploadsDir);
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -171,7 +169,7 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ 
-    storage: storage,
+    storage: isVercel ? multer.memoryStorage() : diskStorage,
     limits: {
         fileSize: 100 * 1024 * 1024 // 100MB limit (para videos)
     },
@@ -1321,10 +1319,10 @@ app.post('/api/user/avatar', authenticateToken, uploadLimiter, upload.single('av
 
     let avatarPath;
     try {
-        avatarPath = await persistUploadedFile(req.file, isVercel);
+        avatarPath = await persistUploadedFile(req.file, isVercel, localUploadsDir);
     } catch (uploadError) {
         console.error('Error al guardar avatar:', uploadError);
-        return res.status(500).json({ error: 'Error al guardar la imagen' });
+        return res.status(500).json({ error: uploadError.message || 'Error al guardar la imagen' });
     }
 
     db.run(
@@ -1354,10 +1352,10 @@ app.post('/api/user/cover', authenticateToken, uploadLimiter, upload.single('cov
 
     let coverPath;
     try {
-        coverPath = await persistUploadedFile(req.file, isVercel);
+        coverPath = await persistUploadedFile(req.file, isVercel, localUploadsDir);
     } catch (uploadError) {
         console.error('Error al guardar portada:', uploadError);
-        return res.status(500).json({ error: 'Error al guardar la imagen' });
+        return res.status(500).json({ error: uploadError.message || 'Error al guardar la imagen' });
     }
 
     db.run(
@@ -1467,10 +1465,11 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
 
     let fileUrl;
     try {
-        fileUrl = await persistUploadedFile(req.file, isVercel);
+        fileUrl = await persistUploadedFile(req.file, isVercel, localUploadsDir);
     } catch (uploadError) {
         console.error('Error al guardar archivo:', uploadError);
-        return res.status(500).json({ error: 'Error al guardar el archivo. Intenta de nuevo.' });
+        const message = uploadError.message || 'Error al guardar el archivo. Intenta de nuevo.';
+        return res.status(500).json({ error: message });
     }
 
     const thumbnailUrl = fileUrl;
