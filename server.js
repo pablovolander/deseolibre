@@ -44,7 +44,6 @@ const VALID_CONTENT_CATEGORIES = [
     'sugar-mommy',
     'contenido-exclusivo',
     'audios-eroticos',
-    'articulos-eroticos',
     'swinger',
     'masajes',
     'lesbiana',
@@ -1267,7 +1266,7 @@ app.get('/api/upload/info', (req, res) => {
         categories: [
             'acompañantes-mujeres', 'acompañantes-hombres', 'acompañantes-trans',
             'sugar-daddy', 'sugar-mommy', 'contenido-exclusivo', 'audios-eroticos',
-            'articulos-eroticos', 'swinger', 'masajes', 'lesbiana', 'hetero', 'gay'
+            'swinger', 'masajes', 'lesbiana', 'hetero', 'gay'
         ]
     });
 });
