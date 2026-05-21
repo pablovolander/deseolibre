@@ -18,7 +18,11 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const isDevelopment = NODE_ENV !== 'production';
-const isVercel = process.env.VERCEL === '1';
+const isServerless =
+    process.env.VERCEL === '1' ||
+    Boolean(process.env.VERCEL_ENV) ||
+    __dirname.includes('/var/task');
+const isVercel = isServerless;
 const publicDir = path.join(__dirname, 'public');
 const vercelUploadRoot = path.join(os.tmpdir(), 'deseo_libre_uploads');
 
@@ -236,8 +240,8 @@ const diskStorage = multer.diskStorage({
     }
 });
 
-const upload = multer({ 
-    storage: isVercel ? multer.memoryStorage() : diskStorage,
+const upload = multer({
+    storage: isServerless ? multer.memoryStorage() : diskStorage,
     limits: {
         fileSize: 100 * 1024 * 1024 // 100MB limit (para videos)
     },
@@ -286,7 +290,7 @@ const reelStorage = multer.diskStorage({
 });
 
 const reelUpload = multer({
-    storage: reelStorage,
+    storage: isServerless ? multer.memoryStorage() : reelStorage,
     limits: {
         fileSize: 200 * 1024 * 1024 // 200MB limit específico para reels
     },
