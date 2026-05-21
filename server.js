@@ -57,12 +57,33 @@ const VALID_CONTENT_CATEGORIES = [
 
 const isValidCategory = (category) => VALID_CONTENT_CATEGORIES.includes(category);
 
+const CATEGORY_ALIASES = {
+    'acompanhantes-hombres': 'acompañantes-hombres',
+    'acompanantes-hombres': 'acompañantes-hombres',
+    'acompanhantes-mujeres': 'acompañantes-mujeres',
+    'acompanantes-mujeres': 'acompañantes-mujeres',
+    'acompanhantes-trans': 'acompañantes-trans',
+    'acompanantes-trans': 'acompañantes-trans'
+};
+
 function normalizeCategorySlug(value) {
+    let slug;
     try {
-        return decodeURIComponent(String(value || '').trim()).normalize('NFC');
+        slug = decodeURIComponent(String(value || '').trim()).normalize('NFC');
     } catch {
-        return String(value || '').trim();
+        slug = String(value || '').trim();
     }
+    return CATEGORY_ALIASES[slug] || slug;
+}
+
+function getCategorySearchVariants(canonical) {
+    const variants = new Set([canonical]);
+    Object.entries(CATEGORY_ALIASES).forEach(([alias, target]) => {
+        if (target === canonical) {
+            variants.add(alias);
+        }
+    });
+    return [...variants];
 }
 
 /** Por defecto público; solo oculto si el cliente envía explícitamente false */
@@ -648,6 +669,18 @@ const dbReady = (async () => {
             }
         );
     });
+    await Promise.all(
+        Object.entries(CATEGORY_ALIASES).map(
+            ([alias, canonical]) =>
+                new Promise((resolve) => {
+                    db.run(
+                        'UPDATE content_posts SET category = ? WHERE category = ?',
+                        [canonical, alias],
+                        () => resolve()
+                    );
+                })
+        )
+    );
     if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
         console.log('Persistencia de base de datos en Vercel Blob activa');
     } else if (isVercel) {
@@ -655,6 +688,33 @@ const dbReady = (async () => {
     }
     return db;
 })();
+
+let dbRefreshQueue = Promise.resolve();
+
+async function refreshDatabaseFromBlob() {
+    if (!isVercel || !process.env.BLOB_READ_WRITE_TOKEN) {
+        return;
+    }
+
+    dbRefreshQueue = dbRefreshQueue.then(async () => {
+        try {
+            if (db) {
+                await new Promise((resolve, reject) => {
+                    db.close((err) => (err ? reject(err) : resolve()));
+                });
+            }
+            await restoreDatabaseIfNeeded(dbPath, isVercel);
+            db = new sqlite3.Database(dbPath);
+        } catch (error) {
+            console.error('Error al refrescar base de datos desde Blob:', error.message);
+            if (!db) {
+                db = new sqlite3.Database(dbPath);
+            }
+        }
+    });
+
+    await dbRefreshQueue;
+}
 
 app.use('/api', async (req, res, next) => {
     try {
@@ -1548,6 +1608,9 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
     }
 
     const isPublicValue = parseIsPublic(is_public);
+    if (!isPublicValue) {
+        console.warn(`Post creado como privado (user ${userId}, categoría ${normalizedCategory})`);
+    }
 
     if (!req.file) {
         return res.status(400).json({ error: 'Archivo es requerido' });
@@ -1715,7 +1778,9 @@ app.get('/api/user/content', authenticateToken, (req, res) => {
 });
 
 // Get content by category (public endpoint, no auth required)
-app.get('/api/content/category/:category', (req, res) => {
+app.get('/api/content/category/:category', async (req, res) => {
+    await refreshDatabaseFromBlob();
+
     const category = normalizeCategorySlug(req.params.category);
 
     if (!isValidCategory(category)) {
@@ -1724,6 +1789,8 @@ app.get('/api/content/category/:category', (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const offset = (page - 1) * limit;
+    const categoryVariants = getCategorySearchVariants(category);
+    const categoryPlaceholders = categoryVariants.map(() => '?').join(', ');
 
     const query = `
         SELECT 
@@ -1746,12 +1813,12 @@ app.get('/api/content/category/:category', (req, res) => {
             u.is_verified
         FROM content_posts cp
         JOIN users u ON cp.user_id = u.id
-        WHERE cp.category = ? AND cp.is_public = 1
+        WHERE cp.is_public = 1 AND cp.category IN (${categoryPlaceholders})
         ORDER BY cp.created_at DESC
         LIMIT ? OFFSET ?
     `;
 
-    db.all(query, [category, limit, offset], (err, posts) => {
+    db.all(query, [...categoryVariants, limit, offset], (err, posts) => {
         if (err) {
             console.error('Error loading category content:', err);
             return res.status(500).json({ error: 'Error al cargar contenido' });
@@ -1759,8 +1826,8 @@ app.get('/api/content/category/:category', (req, res) => {
 
         // Get total count for pagination
         db.get(
-            'SELECT COUNT(*) as total FROM content_posts WHERE category = ? AND is_public = 1',
-            [category],
+            `SELECT COUNT(*) as total FROM content_posts WHERE is_public = 1 AND category IN (${categoryPlaceholders})`,
+            categoryVariants,
             (err, count) => {
                 if (err) {
                     console.error('Error counting posts:', err);
@@ -1823,7 +1890,9 @@ app.get('/api/feed', (req, res) => {
 });
 
 // Get feed by category (no authentication required, only age verification)
-app.get('/api/feed/:category', (req, res) => {
+app.get('/api/feed/:category', async (req, res) => {
+    await refreshDatabaseFromBlob();
+
     const category = normalizeCategorySlug(req.params.category);
 
     if (!isValidCategory(category)) {
@@ -1832,24 +1901,29 @@ app.get('/api/feed/:category', (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 6;
     const offset = (page - 1) * limit;
+    const categoryVariants = getCategorySearchVariants(category);
+    const categoryPlaceholders = categoryVariants.map(() => '?').join(', ');
     
     const query = `
         SELECT cp.*, u.username, up.display_name, up.profile_image_url, up.phone_number
         FROM content_posts cp
         JOIN users u ON cp.user_id = u.id
         LEFT JOIN user_profiles up ON cp.user_id = up.user_id
-        WHERE cp.is_public = 1 AND cp.category = ?
+        WHERE cp.is_public = 1 AND cp.category IN (${categoryPlaceholders})
         ORDER BY cp.created_at DESC
         LIMIT ? OFFSET ?
     `;
     
-    db.all(query, [category, limit, offset], (err, posts) => {
+    db.all(query, [...categoryVariants, limit, offset], (err, posts) => {
         if (err) {
             return res.status(500).json({ error: 'Error al cargar contenido' });
         }
         
         // Count total posts for pagination
-        db.get('SELECT COUNT(*) as total FROM content_posts WHERE is_public = 1 AND category = ?', [category], (err, count) => {
+        db.get(
+            `SELECT COUNT(*) as total FROM content_posts WHERE is_public = 1 AND category IN (${categoryPlaceholders})`,
+            categoryVariants,
+            (err, count) => {
             if (err) {
                 return res.status(500).json({ error: 'Error al contar contenido' });
             }

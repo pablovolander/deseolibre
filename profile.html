@@ -2717,10 +2717,7 @@
             formData.append('category', category);
             formData.append('price', price);
             formData.append('is_premium', isPremium ? 'true' : 'false');
-            formData.append('is_public', isPublic ? 'true' : 'false');
-            if (!isPublic) {
-                showNotification('Las publicaciones privadas no aparecen en los feeds de categoría', 'error');
-            }
+            formData.append('is_public', 'true');
             formData.append('file', file);
 
             // Mostrar notificación de carga
@@ -2734,8 +2731,10 @@
                 });
 
                 console.log('✅ Publicación creada:', response);
-                const categoryLabel = getCategoryName(response.category || category);
-                showNotification(`¡Publicación creada en ${categoryLabel}!`, 'success');
+                const publishedCategory = response.category || category;
+                const categoryLabel = getCategoryName(publishedCategory);
+                const feedPage = `feed-${publishedCategory}.html`;
+                showNotification(`¡Publicación creada en ${categoryLabel}! Ya debería verse en ${feedPage}`, 'success');
                 if (currentUser) {
                     currentUser.category = response.category || category;
                 }
@@ -2834,12 +2833,14 @@
             
             // Asegurar que todos los campos sean visibles
             const categorySelect = document.getElementById('createPostCategory');
-            if (categorySelect && currentUser?.category) {
+            const urlCategory = new URLSearchParams(window.location.search).get('category');
+            const preferredCategory = urlCategory || currentUser?.category;
+            if (categorySelect && preferredCategory) {
                 const hasOption = Array.from(categorySelect.options).some(
-                    (opt) => opt.value === currentUser.category
+                    (opt) => opt.value === preferredCategory
                 );
                 if (hasOption) {
-                    categorySelect.value = currentUser.category;
+                    categorySelect.value = preferredCategory;
                 }
             }
 

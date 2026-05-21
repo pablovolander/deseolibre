@@ -220,7 +220,7 @@
             closeModal('createPostModal');
             document.getElementById('createPostForm')?.reset();
             showMessage('Publicación creada. Aparecerá en este feed en unos segundos.', 'success');
-            await new Promise((r) => setTimeout(r, 800));
+            await new Promise((r) => setTimeout(r, 1500));
             await loadFeed();
         } catch (error) {
             showMessage('Error: ' + error.message, 'error');
