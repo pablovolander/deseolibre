@@ -2718,6 +2718,9 @@
             formData.append('price', price);
             formData.append('is_premium', isPremium ? 'true' : 'false');
             formData.append('is_public', isPublic ? 'true' : 'false');
+            if (!isPublic) {
+                showNotification('Las publicaciones privadas no aparecen en los feeds de categoría', 'error');
+            }
             formData.append('file', file);
 
             // Mostrar notificación de carga
@@ -2855,6 +2858,10 @@
         function closeCreatePostModal() {
             document.getElementById('createPostModal').classList.remove('active');
             document.getElementById('createPostForm').reset();
+            const publicCheckbox = document.getElementById('isPublicPost');
+            if (publicCheckbox) {
+                publicCheckbox.checked = true;
+            }
             
             // Resetear vista previa
             const fileInfo = document.getElementById('fileInfo');

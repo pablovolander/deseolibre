@@ -11,7 +11,7 @@ const axios = require('axios');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
-const { restoreDatabaseIfNeeded, persistDatabase } = require('./lib/db-persist');
+const { restoreDatabaseIfNeeded, persistDatabase, persistDatabaseNow } = require('./lib/db-persist');
 const { persistUploadedFile, resolveMediaUrl, streamPrivateMedia, getBlobAccess } = require('./lib/media-storage');
 
 const app = express();
@@ -52,6 +52,57 @@ const VALID_CONTENT_CATEGORIES = [
 ];
 
 const isValidCategory = (category) => VALID_CONTENT_CATEGORIES.includes(category);
+
+function normalizeCategorySlug(value) {
+    try {
+        return decodeURIComponent(String(value || '').trim()).normalize('NFC');
+    } catch {
+        return String(value || '').trim();
+    }
+}
+
+/** Por defecto público; solo oculto si el cliente envía explícitamente false */
+function parseIsPublic(value) {
+    if (value === 'false' || value === false || value === 0 || value === '0') {
+        return 0;
+    }
+    return 1;
+}
+
+function getRequestOrigin(req) {
+    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const host = req.headers['x-forwarded-host'] || req.get('host') || '';
+    return `${proto}://${host}`;
+}
+
+function enrichPostsWithMediaUrls(posts, req) {
+    const origin = getRequestOrigin(req);
+    return (posts || []).map((post) => {
+        const media = resolveMediaUrl(post.media_url || post.file_url || '', origin);
+        const thumb = resolveMediaUrl(post.thumbnail_url || media, origin);
+        return {
+            ...post,
+            media_url: media,
+            file_url: media,
+            thumbnail_url: thumb,
+            profile_picture: post.profile_picture
+                ? resolveMediaUrl(post.profile_picture, origin)
+                : post.profile_picture
+        };
+    });
+}
+
+function runDb(sql, params = []) {
+    return new Promise((resolve, reject) => {
+        db.run(sql, params, function onRun(err) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve({ lastID: this.lastID, changes: this.changes });
+            }
+        });
+    });
+}
 
 // ============================================
 // SECURITY MIDDLEWARE
@@ -304,6 +355,10 @@ let db;
 
 function saveDatabase() {
     persistDatabase(dbPath, isVercel);
+}
+
+async function saveDatabaseAsync() {
+    await persistDatabaseNow(dbPath, isVercel);
 }
 
 function initializeDatabaseSchema(database) {
@@ -578,6 +633,17 @@ const dbReady = (async () => {
     await restoreDatabaseIfNeeded(dbPath, isVercel);
     db = new sqlite3.Database(dbPath);
     await initializeDatabaseSchema(db);
+    await new Promise((resolve) => {
+        db.run(
+            'UPDATE content_posts SET is_public = 1 WHERE is_public = 0',
+            (err) => {
+                if (err) {
+                    console.warn('No se pudo normalizar is_public en posts:', err.message);
+                }
+                resolve();
+            }
+        );
+    });
     if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
         console.log('Persistencia de base de datos en Vercel Blob activa');
     } else if (isVercel) {
@@ -1106,7 +1172,7 @@ app.get('/api/user/:userId/posts', (req, res) => {
         }
 
         res.json({
-            posts: posts || []
+            posts: enrichPostsWithMediaUrls(posts, req)
         });
     });
 });
@@ -1467,7 +1533,7 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
         return res.status(400).json({ error: 'Tipo de contenido inválido' });
     }
 
-    const normalizedCategory = (category || '').trim();
+    const normalizedCategory = normalizeCategorySlug(category);
 
     if (!normalizedCategory) {
         return res.status(400).json({ error: 'La categoría es requerida' });
@@ -1476,6 +1542,8 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
     if (!VALID_CONTENT_CATEGORIES.includes(normalizedCategory)) {
         return res.status(400).json({ error: 'Categoría inválida' });
     }
+
+    const isPublicValue = parseIsPublic(is_public);
 
     if (!req.file) {
         return res.status(400).json({ error: 'Archivo es requerido' });
@@ -1491,38 +1559,46 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
     }
 
     const thumbnailUrl = fileUrl;
+    const isPremiumValue = is_premium === 'true' || is_premium === true ? 1 : 0;
 
-    // Insert content into database
-    db.run(
-        `INSERT INTO content_posts (user_id, title, description, content_type, file_url, thumbnail_url, price, is_premium, is_public, category) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [userId, title, description, content_type, fileUrl, thumbnailUrl, price || 0, 
-         is_premium === 'true' || is_premium === true ? 1 : 0,
-         is_public === 'true' || is_public === true ? 1 : 0,
-         normalizedCategory],
-        function(err) {
-            if (err) {
-                console.error('Database error:', err);
-                return res.status(500).json({ error: 'Error al crear contenido' });
-            }
+    try {
+        const insertResult = await runDb(
+            `INSERT INTO content_posts (user_id, title, description, content_type, file_url, thumbnail_url, price, is_premium, is_public, category) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                userId,
+                title,
+                description,
+                content_type,
+                fileUrl,
+                thumbnailUrl,
+                price || 0,
+                isPremiumValue,
+                isPublicValue,
+                normalizedCategory
+            ]
+        );
 
-            db.run(
-                'UPDATE users SET category = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-                [normalizedCategory, userId],
-                () => {}
-            );
+        await runDb(
+            'UPDATE users SET category = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+            [normalizedCategory, userId]
+        );
 
-            saveDatabase();
-            
-            res.json({ 
-                message: 'Contenido publicado exitosamente',
-                post_id: this.lastID,
-                file_url: fileUrl,
-                thumbnail_url: thumbnailUrl,
-                category: normalizedCategory
-            });
-        }
-    );
+        await saveDatabaseAsync();
+
+        const origin = getRequestOrigin(req);
+        res.json({
+            message: 'Contenido publicado exitosamente',
+            post_id: insertResult.lastID,
+            file_url: resolveMediaUrl(fileUrl, origin),
+            thumbnail_url: resolveMediaUrl(thumbnailUrl, origin),
+            category: normalizedCategory,
+            is_public: isPublicValue
+        });
+    } catch (err) {
+        console.error('Database error:', err);
+        res.status(500).json({ error: 'Error al crear contenido' });
+    }
 });
 
 // Delete content post
@@ -1577,7 +1653,7 @@ app.delete('/api/content/:postId', authenticateToken, (req, res) => {
             }
 
             // Eliminar el post de la base de datos
-            db.run('DELETE FROM content_posts WHERE id = ?', [postId], (deleteErr) => {
+            db.run('DELETE FROM content_posts WHERE id = ?', [postId], async (deleteErr) => {
                 if (deleteErr) {
                     console.error('❌ Error al eliminar publicación de la BD:', deleteErr);
                     return res.status(500).json({ error: 'Error al eliminar publicación' });
@@ -1585,6 +1661,11 @@ app.delete('/api/content/:postId', authenticateToken, (req, res) => {
                 
                 if (isDevelopment) {
                     console.log('✅ Publicación eliminada exitosamente de la BD');
+                }
+                try {
+                    await saveDatabaseAsync();
+                } catch (persistErr) {
+                    console.error('Error al persistir BD tras eliminar:', persistErr);
                 }
                 res.json({ message: 'Publicación eliminada exitosamente' });
             });
@@ -1624,14 +1705,18 @@ app.get('/api/user/content', authenticateToken, (req, res) => {
         }
 
         res.json({
-            content: posts || []
+            content: enrichPostsWithMediaUrls(posts, req)
         });
     });
 });
 
 // Get content by category (public endpoint, no auth required)
 app.get('/api/content/category/:category', (req, res) => {
-    const category = req.params.category;
+    const category = normalizeCategorySlug(req.params.category);
+
+    if (!isValidCategory(category)) {
+        return res.status(400).json({ error: 'Categoría inválida', posts: [] });
+    }
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const offset = (page - 1) * limit;
@@ -1679,7 +1764,7 @@ app.get('/api/content/category/:category', (req, res) => {
                 }
 
                 res.json({
-                    posts: posts || [],
+                    posts: enrichPostsWithMediaUrls(posts, req),
                     pagination: {
                         page,
                         limit,
@@ -1735,7 +1820,11 @@ app.get('/api/feed', (req, res) => {
 
 // Get feed by category (no authentication required, only age verification)
 app.get('/api/feed/:category', (req, res) => {
-    const { category } = req.params;
+    const category = normalizeCategorySlug(req.params.category);
+
+    if (!isValidCategory(category)) {
+        return res.status(400).json({ error: 'Categoría inválida', posts: [] });
+    }
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 6;
     const offset = (page - 1) * limit;
@@ -1762,7 +1851,7 @@ app.get('/api/feed/:category', (req, res) => {
             }
             
             res.json({
-                posts,
+                posts: enrichPostsWithMediaUrls(posts, req),
                 pagination: {
                     page,
                     limit,

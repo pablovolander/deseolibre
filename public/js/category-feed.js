@@ -51,8 +51,8 @@
         grid.innerHTML = '<div class="no-posts">Cargando publicaciones...</div>';
 
         try {
-            const url = `${API_URL}/api/content/category/${encodeURIComponent(CATEGORY)}`;
-            const response = await fetch(url);
+            const url = `${API_URL}/api/content/category/${encodeURIComponent(CATEGORY)}?limit=50&_=${Date.now()}`;
+            const response = await fetch(url, { cache: 'no-store' });
             const data = await response.json().catch(() => ({}));
 
             if (!response.ok) {
@@ -219,7 +219,8 @@
 
             closeModal('createPostModal');
             document.getElementById('createPostForm')?.reset();
-            showMessage('Publicación creada exitosamente', 'success');
+            showMessage('Publicación creada. Aparecerá en este feed en unos segundos.', 'success');
+            await new Promise((r) => setTimeout(r, 800));
             await loadFeed();
         } catch (error) {
             showMessage('Error: ' + error.message, 'error');
