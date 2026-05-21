@@ -11,7 +11,8 @@ const axios = require('axios');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
-const { restoreDatabaseIfNeeded, scheduleDatabasePersist } = require('./lib/db-persist');
+const { restoreDatabaseIfNeeded, persistDatabase } = require('./lib/db-persist');
+const { persistUploadedFile, resolveMediaUrl } = require('./lib/media-storage');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -286,8 +287,8 @@ const deleteFileIfExists = (relativePath) => {
 const dbPath = isVercel ? path.join(os.tmpdir(), 'deseo_libre.db') : path.join(__dirname, 'deseo_libre.db');
 let db;
 
-function persistDatabase() {
-    scheduleDatabasePersist(dbPath, isVercel);
+function saveDatabase() {
+    persistDatabase(dbPath, isVercel);
 }
 
 function initializeDatabaseSchema(database) {
@@ -748,13 +749,13 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
                         return res.status(500).json({ error: 'Error al crear el usuario' });
                     }
 
-                    persistDatabase();
+                    saveDatabase();
 
                     // Generate JWT token
                     const token = jwt.sign(
                         { userId: this.lastID, username, email },
                         JWT_SECRET,
-                        { expiresIn: '24h' }
+                        { expiresIn: '30d' }
                     );
 
                     res.status(201).json({
@@ -802,7 +803,7 @@ app.post('/api/auth/login', authLimiter, (req, res) => {
         const token = jwt.sign(
             { userId: user.id, username: user.username, email: user.email },
             JWT_SECRET,
-            { expiresIn: '24h' }
+            { expiresIn: '30d' }
         );
 
         res.json({
@@ -1311,14 +1312,20 @@ app.put('/api/user/profile', authenticateToken, (req, res) => {
 });
 
 // Upload profile avatar
-app.post('/api/user/avatar', authenticateToken, uploadLimiter, upload.single('avatar'), (req, res) => {
+app.post('/api/user/avatar', authenticateToken, uploadLimiter, upload.single('avatar'), async (req, res) => {
     const userId = req.user.userId;
     
     if (!req.file) {
         return res.status(400).json({ error: 'No se proporcionó ningún archivo' });
     }
 
-    const avatarPath = `/uploads/${req.file.filename}`;
+    let avatarPath;
+    try {
+        avatarPath = await persistUploadedFile(req.file, isVercel);
+    } catch (uploadError) {
+        console.error('Error al guardar avatar:', uploadError);
+        return res.status(500).json({ error: 'Error al guardar la imagen' });
+    }
 
     db.run(
         'UPDATE users SET profile_picture = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
@@ -1328,7 +1335,7 @@ app.post('/api/user/avatar', authenticateToken, uploadLimiter, upload.single('av
                 console.error('Error updating avatar:', err);
                 return res.status(500).json({ error: 'Error al actualizar avatar' });
             }
-            persistDatabase();
+            saveDatabase();
             res.json({ 
                 message: 'Avatar actualizado exitosamente',
                 avatar_url: avatarPath
@@ -1338,14 +1345,20 @@ app.post('/api/user/avatar', authenticateToken, uploadLimiter, upload.single('av
 });
 
 // Upload cover photo
-app.post('/api/user/cover', authenticateToken, uploadLimiter, upload.single('cover'), (req, res) => {
+app.post('/api/user/cover', authenticateToken, uploadLimiter, upload.single('cover'), async (req, res) => {
     const userId = req.user.userId;
     
     if (!req.file) {
         return res.status(400).json({ error: 'No se proporcionó ningún archivo' });
     }
 
-    const coverPath = `/uploads/${req.file.filename}`;
+    let coverPath;
+    try {
+        coverPath = await persistUploadedFile(req.file, isVercel);
+    } catch (uploadError) {
+        console.error('Error al guardar portada:', uploadError);
+        return res.status(500).json({ error: 'Error al guardar la imagen' });
+    }
 
     db.run(
         'UPDATE users SET cover_photo = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
@@ -1355,7 +1368,7 @@ app.post('/api/user/cover', authenticateToken, uploadLimiter, upload.single('cov
                 console.error('Error updating cover:', err);
                 return res.status(500).json({ error: 'Error al actualizar portada' });
             }
-            persistDatabase();
+            saveDatabase();
             res.json({ 
                 message: 'Foto de portada actualizada exitosamente',
                 cover_url: coverPath
@@ -1425,7 +1438,7 @@ app.post('/api/user/body-video', authenticateToken, uploadLimiter, upload.single
 
 // Create new content post (requires login only)
 // Enhanced content upload endpoint
-app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file'), (req, res) => {
+app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file'), async (req, res) => {
     const userId = req.user.userId;
     const { title, description, content_type, price, is_premium, is_public, category } = req.body;
     
@@ -1448,24 +1461,19 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
         return res.status(400).json({ error: 'Categoría inválida' });
     }
 
-    let fileUrl = null;
-    let thumbnailUrl = null;
-
-    if (req.file) {
-        fileUrl = `/uploads/${req.file.filename}`;
-        
-        // Generate thumbnail for videos (placeholder for now)
-        if (content_type === 'video') {
-            thumbnailUrl = fileUrl; // In production, generate actual thumbnail
-        }
-        
-        // For photos, use the same file as thumbnail
-        if (content_type === 'photo') {
-            thumbnailUrl = fileUrl;
-        }
-    } else {
+    if (!req.file) {
         return res.status(400).json({ error: 'Archivo es requerido' });
     }
+
+    let fileUrl;
+    try {
+        fileUrl = await persistUploadedFile(req.file, isVercel);
+    } catch (uploadError) {
+        console.error('Error al guardar archivo:', uploadError);
+        return res.status(500).json({ error: 'Error al guardar el archivo. Intenta de nuevo.' });
+    }
+
+    const thumbnailUrl = fileUrl;
 
     // Insert content into database
     db.run(
@@ -1487,7 +1495,7 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
                 () => {}
             );
 
-            persistDatabase();
+            saveDatabase();
             
             res.json({ 
                 message: 'Contenido publicado exitosamente',

@@ -24,7 +24,7 @@
     }
 
     function updateUI() {
-        authToken = localStorage.getItem('authToken');
+        authToken = typeof DeseoAuth !== 'undefined' ? DeseoAuth.getToken() : localStorage.getItem('authToken');
         const createBtn = document.getElementById('createBtn');
         if (createBtn) {
             createBtn.style.display = authToken ? 'inline-block' : 'none';
@@ -72,7 +72,9 @@
             }
 
             grid.innerHTML = data.posts.map((post) => {
-                const mediaUrl = `${API_URL}${post.media_url || post.file_url || ''}`;
+                const mediaUrl = typeof resolveMediaUrl === 'function'
+                    ? resolveMediaUrl(post.media_url || post.file_url || '')
+                    : `${API_URL}${post.media_url || post.file_url || ''}`;
                 const isPremium = post.is_premium || post.is_premium_user;
                 const premiumClass = isPremium ? 'premium' : '';
                 const premiumBadge = isPremium
@@ -106,9 +108,12 @@
 
     window.initCategoryFeedPage = function (category) {
         CATEGORY = category;
-        authToken = localStorage.getItem('authToken');
+        authToken = typeof DeseoAuth !== 'undefined' ? DeseoAuth.getToken() : localStorage.getItem('authToken');
         updateUI();
         loadFeed();
+        if (typeof DeseoAuth !== 'undefined' && authToken) {
+            DeseoAuth.verifySession(API_URL).catch(() => {});
+        }
     };
 
     window.showLogin = function () {
@@ -135,70 +140,53 @@
     window.login = async function (e) {
         e.preventDefault();
         try {
-            const response = await fetch(`${API_URL}/api/auth/login`, {
+            const data = await DeseoAuth.authFetch(`${API_URL}/api/auth/login`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     email: document.getElementById('loginEmail').value,
                     password: document.getElementById('loginPassword').value
                 })
             });
-
-            const data = await response.json();
-            if (response.ok) {
-                authToken = data.token;
-                localStorage.setItem('authToken', data.token);
-                localStorage.setItem('ageVerified', 'true');
-                closeModal('loginModal');
-                showMessage('Login exitoso', 'success');
-                updateUI();
-                loadFeed();
-            } else {
-                showMessage(data.error || 'Error al iniciar sesión', 'error');
-            }
+            authToken = data.token;
+            DeseoAuth.setSession(data.token, data.user);
+            localStorage.setItem('ageVerified', 'true');
+            closeModal('loginModal');
+            showMessage('Login exitoso', 'success');
+            updateUI();
+            loadFeed();
         } catch (error) {
-            showMessage('Error de conexión', 'error');
+            showMessage(error.message || 'Error de conexión', 'error');
         }
     };
 
     window.register = async function (e) {
         e.preventDefault();
         try {
-            const response = await fetch(`${API_URL}/api/auth/register`, {
+            const data = await DeseoAuth.authFetch(`${API_URL}/api/auth/register`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     username: document.getElementById('regUsername').value,
                     email: document.getElementById('regEmail').value,
                     password: document.getElementById('regPassword').value
                 })
             });
+            authToken = data.token;
+            DeseoAuth.setSession(data.token, data.user);
+            localStorage.setItem('ageVerified', 'true');
 
-            const data = await response.json();
-            if (response.ok) {
-                authToken = data.token;
-                localStorage.setItem('authToken', data.token);
-                localStorage.setItem('ageVerified', 'true');
+            await DeseoAuth.authFetch(`${API_URL}/api/auth/quick-verify`, { method: 'POST' }).catch(() => {});
 
-                await fetch(`${API_URL}/api/auth/quick-verify`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${authToken}` }
-                }).catch(() => {});
-
-                closeModal('registerModal');
-                showMessage('Registro exitoso', 'success');
-                updateUI();
-            } else {
-                showMessage(data.error || 'Error al registrarse', 'error');
-            }
+            closeModal('registerModal');
+            showMessage('Registro exitoso', 'success');
+            updateUI();
         } catch (error) {
-            showMessage('Error de conexión', 'error');
+            showMessage(error.message || 'Error de conexión', 'error');
         }
     };
 
     window.createPost = async function (e) {
         e.preventDefault();
-        authToken = localStorage.getItem('authToken');
+        authToken = DeseoAuth.getToken();
 
         if (!authToken) {
             showMessage('Debes iniciar sesión primero', 'error');
@@ -224,22 +212,15 @@
         showMessage('Subiendo publicación...', 'success');
 
         try {
-            const response = await fetch(`${API_URL}/api/content`, {
+            const data = await DeseoAuth.authFetch(`${API_URL}/api/content`, {
                 method: 'POST',
-                headers: { Authorization: `Bearer ${authToken}` },
                 body: formData
             });
 
-            const data = await response.json().catch(() => ({}));
-
-            if (response.ok) {
-                closeModal('createPostModal');
-                document.getElementById('createPostForm')?.reset();
-                showMessage('Publicación creada exitosamente', 'success');
-                await loadFeed();
-            } else {
-                showMessage(data.error || data.message || 'No se pudo crear la publicación', 'error');
-            }
+            closeModal('createPostModal');
+            document.getElementById('createPostForm')?.reset();
+            showMessage('Publicación creada exitosamente', 'success');
+            await loadFeed();
         } catch (error) {
             showMessage('Error: ' + error.message, 'error');
         }

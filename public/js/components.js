@@ -35,7 +35,7 @@ function createPostCard(post, options = {}) {
         userHeader = `
             <div class="post-header">
                 <div class="post-user-info" onclick="window.location.href='profile.html?userId=${post.user_id}'">
-                    <img src="${API_URL}${post.profile_picture || '/uploads/default-avatar.png'}" 
+                    <img src="${typeof resolveMediaUrl === 'function' ? resolveMediaUrl(post.profile_picture || '/uploads/default-avatar.png') : `${API_URL}${post.profile_picture || '/uploads/default-avatar.png'}`}" 
                          alt="${post.username}" 
                          class="post-user-avatar">
                     <div class="post-user-details">

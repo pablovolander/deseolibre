@@ -2198,6 +2198,7 @@
     </div>
 
     <script src="/js/api-config.js"></script>
+    <script src="/js/auth-session.js"></script>
     <script src="/js/components.js"></script>
     <script>
         // Global variables
@@ -2263,34 +2264,9 @@
 
         // API functions
         async function apiCall(url, options = {}) {
-            const defaultOptions = {
-                headers: {
-                    'Authorization': `Bearer ${authToken}`
-                }
-            };
-
-            if (!(options.body instanceof FormData)) {
-                defaultOptions.headers['Content-Type'] = 'application/json';
-            }
-
-            const finalOptions = { 
-                ...defaultOptions, 
-                ...options,
-                headers: {
-                    ...defaultOptions.headers,
-                    ...(options.headers || {})
-                }
-            };
-            
+            authToken = DeseoAuth.getToken();
             try {
-                const response = await fetch(url, finalOptions);
-                const data = await response.json();
-                
-                if (!response.ok) {
-                    throw new Error(data.error || 'Error en la solicitud');
-                }
-                
-                return data;
+                return await DeseoAuth.authFetch(url, options);
             } catch (error) {
                 console.error('API Error:', error);
                 throw error;
@@ -2299,13 +2275,30 @@
 
         // Verify token
         async function verifyToken() {
+            authToken = DeseoAuth.getToken();
+            if (!authToken) {
+                return null;
+            }
+
             try {
                 const data = await apiCall(`${API_URL}/api/auth/verify`);
                 currentUser = data.user;
+                DeseoAuth.setSession(authToken, data.user);
                 return data;
             } catch (error) {
-                localStorage.removeItem('authToken');
-                window.location.href = 'index.html';
+                if (DeseoAuth.isAuthError(error)) {
+                    DeseoAuth.clearSession();
+                    authToken = null;
+                    currentUser = null;
+                    window.location.href = 'index.html';
+                    return null;
+                }
+
+                currentUser = DeseoAuth.getCachedUser();
+                if (!currentUser) {
+                    showNotification('No se pudo verificar la sesión. Recarga la página.', 'error');
+                }
+                return null;
             }
         }
 
@@ -2589,11 +2582,12 @@
                     thumbnail_url: post.thumbnail_url
                 });
                 
+                const mediaPath = post.media_url || post.file_url || '';
                 if (post.content_type === 'photo') {
-                    thumbnail = `${API_URL}${post.media_url}`;
+                    thumbnail = resolveMediaUrl(mediaPath);
                     typeIcon = '📷';
                 } else if (post.content_type === 'video') {
-                    thumbnail = `${API_URL}${post.thumbnail_url || post.media_url}`;
+                    thumbnail = resolveMediaUrl(post.thumbnail_url || mediaPath);
                     typeIcon = '🎥';
                 } else if (post.content_type === 'audio') {
                     thumbnail = 'https://via.placeholder.com/300x300/6c5ce7/ffffff?text=🎙️+Audio';
@@ -3143,7 +3137,7 @@
             
             if (post.content_type === 'photo') {
                 const img = document.createElement('img');
-                img.src = `${API_URL}${post.media_url}`;
+                img.src = resolveMediaUrl(post.media_url || post.file_url);
                 img.alt = post.title;
                 img.onerror = function() {
                     this.src = 'https://via.placeholder.com/800x600/ff6b6b/ffffff?text=Error+al+cargar';
@@ -3151,13 +3145,13 @@
                 mediaContainer.appendChild(img);
             } else if (post.content_type === 'video') {
                 const video = document.createElement('video');
-                video.src = `${API_URL}${post.media_url}`;
+                video.src = resolveMediaUrl(post.media_url || post.file_url);
                 video.controls = true;
                 video.style.cssText = 'max-width: 100%; max-height: 100%;';
                 mediaContainer.appendChild(video);
             } else if (post.content_type === 'audio') {
                 const audio = document.createElement('audio');
-                audio.src = `${API_URL}${post.media_url}`;
+                audio.src = resolveMediaUrl(post.media_url || post.file_url);
                 audio.controls = true;
                 audio.style.width = '100%';
                 mediaContainer.appendChild(audio);
@@ -3427,7 +3421,8 @@
         }
 
         function logout() {
-            localStorage.removeItem('authToken');
+            DeseoAuth.clearSession();
+            authToken = null;
             window.location.href = 'index.html';
         }
 

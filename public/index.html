@@ -1314,6 +1314,7 @@
         }
 </style>
     <script src="/js/api-config.js"></script>
+    <script src="/js/auth-session.js"></script>
 </head>
 <body>
     <script>
@@ -1668,6 +1669,7 @@
         })();
 
         async function apiCall(url, options = {}) {
+            authToken = typeof DeseoAuth !== 'undefined' ? DeseoAuth.getToken() : localStorage.getItem('authToken');
             const defaultOptions = {
                 headers: {
                     'Content-Type': 'application/json',
@@ -1711,7 +1713,7 @@
                 });
 
                 authToken = response.token;
-                localStorage.setItem('authToken', authToken);
+                DeseoAuth.setSession(authToken, response.user);
                 currentUser = response.user;
                 
                 updateUI();
@@ -1736,7 +1738,7 @@
                 });
 
                 authToken = response.token;
-                localStorage.setItem('authToken', authToken);
+                DeseoAuth.setSession(authToken, response.user);
                 currentUser = response.user;
                 
                 updateUI();
@@ -1752,15 +1754,25 @@
         }
 
         async function verifyToken() {
+            authToken = DeseoAuth.getToken();
+            if (!authToken) {
+                updateUI();
+                return;
+            }
+
             try {
                 const response = await apiCall('/api/auth/verify');
                 currentUser = response.user;
+                DeseoAuth.setSession(authToken, currentUser);
                 updateUI();
             } catch (error) {
-                // Token is invalid, clear it
-                localStorage.removeItem('authToken');
-                authToken = null;
-                currentUser = null;
+                if (typeof DeseoAuth !== 'undefined' && DeseoAuth.isAuthError(error)) {
+                    DeseoAuth.clearSession();
+                    authToken = null;
+                    currentUser = null;
+                } else {
+                    currentUser = DeseoAuth.getCachedUser();
+                }
                 updateUI();
             }
         }
@@ -1798,7 +1810,7 @@
         }
 
         function logout() {
-            localStorage.removeItem('authToken');
+            DeseoAuth.clearSession();
             authToken = null;
             currentUser = null;
             updateUI();
