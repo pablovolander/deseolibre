@@ -1,47 +1,29 @@
-// Generar todos los feeds con imágenes corregidas
+// Generar feeds de categorías (masajes, sugar). Acompañantes usa feed-acompañantes.html.
 
 const fs = require('fs');
 
 const categories = [
-    { id: 'acompañantes-hombres', name: 'Acompañantes Hombres', icon: '👨' },
-    { id: 'acompañantes-mujeres', name: 'Acompañantes Mujeres', icon: '👩' },
-    { id: 'acompañantes-trans', name: 'Acompañantes Trans', icon: '🏳️‍⚧️' },
     { id: 'masajes', name: 'Masajes', icon: '💆' },
     { id: 'sugar-daddy', name: 'Sugar Daddy', icon: '💎' },
     { id: 'sugar-mommy', name: 'Sugar Mommy', icon: '👑' }
 ];
 
-// Leer el template base (que ya está corregido)
-const template = fs.readFileSync('feed-acompañantes-hombres.html', 'utf8');
+const templatePath = 'feed-masajes.html';
+if (!fs.existsSync(templatePath)) {
+    console.error('No se encontró plantilla:', templatePath);
+    process.exit(1);
+}
+
+const template = fs.readFileSync(templatePath, 'utf8');
 
 categories.forEach(category => {
     let content = template;
-    
-    // Reemplazar título
-    content = content.replace(
-        /<title>Feed Acompañantes Hombres - Deseo Libre<\/title>/,
-        `<title>Feed ${category.name} - Deseo Libre</title>`
-    );
-    
-    // Reemplazar h1
-    content = content.replace(
-        /<h1>👨 Feed Acompañantes Hombres<\/h1>/,
-        `<h1>${category.icon} Feed ${category.name}</h1>`
-    );
-    
-    // Reemplazar CATEGORY constante
-    content = content.replace(
-        /const CATEGORY = 'acompañantes-hombres';/,
-        `const CATEGORY = '${category.id}';`
-    );
-    
-    // Guardar archivo
+    content = content.replace(/<title>.*?<\/title>/, `<title>Feed ${category.name} - Deseo Libre</title>`);
+    content = content.replace(/<h1>.*?<\/h1>/, `<h1>${category.icon} Feed ${category.name}</h1>`);
+    content = content.replace(/const CATEGORY = '.*?';/, `const CATEGORY = '${category.id}';`);
     const filename = `feed-${category.id}.html`;
     fs.writeFileSync(filename, content, 'utf8');
     console.log(`✓ Generado: ${filename}`);
 });
 
-console.log('\n✅ Todos los feeds han sido regenerados con imágenes corregidas!');
-console.log('\n📸 Las imágenes ahora se cargarán correctamente desde:');
-console.log('   http://localhost:3000/uploads/...\n');
-
+console.log('\n✅ Feeds regenerados. Acompañantes: feed-acompañantes.html (directorio unificado).');

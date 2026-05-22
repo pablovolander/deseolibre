@@ -3,9 +3,7 @@
 const fs = require('fs');
 
 const categories = [
-    { id: 'acompañantes-hombres', name: 'Acompañantes Hombres', icon: '👨' },
-    { id: 'acompañantes-mujeres', name: 'Acompañantes Mujeres', icon: '👩' },
-    { id: 'acompañantes-trans', name: 'Acompañantes Trans', icon: '🏳️‍⚧️' },
+    { id: 'acompañantes', name: 'Acompañantes', icon: '💋', template: 'feed-acompañantes.html', skipGenerate: true },
     { id: 'masajes', name: 'Masajes', icon: '💆' },
     { id: 'sugar-daddy', name: 'Sugar Daddy', icon: '💎' },
     { id: 'sugar-mommy', name: 'Sugar Mommy', icon: '👑' }
@@ -14,6 +12,10 @@ const categories = [
 const template = fs.readFileSync('feed-test-funcional.html', 'utf8');
 
 categories.forEach(category => {
+    if (category.skipGenerate) {
+        console.log(`⊘ Omitido (página dedicada): feed-${category.id}.html`);
+        return;
+    }
     let content = template;
     
     // Reemplazar título

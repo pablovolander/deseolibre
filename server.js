@@ -43,15 +43,17 @@ if (!JWT_SECRET && isDevelopment) {
 }
 
 const VALID_CONTENT_CATEGORIES = [
-    'acompañantes-mujeres',
-    'acompañantes-hombres',
-    'acompañantes-trans',
+    'acompañantes',
     'masajes',
     'sugar-daddy',
     'sugar-mommy'
 ];
 
-const isValidCategory = (category) => VALID_CONTENT_CATEGORIES.includes(category);
+const LEGACY_CATEGORY_MAP = {
+    'acompañantes-mujeres': { category: 'acompañantes', audience: 'mujeres' },
+    'acompañantes-hombres': { category: 'acompañantes', audience: 'hombres' },
+    'acompañantes-trans': { category: 'acompañantes', audience: 'trans' }
+};
 
 const CATEGORY_ALIASES = {
     'acompanhantes-hombres': 'acompañantes-hombres',
@@ -72,11 +74,37 @@ function normalizeCategorySlug(value) {
     return CATEGORY_ALIASES[slug] || slug;
 }
 
+function resolveCategoryAndAudience(category, audience) {
+    const normalized = normalizeCategorySlug(category);
+    if (LEGACY_CATEGORY_MAP[normalized]) {
+        return LEGACY_CATEGORY_MAP[normalized];
+    }
+    let aud = (audience || '').trim().toLowerCase();
+    if (!['mujeres', 'hombres', 'trans', 'todos'].includes(aud)) {
+        aud = null;
+    }
+    if (aud === 'todos') {
+        aud = null;
+    }
+    return { category: normalized, audience: aud };
+}
+
+function isValidCategory(category) {
+    const { category: canonical } = resolveCategoryAndAudience(category, null);
+    return VALID_CONTENT_CATEGORIES.includes(canonical);
+}
+
 function getCategorySearchVariants(canonical) {
     const variants = new Set([canonical]);
+    if (canonical === 'acompañantes') {
+        variants.add('acompañantes-mujeres');
+        variants.add('acompañantes-hombres');
+        variants.add('acompañantes-trans');
+    }
     Object.entries(CATEGORY_ALIASES).forEach(([alias, target]) => {
-        if (target === canonical) {
+        if (target === canonical || (canonical === 'acompañantes' && target.startsWith('acompañantes-'))) {
             variants.add(alias);
+            variants.add(target);
         }
     });
     return [...variants];
@@ -506,6 +534,7 @@ function initializeDatabaseSchema(database) {
         is_premium BOOLEAN DEFAULT FALSE,
         is_public BOOLEAN DEFAULT TRUE,
         category TEXT DEFAULT 'general',
+        audience TEXT,
         likes_count INTEGER DEFAULT 0,
         comments_count INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -689,13 +718,26 @@ const dbReady = (async () => {
             }
         );
     });
+    await new Promise((resolve) => {
+        db.run('ALTER TABLE content_posts ADD COLUMN audience TEXT', (err) => {
+            if (err && !String(err.message).includes('duplicate column')) {
+                console.warn('audience column:', err.message);
+            }
+            resolve();
+        });
+    });
+    const legacyMigrations = [
+        ['acompañantes', 'mujeres', 'acompañantes-mujeres'],
+        ['acompañantes', 'hombres', 'acompañantes-hombres'],
+        ['acompañantes', 'trans', 'acompañantes-trans']
+    ];
     await Promise.all(
-        Object.entries(CATEGORY_ALIASES).map(
-            ([alias, canonical]) =>
+        legacyMigrations.map(
+            ([cat, aud, oldCat]) =>
                 new Promise((resolve) => {
                     db.run(
-                        'UPDATE content_posts SET category = ? WHERE category = ?',
-                        [canonical, alias],
+                        'UPDATE content_posts SET category = ?, audience = ? WHERE category = ?',
+                        [cat, aud, oldCat],
                         () => resolve()
                     );
                 })
@@ -707,9 +749,9 @@ const dbReady = (async () => {
             const publicPosts = await new Promise((resolve, reject) => {
                 db.all(
                     `SELECT cp.id, cp.title, cp.description, cp.content_type, cp.file_url as media_url,
-                            cp.thumbnail_url, cp.price, cp.is_premium, cp.is_public, cp.category,
+                            cp.thumbnail_url, cp.price, cp.is_premium, cp.is_public, cp.category, cp.audience,
                             cp.likes_count, cp.comments_count, cp.created_at,
-                            u.id as user_id, u.username, u.full_name, u.profile_picture, u.is_verified
+                            u.id as user_id, u.username, u.full_name, u.profile_picture, u.is_verified, u.location
                      FROM content_posts cp
                      JOIN users u ON cp.user_id = u.id
                      WHERE cp.is_public = 1`,
@@ -1464,8 +1506,7 @@ app.get('/api/upload/info', (req, res) => {
             audio: ['wav', 'mp3', 'm4a']
         },
         categories: [
-            'acompañantes-mujeres', 'acompañantes-hombres', 'acompañantes-trans',
-            'masajes', 'sugar-daddy', 'sugar-mommy'
+            'acompañantes', 'masajes', 'sugar-daddy', 'sugar-mommy'
         ]
     });
 });
@@ -1650,7 +1691,10 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
         return res.status(400).json({ error: 'Tipo de contenido inválido' });
     }
 
-    const normalizedCategory = normalizeCategorySlug(category);
+    const { category: normalizedCategory, audience: postAudience } = resolveCategoryAndAudience(
+        category,
+        req.body.audience
+    );
 
     if (!normalizedCategory) {
         return res.status(400).json({ error: 'La categoría es requerida' });
@@ -1683,8 +1727,8 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
         await refreshDatabaseFromBlob();
 
         const insertResult = await runDb(
-            `INSERT INTO content_posts (user_id, title, description, content_type, file_url, thumbnail_url, price, is_premium, is_public, category) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO content_posts (user_id, title, description, content_type, file_url, thumbnail_url, price, is_premium, is_public, category, audience) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 userId,
                 title,
@@ -1695,7 +1739,8 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
                 price || 0,
                 isPremiumValue,
                 isPublicValue,
-                normalizedCategory
+                normalizedCategory,
+                postAudience
             ]
         );
 
@@ -1705,7 +1750,7 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
         );
 
         const author = await runDbGet(
-            'SELECT id, username, full_name, profile_picture, is_verified FROM users WHERE id = ?',
+            'SELECT id, username, full_name, profile_picture, is_verified, location FROM users WHERE id = ?',
             [userId]
         );
 
@@ -1722,6 +1767,8 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
             is_premium: isPremiumValue,
             is_public: isPublicValue,
             category: normalizedCategory,
+            audience: postAudience,
+            location: author?.location || null,
             likes_count: 0,
             comments_count: 0,
             created_at: new Date().toISOString(),
@@ -1741,6 +1788,7 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
             file_url: resolveMediaUrl(fileUrl, origin),
             thumbnail_url: resolveMediaUrl(thumbnailUrl, origin),
             category: normalizedCategory,
+            audience: postAudience,
             is_public: isPublicValue,
             feed_indexed: Boolean(process.env.BLOB_READ_WRITE_TOKEN)
         });
@@ -1861,7 +1909,7 @@ app.get('/api/user/content', authenticateToken, (req, res) => {
 
 // Get content by category (public endpoint, no auth required)
 app.get('/api/content/category/:category', async (req, res) => {
-    const category = normalizeCategorySlug(req.params.category);
+    const { category } = resolveCategoryAndAudience(req.params.category, null);
 
     if (!isValidCategory(category)) {
         return res.status(400).json({ error: 'Categoría inválida', posts: [] });
@@ -1870,16 +1918,51 @@ app.get('/api/content/category/:category', async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const offset = (page - 1) * limit;
+    const genero = String(req.query.genero || 'todos').toLowerCase();
+    const ciudad = String(req.query.ciudad || '').trim();
     const categoryVariants = getCategorySearchVariants(category);
     const categoryPlaceholders = categoryVariants.map(() => '?').join(', ');
 
+    const filterPosts = (rows) => {
+        let list = rows || [];
+        if (genero && genero !== 'todos') {
+            list = list.filter((p) => {
+                if (!p.audience) {
+                    return true;
+                }
+                return p.audience === genero;
+            });
+        }
+        if (ciudad) {
+            const q = ciudad.toLowerCase();
+            list = list.filter((p) => {
+                const loc = (p.location || p.user_location || '').toLowerCase();
+                return loc.includes(q);
+            });
+        }
+        return list;
+    };
+
     try {
-        let posts = await getPostsFromFeedIndex(categoryVariants);
+        let posts = filterPosts(await getPostsFromFeedIndex(categoryVariants));
         let source = 'blob_index';
 
         if (!posts.length) {
             await refreshDatabaseFromBlob();
             source = 'sqlite';
+
+            let extraWhere = '';
+            const queryParams = [...categoryVariants];
+
+            if (genero && genero !== 'todos') {
+                extraWhere += ' AND (cp.audience = ? OR cp.audience IS NULL OR cp.audience = "")';
+                queryParams.push(genero);
+            }
+            if (ciudad) {
+                extraWhere += ' AND (LOWER(u.location) LIKE ? OR LOWER(u.bio) LIKE ?)';
+                const like = `%${ciudad.toLowerCase()}%`;
+                queryParams.push(like, like);
+            }
 
             const query = `
                 SELECT 
@@ -1892,6 +1975,7 @@ app.get('/api/content/category/:category', async (req, res) => {
                     cp.price,
                     cp.is_premium,
                     cp.category,
+                    cp.audience,
                     cp.likes_count,
                     cp.comments_count,
                     cp.created_at,
@@ -1899,14 +1983,15 @@ app.get('/api/content/category/:category', async (req, res) => {
                     u.username,
                     u.full_name,
                     u.profile_picture,
-                    u.is_verified
+                    u.is_verified,
+                    u.location
                 FROM content_posts cp
                 JOIN users u ON cp.user_id = u.id
-                WHERE cp.is_public = 1 AND cp.category IN (${categoryPlaceholders})
+                WHERE cp.is_public = 1 AND cp.category IN (${categoryPlaceholders})${extraWhere}
                 ORDER BY cp.created_at DESC
             `;
 
-            posts = await runDbAll(query, categoryVariants);
+            posts = await runDbAll(query, queryParams);
             if (posts.length) {
                 await syncPostsToFeedIndex(posts, categoryVariants);
             }
