@@ -13,6 +13,7 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { restoreDatabaseIfNeeded, persistDatabase, persistDatabaseNow } = require('./lib/db-persist');
 const { persistUploadedFile, resolveMediaUrl, streamPrivateMedia, getBlobAccess } = require('./lib/media-storage');
+const { addPostToFeedIndex, getPostsFromFeedIndex, syncPostsToFeedIndex } = require('./lib/category-feed-index');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -124,6 +125,30 @@ function runDb(sql, params = []) {
                 reject(err);
             } else {
                 resolve({ lastID: this.lastID, changes: this.changes });
+            }
+        });
+    });
+}
+
+function runDbAll(sql, params = []) {
+    return new Promise((resolve, reject) => {
+        db.all(sql, params, (err, rows) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(rows || []);
+            }
+        });
+    });
+}
+
+function runDbGet(sql, params = []) {
+    return new Promise((resolve, reject) => {
+        db.get(sql, params, (err, row) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(row || null);
             }
         });
     });
@@ -683,6 +708,40 @@ const dbReady = (async () => {
     );
     if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
         console.log('Persistencia de base de datos en Vercel Blob activa');
+        try {
+            const publicPosts = await new Promise((resolve, reject) => {
+                db.all(
+                    `SELECT cp.id, cp.title, cp.description, cp.content_type, cp.file_url as media_url,
+                            cp.thumbnail_url, cp.price, cp.is_premium, cp.is_public, cp.category,
+                            cp.likes_count, cp.comments_count, cp.created_at,
+                            u.id as user_id, u.username, u.full_name, u.profile_picture, u.is_verified
+                     FROM content_posts cp
+                     JOIN users u ON cp.user_id = u.id
+                     WHERE cp.is_public = 1`,
+                    [],
+                    (err, rows) => (err ? reject(err) : resolve(rows || []))
+                );
+            });
+            const byCategory = {};
+            publicPosts.forEach((post) => {
+                const cat = normalizeCategorySlug(post.category);
+                if (!isValidCategory(cat)) {
+                    return;
+                }
+                if (!byCategory[cat]) {
+                    byCategory[cat] = [];
+                }
+                byCategory[cat].push({ ...post, category: cat });
+            });
+            for (const [cat, posts] of Object.entries(byCategory)) {
+                await syncPostsToFeedIndex(posts, getCategorySearchVariants(cat));
+            }
+            if (publicPosts.length) {
+                console.log(`Índice de feeds actualizado con ${publicPosts.length} publicaciones`);
+            }
+        } catch (indexErr) {
+            console.warn('No se pudo reconstruir índice de feeds:', indexErr.message);
+        }
     } else if (isVercel) {
         console.warn('En Vercel sin BLOB_READ_WRITE_TOKEN los usuarios no persisten entre reinicios. Añade un Blob store en el proyecto.');
     }
@@ -1607,10 +1666,7 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
         return res.status(400).json({ error: 'Categoría inválida' });
     }
 
-    const isPublicValue = parseIsPublic(is_public);
-    if (!isPublicValue) {
-        console.warn(`Post creado como privado (user ${userId}, categoría ${normalizedCategory})`);
-    }
+    const isPublicValue = 1;
 
     if (!req.file) {
         return res.status(400).json({ error: 'Archivo es requerido' });
@@ -1627,8 +1683,11 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
 
     const thumbnailUrl = fileUrl;
     const isPremiumValue = is_premium === 'true' || is_premium === true ? 1 : 0;
+    const categoryVariants = getCategorySearchVariants(normalizedCategory);
 
     try {
+        await refreshDatabaseFromBlob();
+
         const insertResult = await runDb(
             `INSERT INTO content_posts (user_id, title, description, content_type, file_url, thumbnail_url, price, is_premium, is_public, category) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -1651,6 +1710,34 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
             [normalizedCategory, userId]
         );
 
+        const author = await runDbGet(
+            'SELECT id, username, full_name, profile_picture, is_verified FROM users WHERE id = ?',
+            [userId]
+        );
+
+        const postRecord = {
+            id: insertResult.lastID,
+            user_id: userId,
+            title,
+            description,
+            content_type,
+            file_url: fileUrl,
+            media_url: fileUrl,
+            thumbnail_url: thumbnailUrl,
+            price: price || 0,
+            is_premium: isPremiumValue,
+            is_public: isPublicValue,
+            category: normalizedCategory,
+            likes_count: 0,
+            comments_count: 0,
+            created_at: new Date().toISOString(),
+            username: author?.username || 'usuario',
+            full_name: author?.full_name || null,
+            profile_picture: author?.profile_picture || null,
+            is_verified: author?.is_verified || 0
+        };
+
+        await addPostToFeedIndex(postRecord, categoryVariants);
         await saveDatabaseAsync();
 
         const origin = getRequestOrigin(req);
@@ -1660,7 +1747,8 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
             file_url: resolveMediaUrl(fileUrl, origin),
             thumbnail_url: resolveMediaUrl(thumbnailUrl, origin),
             category: normalizedCategory,
-            is_public: isPublicValue
+            is_public: isPublicValue,
+            feed_indexed: Boolean(process.env.BLOB_READ_WRITE_TOKEN)
         });
     } catch (err) {
         console.error('Database error:', err);
@@ -1779,74 +1867,75 @@ app.get('/api/user/content', authenticateToken, (req, res) => {
 
 // Get content by category (public endpoint, no auth required)
 app.get('/api/content/category/:category', async (req, res) => {
-    await refreshDatabaseFromBlob();
-
     const category = normalizeCategorySlug(req.params.category);
 
     if (!isValidCategory(category)) {
         return res.status(400).json({ error: 'Categoría inválida', posts: [] });
     }
+
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const offset = (page - 1) * limit;
     const categoryVariants = getCategorySearchVariants(category);
     const categoryPlaceholders = categoryVariants.map(() => '?').join(', ');
 
-    const query = `
-        SELECT 
-            cp.id,
-            cp.title,
-            cp.description,
-            cp.content_type,
-            cp.file_url as media_url,
-            cp.thumbnail_url,
-            cp.price,
-            cp.is_premium,
-            cp.category,
-            cp.likes_count,
-            cp.comments_count,
-            cp.created_at,
-            u.id as user_id,
-            u.username,
-            u.full_name,
-            u.profile_picture,
-            u.is_verified
-        FROM content_posts cp
-        JOIN users u ON cp.user_id = u.id
-        WHERE cp.is_public = 1 AND cp.category IN (${categoryPlaceholders})
-        ORDER BY cp.created_at DESC
-        LIMIT ? OFFSET ?
-    `;
+    try {
+        let posts = await getPostsFromFeedIndex(categoryVariants);
+        let source = 'blob_index';
 
-    db.all(query, [...categoryVariants, limit, offset], (err, posts) => {
-        if (err) {
-            console.error('Error loading category content:', err);
-            return res.status(500).json({ error: 'Error al cargar contenido' });
+        if (!posts.length) {
+            await refreshDatabaseFromBlob();
+            source = 'sqlite';
+
+            const query = `
+                SELECT 
+                    cp.id,
+                    cp.title,
+                    cp.description,
+                    cp.content_type,
+                    cp.file_url as media_url,
+                    cp.thumbnail_url,
+                    cp.price,
+                    cp.is_premium,
+                    cp.category,
+                    cp.likes_count,
+                    cp.comments_count,
+                    cp.created_at,
+                    u.id as user_id,
+                    u.username,
+                    u.full_name,
+                    u.profile_picture,
+                    u.is_verified
+                FROM content_posts cp
+                JOIN users u ON cp.user_id = u.id
+                WHERE cp.is_public = 1 AND cp.category IN (${categoryPlaceholders})
+                ORDER BY cp.created_at DESC
+            `;
+
+            posts = await runDbAll(query, categoryVariants);
+            if (posts.length) {
+                await syncPostsToFeedIndex(posts, categoryVariants);
+            }
         }
 
-        // Get total count for pagination
-        db.get(
-            `SELECT COUNT(*) as total FROM content_posts WHERE is_public = 1 AND category IN (${categoryPlaceholders})`,
-            categoryVariants,
-            (err, count) => {
-                if (err) {
-                    console.error('Error counting posts:', err);
-                    return res.status(500).json({ error: 'Error al contar publicaciones' });
-                }
+        const total = posts.length;
+        const pagedPosts = posts.slice(offset, offset + limit);
 
-                res.json({
-                    posts: enrichPostsWithMediaUrls(posts, req),
-                    pagination: {
-                        page,
-                        limit,
-                        total: count.total,
-                        pages: Math.ceil(count.total / limit)
-                    },
-                    category
-                });
-            }
-        );
-    });
+        res.json({
+            posts: enrichPostsWithMediaUrls(pagedPosts, req),
+            pagination: {
+                page,
+                limit,
+                total,
+                pages: Math.ceil(total / limit) || 1
+            },
+            category,
+            source
+        });
+    } catch (err) {
+        console.error('Error loading category content:', err);
+        res.status(500).json({ error: 'Error al cargar contenido' });
+    }
 });
 
 // Get feed (all public content) - No authentication required, only age verification
