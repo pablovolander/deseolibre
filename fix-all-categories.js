@@ -3,15 +3,11 @@ const path = require('path');
 
 const categoryFiles = [
     'feed-acompañantes-mujeres.html',
+    'feed-acompañantes-hombres.html',
     'feed-acompañantes-trans.html',
-    'feed-sugar-daddy.html',
-    'feed-sugar-mommy.html',
-    'feed-contenido-exclusivo.html',
-    'feed-swinger.html',
     'feed-masajes.html',
-    'feed-lesbiana.html',
-    'feed-hetero.html',
-    'feed-gay.html'
+    'feed-sugar-daddy.html',
+    'feed-sugar-mommy.html'
 ];
 
 const oldCode = `            if (authToken) {

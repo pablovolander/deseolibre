@@ -293,14 +293,9 @@ function getCategoryName(category) {
         'acompañantes-mujeres': 'Acompañantes Mujeres',
         'acompañantes-hombres': 'Acompañantes Hombres',
         'acompañantes-trans': 'Acompañantes Trans',
-        'sugar-daddy': 'Sugar Daddy',
-        'sugar-mommy': 'Sugar Mommy',
-        'contenido-exclusivo': 'Contenido Exclusivo',
-        'swinger': 'Swinger',
         'masajes': 'Masajes',
-        'lesbiana': 'Comunidad Lésbica',
-        'hetero': 'Comunidad Hetero',
-        'gay': 'Comunidad Gay'
+        'sugar-daddy': 'Sugar Daddy',
+        'sugar-mommy': 'Sugar Mommy'
     };
     return categories[category] || category;
 }

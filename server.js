@@ -46,14 +46,9 @@ const VALID_CONTENT_CATEGORIES = [
     'acompañantes-mujeres',
     'acompañantes-hombres',
     'acompañantes-trans',
-    'sugar-daddy',
-    'sugar-mommy',
-    'contenido-exclusivo',
-    'swinger',
     'masajes',
-    'lesbiana',
-    'hetero',
-    'gay'
+    'sugar-daddy',
+    'sugar-mommy'
 ];
 
 const isValidCategory = (category) => VALID_CONTENT_CATEGORIES.includes(category);
@@ -1470,8 +1465,7 @@ app.get('/api/upload/info', (req, res) => {
         },
         categories: [
             'acompañantes-mujeres', 'acompañantes-hombres', 'acompañantes-trans',
-            'sugar-daddy', 'sugar-mommy', 'contenido-exclusivo',
-            'swinger', 'masajes', 'lesbiana', 'hetero', 'gay'
+            'masajes', 'sugar-daddy', 'sugar-mommy'
         ]
     });
 });

@@ -6,14 +6,9 @@ const categories = [
     { id: 'acompañantes-hombres', name: 'Acompañantes Hombres', icon: '👨' },
     { id: 'acompañantes-mujeres', name: 'Acompañantes Mujeres', icon: '👩' },
     { id: 'acompañantes-trans', name: 'Acompañantes Trans', icon: '🏳️‍⚧️' },
-    { id: 'sugar-daddy', name: 'Sugar Daddy', icon: '💎' },
-    { id: 'sugar-mommy', name: 'Sugar Mommy', icon: '👑' },
-    { id: 'contenido-exclusivo', name: 'Contenido Exclusivo', icon: '📸' },
-    { id: 'swinger', name: 'Swinger', icon: '💑' },
     { id: 'masajes', name: 'Masajes', icon: '💆' },
-    { id: 'lesbiana', name: 'Comunidad Lésbica', icon: '🏳️‍🌈' },
-    { id: 'hetero', name: 'Comunidad Hetero', icon: '💕' },
-    { id: 'gay', name: 'Comunidad Gay', icon: '🌈' }
+    { id: 'sugar-daddy', name: 'Sugar Daddy', icon: '💎' },
+    { id: 'sugar-mommy', name: 'Sugar Mommy', icon: '👑' }
 ];
 
 // Leer el template base (que ya está corregido)
