@@ -43,16 +43,17 @@ if (!JWT_SECRET && isDevelopment) {
 }
 
 const VALID_CONTENT_CATEGORIES = [
-    'acompañantes',
+    'acompañantes-mujeres',
+    'acompañantes-hombres',
     'masajes',
     'sugar-daddy',
     'sugar-mommy'
 ];
 
 const LEGACY_CATEGORY_MAP = {
-    'acompañantes-mujeres': { category: 'acompañantes', audience: 'mujeres' },
-    'acompañantes-hombres': { category: 'acompañantes', audience: 'hombres' },
-    'acompañantes-trans': { category: 'acompañantes', audience: 'trans' }
+    'acompañantes-mujeres': { category: 'acompañantes-mujeres', audience: null },
+    'acompañantes-hombres': { category: 'acompañantes-hombres', audience: null },
+    'acompañantes-trans': { category: 'acompañantes-mujeres', audience: null }
 };
 
 const CATEGORY_ALIASES = {
@@ -79,14 +80,14 @@ function resolveCategoryAndAudience(category, audience) {
     if (LEGACY_CATEGORY_MAP[normalized]) {
         return LEGACY_CATEGORY_MAP[normalized];
     }
-    let aud = (audience || '').trim().toLowerCase();
-    if (!['mujeres', 'hombres', 'trans', 'todos'].includes(aud)) {
-        aud = null;
+    if (normalized === 'acompañantes') {
+        const aud = (audience || '').trim().toLowerCase();
+        if (aud === 'hombres') {
+            return { category: 'acompañantes-hombres', audience: null };
+        }
+        return { category: 'acompañantes-mujeres', audience: null };
     }
-    if (aud === 'todos') {
-        aud = null;
-    }
-    return { category: normalized, audience: aud };
+    return { category: normalized, audience: null };
 }
 
 function isValidCategory(category) {
@@ -96,18 +97,39 @@ function isValidCategory(category) {
 
 function getCategorySearchVariants(canonical) {
     const variants = new Set([canonical]);
-    if (canonical === 'acompañantes') {
-        variants.add('acompañantes-mujeres');
-        variants.add('acompañantes-hombres');
-        variants.add('acompañantes-trans');
+    if (canonical === 'acompañantes-mujeres' || canonical === 'acompañantes-hombres') {
+        variants.add('acompañantes');
     }
     Object.entries(CATEGORY_ALIASES).forEach(([alias, target]) => {
-        if (target === canonical || (canonical === 'acompañantes' && target.startsWith('acompañantes-'))) {
+        if (target === canonical || target.startsWith(canonical)) {
             variants.add(alias);
             variants.add(target);
         }
     });
     return [...variants];
+}
+
+function filterPostsForCategory(canonical, rows) {
+    const list = rows || [];
+    if (canonical === 'acompañantes-mujeres') {
+        return list.filter((p) => {
+            const cat = normalizeCategorySlug(p.category);
+            if (cat === 'acompañantes-mujeres') return true;
+            if (cat === 'acompañantes') {
+                return !p.audience || p.audience === 'mujeres' || p.audience === 'trans';
+            }
+            return false;
+        });
+    }
+    if (canonical === 'acompañantes-hombres') {
+        return list.filter((p) => {
+            const cat = normalizeCategorySlug(p.category);
+            if (cat === 'acompañantes-hombres') return true;
+            if (cat === 'acompañantes') return p.audience === 'hombres';
+            return false;
+        });
+    }
+    return list;
 }
 
 /** Por defecto público; solo oculto si el cliente envía explícitamente false */
@@ -726,23 +748,20 @@ const dbReady = (async () => {
             resolve();
         });
     });
-    const legacyMigrations = [
-        ['acompañantes', 'mujeres', 'acompañantes-mujeres'],
-        ['acompañantes', 'hombres', 'acompañantes-hombres'],
-        ['acompañantes', 'trans', 'acompañantes-trans']
-    ];
-    await Promise.all(
-        legacyMigrations.map(
-            ([cat, aud, oldCat]) =>
-                new Promise((resolve) => {
-                    db.run(
-                        'UPDATE content_posts SET category = ?, audience = ? WHERE category = ?',
-                        [cat, aud, oldCat],
-                        () => resolve()
-                    );
-                })
-        )
-    );
+    await new Promise((resolve) => {
+        db.run(
+            `UPDATE content_posts SET category = 'acompañantes-mujeres', audience = NULL
+             WHERE category = 'acompañantes' AND (audience IN ('mujeres', 'trans') OR audience IS NULL OR audience = '')`,
+            () => resolve()
+        );
+    });
+    await new Promise((resolve) => {
+        db.run(
+            `UPDATE content_posts SET category = 'acompañantes-hombres', audience = NULL
+             WHERE category = 'acompañantes' AND audience = 'hombres'`,
+            () => resolve()
+        );
+    });
     if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
         console.log('Persistencia de base de datos en Vercel Blob activa');
         try {
@@ -1506,7 +1525,7 @@ app.get('/api/upload/info', (req, res) => {
             audio: ['wav', 'mp3', 'm4a']
         },
         categories: [
-            'acompañantes', 'masajes', 'sugar-daddy', 'sugar-mommy'
+            'acompañantes-mujeres', 'acompañantes-hombres', 'masajes', 'sugar-daddy', 'sugar-mommy'
         ]
     });
 });
@@ -1924,8 +1943,8 @@ app.get('/api/content/category/:category', async (req, res) => {
     const categoryPlaceholders = categoryVariants.map(() => '?').join(', ');
 
     const filterPosts = (rows) => {
-        let list = rows || [];
-        if (genero && genero !== 'todos') {
+        let list = filterPostsForCategory(category, rows);
+        if (genero && genero !== 'todos' && category !== 'acompañantes-mujeres' && category !== 'acompañantes-hombres') {
             list = list.filter((p) => {
                 if (!p.audience) {
                     return true;
@@ -1954,7 +1973,7 @@ app.get('/api/content/category/:category', async (req, res) => {
             let extraWhere = '';
             const queryParams = [...categoryVariants];
 
-            if (genero && genero !== 'todos') {
+            if (genero && genero !== 'todos' && category !== 'acompañantes-mujeres' && category !== 'acompañantes-hombres') {
                 extraWhere += ' AND (cp.audience = ? OR cp.audience IS NULL OR cp.audience = "")';
                 queryParams.push(genero);
             }
@@ -1991,10 +2010,12 @@ app.get('/api/content/category/:category', async (req, res) => {
                 ORDER BY cp.created_at DESC
             `;
 
-            posts = await runDbAll(query, queryParams);
+            posts = filterPosts(await runDbAll(query, queryParams));
             if (posts.length) {
                 await syncPostsToFeedIndex(posts, categoryVariants);
             }
+        } else {
+            posts = filterPosts(posts);
         }
 
         const total = posts.length;

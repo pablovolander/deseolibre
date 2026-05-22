@@ -290,10 +290,10 @@ function escapeHtml(text) {
 
 function getCategoryName(category) {
     const categories = {
-        'acompañantes': 'Acompañantes',
-        'acompañantes-mujeres': 'Acompañantes',
-        'acompañantes-hombres': 'Acompañantes',
-        'acompañantes-trans': 'Acompañantes',
+        'acompañantes': 'Acompañantes Mujeres',
+        'acompañantes-mujeres': 'Acompañantes Mujeres',
+        'acompañantes-hombres': 'Acompañantes Hombres',
+        'acompañantes-trans': 'Acompañantes Mujeres',
         'masajes': 'Masajes',
         'sugar-daddy': 'Sugar Daddy',
         'sugar-mommy': 'Sugar Mommy'

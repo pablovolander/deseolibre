@@ -1386,13 +1386,17 @@
                         🌹 Belleza sin moldes, cuerpos auténticos, deseos empoderados.<br>
                         🎭 Con nuestra herramienta de pixelado, siéntete libre de elegir qué y hasta dónde mostrar.
                     </p>
-                    <div class="directory-search" style="max-width:560px;margin:1.5rem auto 1rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
-                        <input type="text" id="heroSearchCity" placeholder="Buscar acompañantes por ciudad..." style="flex:1;min-width:200px;padding:0.85rem 1rem;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.25);color:#fff;">
-                        <a href="feed-acompañantes.html" class="btn btn-primary" id="heroSearchGo" style="white-space:nowrap;"><i class="fas fa-search"></i> Buscar</a>
+                    <div class="directory-search" style="max-width:620px;margin:1.5rem auto 1rem;display:flex;gap:0.5rem;flex-wrap:wrap;justify-content:center;">
+                        <input type="text" id="heroSearchCity" placeholder="Buscar por ciudad..." style="flex:1;min-width:200px;padding:0.85rem 1rem;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.25);color:#fff;">
+                        <a href="feed-acompañantes-mujeres.html" class="btn btn-primary" id="heroSearchMujeres" style="white-space:nowrap;"><i class="fas fa-female"></i> Mujeres</a>
+                        <a href="feed-acompañantes-hombres.html" class="btn btn-primary" id="heroSearchHombres" style="white-space:nowrap;"><i class="fas fa-male"></i> Hombres</a>
                     </div>
                     <div class="hero-cta">
-                        <a href="feed-acompañantes.html" class="btn btn-primary">
-                            <i class="fas fa-fire"></i> Ver Acompañantes
+                        <a href="feed-acompañantes-mujeres.html" class="btn btn-primary">
+                            <i class="fas fa-female"></i> Acompañantes Mujeres
+                        </a>
+                        <a href="feed-acompañantes-hombres.html" class="btn btn-secondary">
+                            <i class="fas fa-male"></i> Acompañantes Hombres
                         </a>
                         <a href="profile.html" class="btn btn-secondary">
                             <i class="fas fa-user-tie"></i> Soy Profesional
@@ -1407,10 +1411,15 @@
             <section id="servicios" class="services-section">
                 <h2 class="section-title">Nuestros Servicios</h2>
                 <div class="services-grid">
-                    <a href="feed-acompañantes.html" class="service-card" style="grid-column: span 1;">
-                        <div class="service-icon">💋</div>
-                        <div class="service-title">Acompañantes</div>
-                        <div class="service-description">Mujeres, hombres y trans en un solo directorio. Busca por ciudad y filtra por perfil.</div>
+                    <a href="feed-acompañantes-mujeres.html" class="service-card">
+                        <div class="service-icon">👩</div>
+                        <div class="service-title">Acompañantes Mujeres</div>
+                        <div class="service-description">Directorio de acompañantes mujeres. Busca por ciudad y publica sin comisiones.</div>
+                    </a>
+                    <a href="feed-acompañantes-hombres.html" class="service-card">
+                        <div class="service-icon">👨</div>
+                        <div class="service-title">Acompañantes Hombres</div>
+                        <div class="service-description">Directorio de acompañantes hombres. Busca por ciudad y publica sin comisiones.</div>
                     </a>
                     <a href="feed-masajes.html" class="service-card">
                         <div class="service-icon">💆</div>
@@ -1454,7 +1463,8 @@
                 <div class="footer-section">
                     <h3>Servicios</h3>
                     <ul>
-                        <li><a href="feed-acompañantes.html">Acompañantes</a></li>
+                        <li><a href="feed-acompañantes-mujeres.html">Acompañantes Mujeres</a></li>
+                        <li><a href="feed-acompañantes-hombres.html">Acompañantes Hombres</a></li>
                         <li><a href="feed-masajes.html">Masajes</a></li>
                         <li><a href="feed-sugar-daddy.html">Sugar Daddy</a></li>
                         <li><a href="feed-sugar-mommy.html">Sugar Mommy</a></li>
@@ -1914,21 +1924,22 @@
             }
         });
 
-        document.getElementById('heroSearchGo')?.addEventListener('click', function(e) {
-            e.preventDefault();
+        function heroGoToFeed(feedPath) {
             const city = (document.getElementById('heroSearchCity')?.value || '').trim();
             if (city) {
                 localStorage.setItem('deseo_search_city', city);
-                window.location.href = 'feed-acompañantes.html?ciudad=' + encodeURIComponent(city);
+                window.location.href = feedPath + '?ciudad=' + encodeURIComponent(city);
             } else {
-                window.location.href = 'feed-acompañantes.html';
+                window.location.href = feedPath;
             }
+        }
+        document.getElementById('heroSearchMujeres')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            heroGoToFeed('feed-acompañantes-mujeres.html');
         });
-        document.getElementById('heroSearchCity')?.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                document.getElementById('heroSearchGo')?.click();
-            }
+        document.getElementById('heroSearchHombres')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            heroGoToFeed('feed-acompañantes-hombres.html');
         });
     </script>
 </body>

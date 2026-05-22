@@ -1840,18 +1840,11 @@
                         <label for="createPostCategory">Categoría:</label>
                         <select id="createPostCategory" required>
                             <option value="">Selecciona una categoría</option>
-                            <option value="acompañantes">💋 Acompañantes</option>
+                            <option value="acompañantes-mujeres">👩 Acompañantes Mujeres</option>
+                            <option value="acompañantes-hombres">👨 Acompañantes Hombres</option>
                             <option value="masajes">💆 Masajes</option>
                             <option value="sugar-daddy">💎 Sugar Daddy</option>
                             <option value="sugar-mommy">💎 Sugar Mommy</option>
-                    </select>
-                </div>
-                <div class="form-group" id="createPostAudienceGroup" style="display:none;">
-                    <label for="createPostAudience">Tipo de perfil (acompañantes)</label>
-                    <select id="createPostAudience">
-                        <option value="mujeres">👩 Mujer</option>
-                        <option value="hombres">👨 Hombre</option>
-                        <option value="trans">🏳️‍⚧️ Trans</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -1961,7 +1954,8 @@
                         <label for="editCategory">Categoría principal:</label>
                         <select id="editCategory">
                             <option value="">Selecciona una categoría</option>
-                            <option value="acompañantes">💋 Acompañantes</option>
+                            <option value="acompañantes-mujeres">👩 Acompañantes Mujeres</option>
+                            <option value="acompañantes-hombres">👨 Acompañantes Hombres</option>
                             <option value="masajes">💆 Masajes</option>
                             <option value="sugar-daddy">💎 Sugar Daddy</option>
                             <option value="sugar-mommy">💎 Sugar Mommy</option>
@@ -2208,16 +2202,7 @@
         let isOwnProfile = true; // Si es el perfil del usuario logueado
 
         // Check authentication on page load
-        function toggleCreatePostAudience() {
-            const cat = document.getElementById('createPostCategory')?.value;
-            const group = document.getElementById('createPostAudienceGroup');
-            if (group) {
-                group.style.display = cat === 'acompañantes' ? 'block' : 'none';
-            }
-        }
-
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('createPostCategory')?.addEventListener('change', toggleCreatePostAudience);
             // Leer parámetro ?user= de la URL
             const urlParams = new URLSearchParams(window.location.search);
             viewingUserId = urlParams.get('user');
@@ -2722,10 +2707,6 @@
             formData.append('description', description);
             formData.append('content_type', contentType);
             formData.append('category', category);
-            if (category === 'acompañantes') {
-                const audience = document.getElementById('createPostAudience')?.value || 'mujeres';
-                formData.append('audience', audience);
-            }
             formData.append('price', price);
             formData.append('is_premium', isPremium ? 'true' : 'false');
             formData.append('is_public', 'true');
@@ -2846,16 +2827,10 @@
             const categorySelect = document.getElementById('createPostCategory');
             const urlCategory = new URLSearchParams(window.location.search).get('category');
             const preferredCategory = urlCategory || currentUser?.category;
-            const legacyMap = {
-                'acompañantes-mujeres': { category: 'acompañantes', audience: 'mujeres' },
-                'acompañantes-hombres': { category: 'acompañantes', audience: 'hombres' },
-                'acompañantes-trans': { category: 'acompañantes', audience: 'trans' }
-            };
+            const legacyUnified = { 'acompañantes': 'acompañantes-mujeres', 'acompañantes-trans': 'acompañantes-mujeres' };
             let resolvedCategory = preferredCategory;
-            let resolvedAudience = null;
-            if (preferredCategory && legacyMap[preferredCategory]) {
-                resolvedCategory = legacyMap[preferredCategory].category;
-                resolvedAudience = legacyMap[preferredCategory].audience;
+            if (preferredCategory && legacyUnified[preferredCategory]) {
+                resolvedCategory = legacyUnified[preferredCategory];
             }
             if (categorySelect && resolvedCategory) {
                 const hasOption = Array.from(categorySelect.options).some(
@@ -2864,11 +2839,6 @@
                 if (hasOption) {
                     categorySelect.value = resolvedCategory;
                 }
-            }
-            toggleCreatePostAudience();
-            if (resolvedAudience) {
-                const aud = document.getElementById('createPostAudience');
-                if (aud) aud.value = resolvedAudience;
             }
 
             document.getElementById('isPublicPost').checked = true;
@@ -3098,10 +3068,10 @@
         // Utility functions
         function getCategoryName(category) {
             const categories = {
-                'acompañantes': '💋 Acompañantes',
-                'acompañantes-mujeres': '💋 Acompañantes',
-                'acompañantes-hombres': '💋 Acompañantes',
-                'acompañantes-trans': '💋 Acompañantes',
+                'acompañantes': '👩 Acompañantes Mujeres',
+                'acompañantes-mujeres': '👩 Acompañantes Mujeres',
+                'acompañantes-hombres': '👨 Acompañantes Hombres',
+                'acompañantes-trans': '👩 Acompañantes Mujeres',
                 'masajes': '💆 Masajes',
                 'sugar-daddy': '💎 Sugar Daddy',
                 'sugar-mommy': '💎 Sugar Mommy'

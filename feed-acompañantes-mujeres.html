@@ -2,9 +2,109 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0;url=feed-acompañantes.html?genero=mujeres">
-    <title>Redirigiendo...</title>
-    <script>location.replace('feed-acompañantes.html?genero=mujeres');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>Acompañantes Mujeres - Deseo Libre</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <link href="/css/directory.css" rel="stylesheet">
+    <style>
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; align-items: center; justify-content: center; padding: 1rem; }
+        .modal.show { display: flex; }
+        .modal-content { background: #1a1d29; padding: 1.5rem; border-radius: 16px; max-width: 420px; width: 100%; border: 1px solid rgba(255,255,255,0.1); color: #fff; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.35rem; font-size: 0.9rem; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 0.65rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #fff; }
+        .modal .btn { margin-right: 0.5rem; margin-top: 0.5rem; padding: 0.6rem 1rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; }
+        .modal .btn[type=submit] { background: linear-gradient(135deg, #ff6b9d, #8b7cf8); color: #fff; }
+        #messageBox.success { color: #7dffa8; }
+        #messageBox.error { color: #ff8a9b; }
+        .header-actions .btn-link { color: #fff; text-decoration: none; font-size: 0.9rem; margin-left: 0.75rem; opacity: 0.85; }
+        .header-actions .btn-primary-sm { background: linear-gradient(135deg, #ff6b9d, #8b7cf8); color: #fff; padding: 0.5rem 1rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: 0.9rem; }
+        .switch-category { text-align: center; margin: 0 0 1rem; }
+        .switch-category a { color: #ff9ec8; margin: 0 0.75rem; }
+    </style>
 </head>
-<body><p><a href="feed-acompañantes.html?genero=mujeres">Ir a Acompañantes</a></p></body>
+<body class="directory-page" data-category="acompañantes-mujeres">
+    <header class="directory-header">
+        <div class="directory-header-inner">
+            <a href="index.html" class="directory-logo">❤️‍🔥 Deseo Libre</a>
+            <div class="header-actions">
+                <a href="index.html" class="btn-link">Inicio</a>
+                <a href="feed-acompañantes-hombres.html" class="btn-link">Hombres</a>
+                <button type="button" class="btn-primary-sm" onclick="showLogin()">Entrar</button>
+                <button type="button" class="btn-primary-sm" onclick="showRegister()">Registro</button>
+                <button type="button" class="btn-primary-sm" id="createBtn" style="display:none;" onclick="showCreatePost()">+ Publicar</button>
+            </div>
+        </div>
+    </header>
+
+    <section class="directory-hero">
+        <h1>👩 Acompañantes Mujeres</h1>
+        <p>Directorio de acompañantes mujeres verificadas. Busca por ciudad. Sin comisiones, verificación real y control de privacidad.</p>
+        <div class="directory-search">
+            <input type="text" id="searchCity" placeholder="Buscar por ciudad (ej: Madrid, Buenos Aires)..." autocomplete="off">
+            <button type="button" id="searchBtn"><i class="fas fa-search"></i> Buscar</button>
+        </div>
+        <div class="directory-cta-row">
+            <a href="profile.html" class="cta-pro"><i class="fas fa-user-tie"></i> Soy profesional — Publicar gratis</a>
+            <a href="#" class="cta-client" onclick="showRegister(); return false;"><i class="fas fa-search"></i> Busco servicios</a>
+        </div>
+        <div class="directory-trust">
+            <span class="trust-pill"><i class="fas fa-shield-alt"></i> Verificados</span>
+            <span class="trust-pill"><i class="fas fa-percent"></i> 0% comisión</span>
+            <span class="trust-pill"><i class="fas fa-user-secret"></i> Pixelado opcional</span>
+        </div>
+    </section>
+
+    <p class="switch-category">¿Buscas hombres? <a href="feed-acompañantes-hombres.html">Ver Acompañantes Hombres</a></p>
+
+    <div id="messageBox"></div>
+    <section class="directory-results">
+        <p id="resultsCount" class="results-count"></p>
+        <div id="profileGrid" class="profile-grid"><div class="directory-empty">Cargando...</div></div>
+    </section>
+
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <h2>Iniciar sesión</h2>
+            <form onsubmit="login(event)">
+                <div class="form-group"><label>Email</label><input type="email" id="loginEmail" required></div>
+                <div class="form-group"><label>Contraseña</label><input type="password" id="loginPassword" required></div>
+                <button type="submit" class="btn">Entrar</button>
+                <button type="button" class="btn" onclick="closeModal('loginModal')">Cancelar</button>
+            </form>
+        </div>
+    </div>
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <h2>Crear cuenta</h2>
+            <form onsubmit="register(event)">
+                <div class="form-group"><label>Usuario</label><input type="text" id="regUsername" required></div>
+                <div class="form-group"><label>Email</label><input type="email" id="regEmail" required></div>
+                <div class="form-group"><label>Contraseña</label><input type="password" id="regPassword" required minlength="6"></div>
+                <button type="submit" class="btn">Registrarme</button>
+                <button type="button" class="btn" onclick="closeModal('registerModal')">Cancelar</button>
+            </form>
+        </div>
+    </div>
+    <div id="createPostModal" class="modal">
+        <div class="modal-content">
+            <h2>Publicar anuncio (Mujeres)</h2>
+            <form id="createPostForm" onsubmit="createPost(event)">
+                <div class="form-group"><label>Título</label><input type="text" id="postTitle" required></div>
+                <div class="form-group"><label>Descripción</label><textarea id="postDesc" rows="3" required></textarea></div>
+                <div class="form-group"><label>Tipo</label><select id="postType"><option value="photo">Foto</option><option value="video">Video</option></select></div>
+                <div class="form-group"><label>Precio (opcional)</label><input type="number" id="postPrice" step="0.01" min="0"></div>
+                <div class="form-group"><label>Foto o video</label><input type="file" id="postFile" accept="image/*,video/*" required></div>
+                <button type="submit" class="btn">Publicar</button>
+                <button type="button" class="btn" onclick="closeModal('createPostModal')">Cancelar</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/api-config.js"></script>
+    <script src="/js/auth-session.js"></script>
+    <script src="/js/directory-feed.js"></script>
+    <script>initDirectoryFeed({ category: 'acompañantes-mujeres' });</script>
+</body>
 </html>

@@ -447,9 +447,13 @@
                 </div>
 
                 <div class="category-selector">
-                    <div class="category-option" data-category="acompañantes">
-                        <div class="category-icon"><i class="fas fa-heart"></i></div>
-                        <div class="category-name">Acompañantes</div>
+                    <div class="category-option" data-category="acompañantes-mujeres">
+                        <div class="category-icon"><i class="fas fa-female"></i></div>
+                        <div class="category-name">Acompañantes Mujeres</div>
+                    </div>
+                    <div class="category-option" data-category="acompañantes-hombres">
+                        <div class="category-icon"><i class="fas fa-male"></i></div>
+                        <div class="category-name">Acompañantes Hombres</div>
                     </div>
                     <div class="category-option" data-category="sugar-daddy">
                         <div class="category-icon"><i class="fas fa-gem"></i></div>
@@ -462,17 +466,6 @@
                     <div class="category-option" data-category="masajes">
                         <div class="category-icon"><i class="fas fa-hands"></i></div>
                         <div class="category-name">Masajes</div>
-                    </div>
-                </div>
-
-                <div class="post-options" id="audienceGroup" style="display:none;">
-                    <div class="option-group">
-                        <label for="postAudience">Tipo de perfil (acompañantes)</label>
-                        <select id="postAudience">
-                            <option value="mujeres">👩 Mujer</option>
-                            <option value="hombres">👨 Hombre</option>
-                            <option value="trans">🏳️‍⚧️ Trans</option>
-                        </select>
                     </div>
                 </div>
 
@@ -712,15 +705,7 @@
             
             option.classList.add('selected');
             selectedCategory = option.dataset.category;
-            const audGroup = document.getElementById('audienceGroup');
-            if (audGroup) {
-                audGroup.style.display = selectedCategory === 'acompañantes' ? 'block' : 'none';
-            }
         }
-
-        document.getElementById('postAudience')?.addEventListener('change', function(e) {
-            selectedAudience = e.target.value;
-        });
 
         // Actualizar contador de caracteres
         function updateCharCount() {
@@ -774,8 +759,7 @@
                     price: price,
                     is_premium: isPremium,
                     is_public: isPublic,
-                    category: selectedCategory,
-                    audience: selectedCategory === 'acompañantes' ? selectedAudience : null
+                    category: selectedCategory
                 }));
 
                 await Promise.all(uploadPromises);
@@ -783,12 +767,7 @@
                 showStatus('success', '¡Contenido publicado exitosamente!');
                 
                 setTimeout(() => {
-                    if (selectedCategory === 'acompañantes') {
-                        const g = selectedAudience || 'mujeres';
-                        window.location.href = `feed-acompañantes.html?genero=${encodeURIComponent(g)}`;
-                    } else {
-                        window.location.href = `feed-${selectedCategory}.html`;
-                    }
+                    window.location.href = `feed-${selectedCategory}.html`;
                 }, 2000);
 
             } catch (error) {
@@ -810,9 +789,6 @@
             formData.append('is_premium', metadata.is_premium);
             formData.append('is_public', metadata.is_public);
             formData.append('category', metadata.category);
-            if (metadata.category === 'acompañantes' && metadata.audience) {
-                formData.append('audience', metadata.audience);
-            }
 
             const response = await apiCall('/api/content', {
                 method: 'POST',

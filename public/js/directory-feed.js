@@ -1,18 +1,12 @@
 /**
- * Feed directorio unificado (estilo Fatal Model) — Acompañantes
+ * Feed directorio por categoría (estilo Fatal Model)
  */
 (function () {
-    const CATEGORY = 'acompañantes';
+    let CATEGORY = 'acompañantes-mujeres';
+    let PAGE_TITLE = 'Acompañantes';
+    let FIXED_GENERO = null;
     let authToken = localStorage.getItem('authToken');
-    let activeGenero = 'todos';
     let activeCiudad = '';
-
-    const AUDIENCE_LABELS = {
-        mujeres: 'Mujer',
-        hombres: 'Hombre',
-        trans: 'Trans',
-        todos: 'Todos'
-    };
 
     function escapeHtml(text) {
         if (!text) return '';
@@ -32,15 +26,6 @@
         }, 5000);
     }
 
-    function getGeneroFromUrl() {
-        const params = new URLSearchParams(window.location.search);
-        const g = params.get('genero');
-        if (g && ['mujeres', 'hombres', 'trans', 'todos'].includes(g)) {
-            return g;
-        }
-        return 'todos';
-    }
-
     function getCiudadFromUrl() {
         const params = new URLSearchParams(window.location.search);
         return (params.get('ciudad') || '').trim();
@@ -54,36 +39,17 @@
         }
     }
 
-    function setActiveTab(genero) {
-        activeGenero = genero;
-        document.querySelectorAll('.gender-tabs button').forEach((btn) => {
-            btn.classList.toggle('active', btn.dataset.genero === genero);
-        });
-        const url = new URL(window.location.href);
-        if (genero === 'todos') {
-            url.searchParams.delete('genero');
-        } else {
-            url.searchParams.set('genero', genero);
-        }
-        window.history.replaceState({}, '', url);
-        loadDirectory();
-    }
-
     function renderProfileCard(post) {
         const mediaUrl = typeof resolveMediaUrl === 'function'
             ? resolveMediaUrl(post.media_url || post.file_url || '')
             : `${API_URL}${post.media_url || post.file_url || ''}`;
         const location = post.location || post.user_location || 'Ubicación no indicada';
-        const audience = post.audience ? AUDIENCE_LABELS[post.audience] || post.audience : '';
         const price = post.price && Number(post.price) > 0
             ? `$${Number(post.price).toLocaleString('es')}`
             : 'Consultar';
         const name = post.full_name || post.username || 'Profesional';
         const verified = post.is_verified
             ? '<span class="badge-verified"><i class="fas fa-check-circle"></i> Verificado</span>'
-            : '';
-        const audienceBadge = audience
-            ? `<span class="badge-audience">${escapeHtml(audience)}</span>`
             : '';
 
         let mediaHtml;
@@ -96,10 +62,7 @@
         return `
         <article class="profile-card" onclick="window.location.href='profile.html?user=${post.user_id}'">
             <div class="profile-card-media">
-                <div class="profile-badges">
-                    ${verified}
-                    ${audienceBadge}
-                </div>
+                <div class="profile-badges">${verified}</div>
                 ${mediaHtml}
             </div>
             <div class="profile-card-body">
@@ -125,9 +88,6 @@
             limit: '60',
             _: String(Date.now())
         });
-        if (activeGenero && activeGenero !== 'todos') {
-            params.set('genero', activeGenero);
-        }
         if (activeCiudad) {
             params.set('ciudad', activeCiudad);
         }
@@ -145,8 +105,7 @@
             const posts = data.posts || [];
             if (countEl) {
                 const ciudadTxt = activeCiudad ? ` en "${activeCiudad}"` : '';
-                const generoTxt = activeGenero !== 'todos' ? ` · ${AUDIENCE_LABELS[activeGenero]}` : '';
-                countEl.textContent = `${posts.length} anuncio${posts.length !== 1 ? 's' : ''}${ciudadTxt}${generoTxt}`;
+                countEl.textContent = `${posts.length} anuncio${posts.length !== 1 ? 's' : ''}${ciudadTxt}`;
             }
 
             if (!posts.length) {
@@ -166,26 +125,39 @@
         }
     }
 
-    window.initDirectoryFeed = function () {
-        activeGenero = getGeneroFromUrl();
+    window.initDirectoryFeed = function (options) {
+        options = options || {};
+        CATEGORY = options.category || document.body.dataset.category || 'acompañantes-mujeres';
+        PAGE_TITLE = options.title || document.body.dataset.title || 'Acompañantes';
+        FIXED_GENERO = options.fixedGenero || null;
+
+        if (options.heroTitle) {
+            const h1 = document.querySelector('.directory-hero h1');
+            if (h1) h1.textContent = options.heroTitle;
+        }
+        if (options.heroText) {
+            const p = document.querySelector('.directory-hero > p');
+            if (p) p.textContent = options.heroText;
+        }
+
+        const toolbar = document.querySelector('.directory-toolbar');
+        if (toolbar) toolbar.style.display = 'none';
+
         const cityInput = document.getElementById('searchCity');
         if (cityInput) {
             const fromUrl = getCiudadFromUrl();
             const saved = localStorage.getItem('deseo_search_city') || '';
             activeCiudad = fromUrl || saved;
-            if (activeCiudad) {
-                cityInput.value = activeCiudad;
-            }
+            if (activeCiudad) cityInput.value = activeCiudad;
         }
-
-        document.querySelectorAll('.gender-tabs button').forEach((btn) => {
-            btn.classList.toggle('active', btn.dataset.genero === activeGenero);
-            btn.addEventListener('click', () => setActiveTab(btn.dataset.genero));
-        });
 
         document.getElementById('searchBtn')?.addEventListener('click', () => {
             activeCiudad = (document.getElementById('searchCity')?.value || '').trim();
             localStorage.setItem('deseo_search_city', activeCiudad);
+            const url = new URL(window.location.href);
+            if (activeCiudad) url.searchParams.set('ciudad', activeCiudad);
+            else url.searchParams.delete('ciudad');
+            window.history.replaceState({}, '', url);
             loadDirectory();
         });
 
@@ -215,10 +187,6 @@
         if (!authToken) {
             showMessage('Inicia sesión para publicar', 'error');
             return;
-        }
-        const aud = document.getElementById('postAudience');
-        if (aud && activeGenero && activeGenero !== 'todos') {
-            aud.value = activeGenero;
         }
         document.getElementById('createPostModal')?.classList.add('show');
     };
@@ -291,7 +259,6 @@
         formData.append('description', document.getElementById('postDesc').value.trim());
         formData.append('content_type', document.getElementById('postType').value);
         formData.append('category', CATEGORY);
-        formData.append('audience', document.getElementById('postAudience')?.value || 'mujeres');
         formData.append('file', fileInput.files[0]);
         formData.append('is_public', 'true');
         formData.append('is_premium', 'false');

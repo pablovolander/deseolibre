@@ -3,7 +3,8 @@
 const fs = require('fs');
 
 const categories = [
-    { id: 'acompañantes', name: 'Acompañantes', icon: '💋', template: 'feed-acompañantes.html', skipGenerate: true },
+    { id: 'acompañantes-mujeres', name: 'Acompañantes Mujeres', icon: '👩', skipGenerate: true },
+    { id: 'acompañantes-hombres', name: 'Acompañantes Hombres', icon: '👨', skipGenerate: true },
     { id: 'masajes', name: 'Masajes', icon: '💆' },
     { id: 'sugar-daddy', name: 'Sugar Daddy', icon: '💎' },
     { id: 'sugar-mommy', name: 'Sugar Mommy', icon: '👑' }
