@@ -247,7 +247,7 @@ const corsOptions = {
                 callback(null, true); // Permisivo en desarrollo
             }
         } else {
-            const allowedOrigins = process.env.ALLOWED_ORIGINS
+            const allowedOrigins = process.env.ALLOWED_ORIGINS 
                 ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
                 : null;
 
@@ -331,7 +331,7 @@ const diskStorage = multer.diskStorage({
     }
 });
 
-const upload = multer({
+const upload = multer({ 
     storage: isServerless ? multer.memoryStorage() : diskStorage,
     limits: {
         fileSize: 100 * 1024 * 1024 // 100MB limit (para videos)
@@ -1257,8 +1257,15 @@ app.get('/api/auth/verification-status', authenticateToken, (req, res) => {
     );
 });
 
-// Quick verification for development (REMOVE IN PRODUCTION!)
+// Quick verification — solo desarrollo local (deshabilitado en Vercel/producción)
 app.post('/api/auth/quick-verify', authenticateToken, (req, res) => {
+    if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+        return res.status(403).json({
+            error: 'Verificación manual requerida',
+            message: 'En producción debes completar la verificación de identidad en verificar-identidad.html',
+            requiresVerification: true
+        });
+    }
     const userId = req.user.userId;
     
     db.run(
@@ -1699,6 +1706,24 @@ app.post('/api/user/body-video', authenticateToken, uploadLimiter, upload.single
 // Enhanced content upload endpoint
 app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file'), async (req, res) => {
     const userId = req.user.userId;
+
+    const authorCheck = await runDbGet(
+        'SELECT is_verified, verification_status FROM users WHERE id = ?',
+        [userId]
+    );
+    if (!authorCheck) {
+        return res.status(401).json({ error: 'Usuario no encontrado' });
+    }
+    if (!authorCheck.is_verified) {
+        return res.status(403).json({
+            error: 'Verificación requerida',
+            message: 'Debes verificar tu identidad antes de publicar anuncios. Solo perfiles verificados aparecen en el directorio.',
+            requiresVerification: true,
+            verifyUrl: '/verificar-identidad.html',
+            verification_status: authorCheck.verification_status || 'pending'
+        });
+    }
+
     const { title, description, content_type, price, is_premium, is_public, category } = req.body;
     
     // Validation
@@ -1801,8 +1826,8 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
         await saveDatabaseAsync();
 
         const origin = getRequestOrigin(req);
-        res.json({
-            message: 'Contenido publicado exitosamente',
+            res.json({ 
+                message: 'Contenido publicado exitosamente',
             post_id: insertResult.lastID,
             file_url: resolveMediaUrl(fileUrl, origin),
             thumbnail_url: resolveMediaUrl(thumbnailUrl, origin),
@@ -1944,6 +1969,7 @@ app.get('/api/content/category/:category', async (req, res) => {
 
     const filterPosts = (rows) => {
         let list = filterPostsForCategory(category, rows);
+        list = list.filter((p) => p.is_verified === 1 || p.is_verified === true);
         if (genero && genero !== 'todos' && category !== 'acompañantes-mujeres' && category !== 'acompañantes-hombres') {
             list = list.filter((p) => {
                 if (!p.audience) {
@@ -1983,31 +2009,31 @@ app.get('/api/content/category/:category', async (req, res) => {
                 queryParams.push(like, like);
             }
 
-            const query = `
-                SELECT 
-                    cp.id,
-                    cp.title,
-                    cp.description,
-                    cp.content_type,
-                    cp.file_url as media_url,
-                    cp.thumbnail_url,
-                    cp.price,
-                    cp.is_premium,
-                    cp.category,
+    const query = `
+        SELECT 
+            cp.id,
+            cp.title,
+            cp.description,
+            cp.content_type,
+            cp.file_url as media_url,
+            cp.thumbnail_url,
+            cp.price,
+            cp.is_premium,
+            cp.category,
                     cp.audience,
-                    cp.likes_count,
-                    cp.comments_count,
-                    cp.created_at,
-                    u.id as user_id,
-                    u.username,
-                    u.full_name,
-                    u.profile_picture,
+            cp.likes_count,
+            cp.comments_count,
+            cp.created_at,
+            u.id as user_id,
+            u.username,
+            u.full_name,
+            u.profile_picture,
                     u.is_verified,
                     u.location
-                FROM content_posts cp
-                JOIN users u ON cp.user_id = u.id
-                WHERE cp.is_public = 1 AND cp.category IN (${categoryPlaceholders})${extraWhere}
-                ORDER BY cp.created_at DESC
+        FROM content_posts cp
+        JOIN users u ON cp.user_id = u.id
+                WHERE cp.is_public = 1 AND u.is_verified = 1 AND cp.category IN (${categoryPlaceholders})${extraWhere}
+        ORDER BY cp.created_at DESC
             `;
 
             posts = filterPosts(await runDbAll(query, queryParams));
@@ -2021,21 +2047,21 @@ app.get('/api/content/category/:category', async (req, res) => {
         const total = posts.length;
         const pagedPosts = posts.slice(offset, offset + limit);
 
-        res.json({
+                res.json({
             posts: enrichPostsWithMediaUrls(pagedPosts, req),
-            pagination: {
-                page,
-                limit,
+                    pagination: {
+                        page,
+                        limit,
                 total,
                 pages: Math.ceil(total / limit) || 1
-            },
+                    },
             category,
             source
-        });
+                });
     } catch (err) {
         console.error('Error loading category content:', err);
         res.status(500).json({ error: 'Error al cargar contenido' });
-    }
+            }
 });
 
 // Get feed (all public content) - No authentication required, only age verification
@@ -2377,7 +2403,7 @@ app.post('/api/verification/upload', upload.fields([
     const userId = req.user.userId;
     
     try {
-        const { verification_type, additional_info } = req.body;
+        const { verification_type, additional_info, country } = req.body;
         
         // Validate required fields
         if (!verification_type) {
@@ -2408,6 +2434,7 @@ app.post('/api/verification/upload', upload.fields([
                 // Prepare verification data
                 const verificationData = {
                     type: verification_type,
+                    country: country || null,
                     id_front_url: req.files.id_front ? `/uploads/${req.files.id_front[0].filename}` : null,
                     id_back_url: req.files.id_back ? `/uploads/${req.files.id_back[0].filename}` : null,
                     selfie_url: req.files.selfie ? `/uploads/${req.files.selfie[0].filename}` : null,
@@ -2443,49 +2470,74 @@ app.post('/api/verification/upload', upload.fields([
     }
 });
 
-// Get verification status
+// Get verification status (incluye is_verified del usuario)
 app.get('/api/verification/status', authenticateToken, (req, res) => {
     const userId = req.user.userId;
-    
-    const query = `
-        SELECT id, verification_type, verification_data, status, 
+
+    db.get(
+        'SELECT is_verified, verification_status, verification_date FROM users WHERE id = ?',
+        [userId],
+        (userErr, userRow) => {
+            if (userErr) {
+                return res.status(500).json({ error: 'Error interno del servidor' });
+            }
+            if (!userRow) {
+                return res.status(404).json({ error: 'Usuario no encontrado' });
+            }
+
+            const query = `
+        SELECT id, verification_type, verification_data, status,
                created_at, verified_at, rejection_reason
-        FROM user_verifications 
-        WHERE user_id = ? 
-        ORDER BY created_at DESC 
+        FROM user_verifications
+        WHERE user_id = ?
+        ORDER BY created_at DESC
         LIMIT 1
     `;
-    
-    db.get(query, [userId], (err, verification) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error interno del servidor' });
-        }
-        
-        if (!verification) {
-            return res.json({
-                status: 'not_submitted',
-                message: 'No has enviado documentos de verificación'
+
+            db.get(query, [userId], (err, verification) => {
+                if (err) {
+                    return res.status(500).json({ error: 'Error interno del servidor' });
+                }
+
+                const base = {
+                    is_verified: Boolean(userRow.is_verified),
+                    verification_status: userRow.verification_status,
+                    verification_date: userRow.verification_date,
+                    pending: verification?.status === 'pending',
+                    mandatory: true
+                };
+
+                if (!verification) {
+                    return res.json({
+                        ...base,
+                        status: 'not_submitted',
+                        message: 'No has enviado documentos de verificación'
+                    });
+                }
+
+                const verificationData = verification.verification_data
+                    ? JSON.parse(verification.verification_data)
+                    : {};
+
+                res.json({
+                    ...base,
+                    verification_id: verification.id,
+                    verification_type: verification.verification_type,
+                    status: verification.status,
+                    submitted_at: verification.created_at,
+                    verified_at: verification.verified_at,
+                    rejection_reason: verification.rejection_reason,
+                    country: verificationData.country || null,
+                    documents: {
+                        id_front_url: verificationData.id_front_url,
+                        id_back_url: verificationData.id_back_url,
+                        selfie_url: verificationData.selfie_url
+                    },
+                    additional_info: verificationData.additional_info
+                });
             });
         }
-        
-        const verificationData = verification.verification_data ? 
-            JSON.parse(verification.verification_data) : {};
-        
-        res.json({
-            verification_id: verification.id,
-            verification_type: verification.verification_type,
-            status: verification.status,
-            submitted_at: verification.created_at,
-            verified_at: verification.verified_at,
-            rejection_reason: verification.rejection_reason,
-            documents: {
-                id_front_url: verificationData.id_front_url,
-                id_back_url: verificationData.id_back_url,
-                selfie_url: verificationData.selfie_url
-            },
-            additional_info: verificationData.additional_info
-        });
-    });
+    );
 });
 
 // Get verification requirements
@@ -4313,14 +4365,14 @@ app.use('/api/*', (req, res) => {
 // Servidor HTTP solo en ejecución local / hosting tradicional (no en Vercel serverless)
 if (require.main === module) {
     dbReady.then(() => {
-        app.listen(PORT, () => {
-            console.log(`✅ Servidor Deseo Libre ejecutándose en puerto ${PORT}`);
-            console.log(`🌐 Modo: ${NODE_ENV}`);
-            if (isDevelopment) {
-                console.log(`🔗 Accede a: http://localhost:${PORT}`);
-            } else {
-                console.log(`🔒 Modo producción activado`);
-            }
+    app.listen(PORT, () => {
+        console.log(`✅ Servidor Deseo Libre ejecutándose en puerto ${PORT}`);
+        console.log(`🌐 Modo: ${NODE_ENV}`);
+        if (isDevelopment) {
+            console.log(`🔗 Accede a: http://localhost:${PORT}`);
+        } else {
+            console.log(`🔒 Modo producción activado`);
+        }
         });
     }).catch((error) => {
         console.error('No se pudo iniciar la base de datos:', error);

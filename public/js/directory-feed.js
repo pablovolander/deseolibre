@@ -183,10 +183,14 @@
         document.getElementById('registerModal')?.classList.add('show');
     };
 
-    window.showCreatePost = function () {
+    window.showCreatePost = async function () {
         if (!authToken) {
             showMessage('Inicia sesión para publicar', 'error');
             return;
+        }
+        if (typeof DeseoVerification !== 'undefined') {
+            const ok = await DeseoVerification.requireVerifiedForPublish('Publicar anuncio');
+            if (!ok) return;
         }
         document.getElementById('createPostModal')?.classList.add('show');
     };
@@ -231,7 +235,6 @@
             authToken = data.token;
             DeseoAuth.setSession(data.token, data.user);
             localStorage.setItem('ageVerified', 'true');
-            await DeseoAuth.authFetch(`${API_URL}/api/auth/quick-verify`, { method: 'POST' }).catch(() => {});
             closeModal('registerModal');
             showMessage('Cuenta creada', 'success');
             updateUI();
@@ -277,6 +280,9 @@
             await new Promise((r) => setTimeout(r, 1200));
             loadDirectory();
         } catch (error) {
+            if (typeof DeseoVerification !== 'undefined' && DeseoVerification.handlePublishError(error)) {
+                return;
+            }
             showMessage(error.message || 'Error al publicar', 'error');
         }
     };

@@ -1,367 +1,241 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verificación de Identidad - Deseo Libre</title>
+    <title>VerificaciÃ³n obligatoria - Deseo Libre</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="/css/directory.css" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        .verify-wrap { max-width: 720px; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
+        .verify-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.25rem; }
+        .verify-card h2 { font-size: 1.1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+        .verify-steps { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .verify-step { flex: 1; min-width: 100px; text-align: center; padding: 0.5rem; border-radius: 8px; font-size: 0.75rem; background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); }
+        .verify-step.active { background: linear-gradient(135deg, rgba(255,107,157,0.3), rgba(139,124,248,0.25)); color: #fff; font-weight: 600; }
+        .form-row { margin-bottom: 1rem; }
+        .form-row label { display: block; font-size: 0.85rem; margin-bottom: 0.35rem; color: rgba(255,255,255,0.8); }
+        .form-row select, .form-row input[type=file], .form-row textarea {
+            width: 100%; padding: 0.65rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(0,0,0,0.25); color: #fff;
         }
-
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #ff6b6b 0%, #6c5ce7 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .container {
-            background: white;
-            border-radius: 20px;
-            padding: 3rem;
-            max-width: 600px;
-            width: 100%;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        }
-
-        h1 {
-            color: #6c5ce7;
-            margin-bottom: 2rem;
-            text-align: center;
-        }
-
-        .verification-method {
-            background: #f8f9fa;
-            border-radius: 15px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-        }
-
-        .method-title {
-            font-size: 1.3rem;
-            font-weight: bold;
-            color: #ff6b6b;
-            margin-bottom: 1rem;
-        }
-
-        .method-description {
-            color: #666;
-            margin-bottom: 1.5rem;
-            line-height: 1.6;
-        }
-
-        .btn {
-            width: 100%;
-            padding: 1rem;
-            border: none;
-            border-radius: 10px;
-            font-size: 1rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 1rem;
-        }
-
-        .btn-primary {
-            background: linear-gradient(45deg, #ff6b6b, #6c5ce7);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(108, 92, 231, 0.3);
-        }
-
-        .btn-secondary {
-            background: #e8e4ff;
-            color: #6c5ce7;
-        }
-
-        .btn-secondary:hover {
-            background: #d4ceff;
-        }
-
-        .message {
-            padding: 1rem;
-            border-radius: 10px;
-            margin-bottom: 1rem;
-            text-align: center;
-        }
-
-        .success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-
-        .status {
-            text-align: center;
-            padding: 2rem;
-            background: #f8f9fa;
-            border-radius: 15px;
-            margin-bottom: 2rem;
-        }
-
-        .status-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-        }
-
-        .verified {
-            color: #28a745;
-        }
-
-        .unverified {
-            color: #dc3545;
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 2rem;
-        }
-
-        .loading.show {
-            display: block;
-        }
-
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #6c5ce7;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1rem;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        code {
-            background: #f8f9fa;
-            padding: 0.3rem 0.6rem;
-            border-radius: 5px;
-            color: #6c5ce7;
-            font-weight: bold;
-        }
+        .btn-verify { width: 100%; padding: 0.85rem; border: none; border-radius: 10px; font-weight: 700; cursor: pointer;
+            background: linear-gradient(135deg, #ff6b9d, #8b7cf8); color: #fff; margin-top: 0.5rem; text-decoration: none; display: inline-block; text-align: center; box-sizing: border-box; }
+        .btn-verify:disabled { opacity: 0.5; cursor: not-allowed; }
+        .status-box { text-align: center; padding: 2rem 1rem; }
+        .status-box.verified { color: #7dffa8; }
+        .status-box.pending { color: #ffd166; }
+        .status-box.rejected { color: #ff8a9b; }
+        .tips { font-size: 0.85rem; color: rgba(255,255,255,0.65); line-height: 1.5; }
+        .tips li { margin-bottom: 0.35rem; }
+        .fm-badge { display: inline-flex; align-items: center; gap: 0.35rem; background: rgba(125,255,168,0.15); color: #7dffa8; padding: 0.35rem 0.75rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; margin-bottom: 1rem; }
+        #messageBox { margin-bottom: 1rem; min-height: 1.25rem; }
+        #messageBox.error { color: #ff8a9b; }
+        #messageBox.success { color: #7dffa8; }
+        .back-link { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; }
+        .fm-compare { display: grid; gap: 0.75rem; margin-top: 1rem; }
+        .fm-compare div { padding: 0.75rem 1rem; border-radius: 10px; background: rgba(255,255,255,0.04); font-size: 0.9rem; }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h1><i class="fas fa-id-card"></i> Verificación de Identidad</h1>
-        
-        <div id="statusContainer"></div>
-        <div id="messageContainer"></div>
-        <div id="loadingContainer" class="loading">
-            <div class="spinner"></div>
-            <p>Procesando verificación...</p>
+<body class="directory-page">
+    <header class="directory-header">
+        <div class="directory-header-inner">
+            <a href="index.html" class="directory-logo">â¤ï¸â€ðŸ”¥ Deseo Libre</a>
+            <a href="profile.html" class="back-link"><i class="fas fa-arrow-left"></i> Mi perfil</a>
+        </div>
+    </header>
+
+<div class="verify-wrap">
+        <span class="fm-badge"><i class="fas fa-shield-alt"></i> VerificaciÃ³n obligatoria para profesionales</span>
+        <h1 style="font-size:1.75rem;margin-bottom:0.5rem;">Verifica tu identidad</h1>
+        <p style="color:rgba(255,255,255,0.65);margin-bottom:1.5rem;">
+            Como en Fatal Model (Brasil): solo perfiles verificados aparecen en el directorio.
+            Operamos en MÃ©xico, Colombia y Argentina.
+        </p>
+
+        <div id="messageBox"></div>
+        <div id="statusPanel"></div>
+
+        <div id="uploadPanel" style="display:none;">
+            <div class="verify-steps">
+                <div class="verify-step active">1. PaÃ­s</div>
+                <div class="verify-step active">2. Documento</div>
+                <div class="verify-step active">3. Fotos</div>
+            </div>
+
+            <form id="verifyForm">
+                <div class="verify-card">
+                    <h2><i class="fas fa-globe-americas"></i> PaÃ­s de operaciÃ³n</h2>
+                    <div class="form-row">
+                        <label for="country">Â¿DÃ³nde publicarÃ¡s?</label>
+                        <select id="country" required>
+                            <option value="">Selecciona</option>
+                            <option value="MX">ðŸ‡²ðŸ‡½ MÃ©xico</option>
+                            <option value="CO">ðŸ‡¨ðŸ‡´ Colombia</option>
+                            <option value="AR">ðŸ‡¦ðŸ‡· Argentina</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="verify-card">
+                    <h2><i class="fas fa-id-card"></i> Tipo de documento</h2>
+<div class="form-row">
+                        <label for="verification_type">Documento oficial con foto</label>
+                        <select id="verification_type" required>
+                            <option value="">Selecciona</option>
+                            <option value="id_card">INE / CÃ©dula / DNI</option>
+                            <option value="passport">Pasaporte</option>
+                            <option value="driver_license">Licencia de conducir</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="verify-card">
+                    <h2><i class="fas fa-camera"></i> Sube tus fotos</h2>
+                    <p class="tips" style="margin-bottom:1rem;">Documento legible + selfie sosteniendo el documento junto a tu rostro (mismo proceso que Fatal Model).</p>
+                    <div class="form-row">
+                        <label for="id_front">Frente del documento *</label>
+                        <input type="file" id="id_front" accept="image/*" required>
+                    </div>
+                    <div class="form-row" id="idBackRow">
+                        <label for="id_back">Reverso del documento *</label>
+                        <input type="file" id="id_back" accept="image/*">
+                    </div>
+                    <div class="form-row">
+                        <label for="selfie">Selfie con documento junto al rostro *</label>
+                        <input type="file" id="selfie" accept="image/*" required>
+                    </div>
+                    <div class="form-row">
+                        <label for="additional_info">Notas (opcional)</label>
+                        <textarea id="additional_info" rows="2" placeholder="Nombre legal si difiere del usuario, etc."></textarea>
+                    </div>
+                    <ul class="tips">
+                        <li>Buena iluminaciÃ³n, sin filtros</li>
+                        <li>Texto legible en el documento</li>
+                        <li>Debes ser mayor de 18 aÃ±os</li>
+                        <li>RevisiÃ³n manual en 24-48 horas</li>
+                    </ul>
+                    <button type="submit" class="btn-verify" id="submitBtn"><i class="fas fa-paper-plane"></i> Enviar verificaciÃ³n</button>
+                </div>
+            </form>
         </div>
 
-        <div class="verification-method">
-            <div class="method-title">
-                <i class="fas fa-bolt"></i> Verificación Instantánea (Desarrollo)
+        <section class="dl-extras" style="margin-top:2rem;">
+            <h2>Â¿Por quÃ© es obligatorio?</h2>
+            <div class="fm-compare">
+<div><strong>Fatal Model (Brasil):</strong> confianza por perfiles reales y verificados.</div>
+                <div><strong>Deseo Libre (MX Â· CO Â· AR):</strong> mismo estÃ¡ndar + 0% comisiÃ³n y pixelado opcional.</div>
             </div>
-            <div class="method-description">
-                Método rápido para desarrollo. Te verifica instantáneamente sin necesidad de subir documentos.
-            </div>
-            <button class="btn btn-primary" onclick="quickVerify()">
-                <i class="fas fa-check-circle"></i> Verificar Ahora (Desarrollo)
-            </button>
-        </div>
-
-        <div class="verification-method">
-            <div class="method-title">
-                <i class="fas fa-file-upload"></i> Verificación Manual (Con Código)
-            </div>
-            <div class="method-description">
-                Inicia el proceso de verificación y usa el código <code>VERIFY123</code> para completarlo.
-            </div>
-            <button class="btn btn-secondary" onclick="startManualVerification()">
-                <i class="fas fa-key"></i> Iniciar Verificación Manual
-            </button>
-        </div>
-
-        <button class="btn btn-secondary" onclick="window.location.href='profile.html'">
-            <i class="fas fa-arrow-left"></i> Volver a Mi Perfil
-        </button>
-
-        <button class="btn btn-secondary" onclick="window.location.href='feed.html'">
-            <i class="fas fa-home"></i> Ir al Feed
-        </button>
+            <ul class="tips" style="margin-top:1rem;">
+                <li>Solo anuncios verificados en el directorio pÃºblico</li>
+                <li>Sello â€œVerificadoâ€ en tu tarjeta de perfil</li>
+                <li>Tus documentos no se muestran al pÃºblico</li>
+            </ul>
+        </section>
     </div>
 
+    <script src="/js/api-config.js"></script>
+    <script src="/js/auth-session.js"></script>
+    <script src="/js/verification-gate.js"></script>
     <script>
-        let authToken = localStorage.getItem('authToken');
-
-        // Check authentication
+        const authToken = localStorage.getItem('authToken');
         if (!authToken) {
-            alert('Debes iniciar sesión primero');
-            window.location.href = 'index.html';
+            alert('Inicia sesiÃ³n para verificar tu identidad');
+            location.href = 'index.html';
         }
 
-        // Load verification status on page load
-        window.addEventListener('DOMContentLoaded', checkStatus);
+        const flash = sessionStorage.getItem('deseo_verify_message');
+        if (flash) {
+            document.getElementById('messageBox').textContent = flash;
+            sessionStorage.removeItem('deseo_verify_message');
+        }
 
-        async function apiCall(url, options = {}) {
-            const defaultOptions = {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authToken}`
-                }
-            };
+        const msg = document.getElementById('messageBox');
+        const statusPanel = document.getElementById('statusPanel');
+        const uploadPanel = document.getElementById('uploadPanel');
 
-            const finalOptions = { ...defaultOptions, ...options };
-            
-            try {
-                const response = await fetch(url, finalOptions);
-                const data = await response.json();
-                
-                if (!response.ok) {
-                    throw new Error(data.error || 'Error en la solicitud');
-                }
-                
-                return data;
-            } catch (error) {
-                console.error('API Error:', error);
-                throw error;
+        document.getElementById('verification_type').addEventListener('change', function () {
+            const isPassport = this.value === 'passport';
+            document.getElementById('idBackRow').style.display = isPassport ? 'none' : 'block';
+            document.getElementById('id_back').required = !isPassport;
+        });
+
+        async function loadStatus() {
+            const s = await DeseoVerification.fetchStatus();
+            if (s.is_verified) {
+                statusPanel.innerHTML = `<div class="verify-card status-box verified">
+                    <i class="fas fa-check-circle" style="font-size:3rem;"></i>
+                    <h2>Identidad verificada</h2>
+                    <p>Ya puedes publicar anuncios en el directorio.</p>
+                    <a href="profile.html" class="btn-verify" style="margin-top:1rem;">Ir a mi perfil</a>
+                </div>`;
+                uploadPanel.style.display = 'none';
+                return;
             }
-        }
-
-        async function checkStatus() {
-            try {
-                const response = await apiCall('/api/auth/verification-status');
-                displayStatus(response);
-            } catch (error) {
-                showMessage('Error al verificar estado: ' + error.message, 'error');
+            if (s.pending || s.status === 'pending') {
+                statusPanel.innerHTML = `<div class="verify-card status-box pending">
+                    <i class="fas fa-hourglass-half" style="font-size:3rem;"></i>
+                    <h2>VerificaciÃ³n en revisiÃ³n</h2>
+                    <p>Recibimos tus documentos. Respuesta en 24-48 horas.</p>
+                </div>`;
+                uploadPanel.style.display = 'none';
+                return;
             }
-        }
-
-        function displayStatus(status) {
-            const container = document.getElementById('statusContainer');
-            
-            if (status.is_verified) {
-                container.innerHTML = `
-                    <div class="status">
-                        <div class="status-icon verified">
-                            <i class="fas fa-check-circle"></i>
-                        </div>
-                        <h2 style="color: #28a745;">✅ Identidad Verificada</h2>
-                        <p>Ya puedes subir contenido a la plataforma</p>
-                    </div>
-                `;
+            if (s.status === 'rejected' && s.rejection_reason) {
+                statusPanel.innerHTML = `<div class="verify-card status-box rejected">
+                    <h2>VerificaciÃ³n rechazada</h2>
+                    <p>${s.rejection_reason}</p>
+                    <p>Puedes enviar nuevos documentos abajo.</p>
+                </div>`;
             } else {
-                container.innerHTML = `
-                    <div class="status">
-                        <div class="status-icon unverified">
-                            <i class="fas fa-times-circle"></i>
-                        </div>
-                        <h2 style="color: #dc3545;">❌ Identidad No Verificada</h2>
-                        <p>Debes verificar tu identidad para subir contenido</p>
-                    </div>
-                `;
+                statusPanel.innerHTML = `<div class="verify-card">
+                    <p><strong>Paso requerido:</strong> sin verificaciÃ³n no puedes publicar. Los clientes solo ven perfiles verificados.</p>
+                </div>`;
             }
+            uploadPanel.style.display = 'block';
         }
 
-        async function quickVerify() {
-            const loading = document.getElementById('loadingContainer');
-            loading.classList.add('show');
+        document.getElementById('verifyForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            msg.className = '';
+            msg.textContent = 'Subiendo documentos...';
 
-            try {
-                const response = await apiCall('/api/auth/quick-verify', {
-                    method: 'POST'
-                });
-
-                loading.classList.remove('show');
-                showMessage('¡Verificación completada! ' + response.message, 'success');
-                
-                // Refresh status
-                setTimeout(() => {
-                    checkStatus();
-                }, 1000);
-
-            } catch (error) {
-                loading.classList.remove('show');
-                showMessage('Error: ' + error.message, 'error');
+            const fd = new FormData();
+            fd.append('verification_type', document.getElementById('verification_type').value);
+            fd.append('country', document.getElementById('country').value);
+            fd.append('additional_info', document.getElementById('additional_info').value);
+            fd.append('id_front', document.getElementById('id_front').files[0]);
+            if (document.getElementById('id_back').files[0]) {
+                fd.append('id_back', document.getElementById('id_back').files[0]);
             }
-        }
-
-        async function startManualVerification() {
-            const loading = document.getElementById('loadingContainer');
-            loading.classList.add('show');
+            fd.append('selfie', document.getElementById('selfie').files[0]);
 
             try {
-                // Step 1: Start verification
-                const startResponse = await apiCall('/api/auth/start-verification', {
+                const res = await fetch(`${API_URL}/api/verification/upload`, {
                     method: 'POST',
-                    body: JSON.stringify({
-                        verificationType: 'manual',
-                        verificationData: { method: 'code' }
-                    })
+                    headers: { Authorization: `Bearer ${authToken}` },
+                    body: fd
                 });
-
-                loading.classList.remove('show');
-                
-                // Step 2: Ask for code
-                const code = prompt('Ingresa el código de verificación.\n\nPara desarrollo, usa: VERIFY123');
-                
-                if (code) {
-                    loading.classList.add('show');
-                    
-                    // Step 3: Complete verification
-                    const completeResponse = await apiCall('/api/auth/complete-verification', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            verificationId: startResponse.verificationId,
-                            verificationCode: code
-                        })
-                    });
-
-                    loading.classList.remove('show');
-                    showMessage('¡Verificación completada exitosamente!', 'success');
-                    
-                    // Refresh status
-                    setTimeout(() => {
-                        checkStatus();
-                    }, 1000);
-                }
-
-            } catch (error) {
-                loading.classList.remove('show');
-                showMessage('Error: ' + error.message, 'error');
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Error al enviar');
+                msg.className = 'success';
+                msg.textContent = data.message;
+                setTimeout(loadStatus, 1500);
+            } catch (err) {
+                msg.className = 'error';
+                msg.textContent = err.message;
+            } finally {
+                btn.disabled = false;
             }
-        }
+        });
 
-        function showMessage(message, type) {
-            const container = document.getElementById('messageContainer');
-            container.innerHTML = `<div class="message ${type}">${message}</div>`;
-            
-            setTimeout(() => {
-                container.innerHTML = '';
-            }, 5000);
-        }
+        loadStatus().catch((e) => {
+            msg.className = 'error';
+            msg.textContent = e.message;
+        });
     </script>
 </body>
 </html>
-

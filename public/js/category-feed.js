@@ -174,8 +174,6 @@
             DeseoAuth.setSession(data.token, data.user);
             localStorage.setItem('ageVerified', 'true');
 
-            await DeseoAuth.authFetch(`${API_URL}/api/auth/quick-verify`, { method: 'POST' }).catch(() => {});
-
             closeModal('registerModal');
             showMessage('Registro exitoso', 'success');
             updateUI();

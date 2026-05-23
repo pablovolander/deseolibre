@@ -324,6 +324,32 @@
     color: #7dffa8;
 }
 
+.trust-pill-verified {
+    background: rgba(125, 255, 168, 0.12);
+    border-color: rgba(125, 255, 168, 0.35);
+    color: #7dffa8;
+}
+
+.trust-pill-cta {
+    text-decoration: none;
+    cursor: pointer;
+    background: rgba(255, 107, 157, 0.15);
+    border-color: rgba(255, 107, 157, 0.35);
+}
+
+.trust-pill-cta:hover {
+    background: rgba(255, 107, 157, 0.25);
+}
+
+.badge-verified {
+    background: rgba(125, 255, 168, 0.2);
+    color: #7dffa8;
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    font-weight: 700;
+}
+
 @media (max-width: 600px) {
     .profile-grid {
         grid-template-columns: 1fr;
