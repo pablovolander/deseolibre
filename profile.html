@@ -1857,8 +1857,21 @@
                         <input type="file" id="postFile" accept="image/*,video/*,audio/*" required style="display:none;" onchange="updateFileInfo(this)">
                 </div>
                 <div class="form-group">
-                    <label for="postPrice">Precio (opcional):</label>
-                    <input type="number" id="postPrice" step="0.01" placeholder="0.00">
+                    <label for="postPhone">Teléfono *:</label>
+                    <input type="tel" id="postPhone" required placeholder="+52 555 123 4567">
+                    <small style="color: var(--text-muted);">Se guardará en tu perfil</small>
+                </div>
+                <div class="form-group">
+                    <label for="postPrice">Precio *:</label>
+                    <input type="number" id="postPrice" step="0.01" min="0.01" required placeholder="Ej: 1500">
+                </div>
+                <div class="form-group">
+                    <label for="postPriceUnit">Tarifa *:</label>
+                    <select id="postPriceUnit" required>
+                        <option value="">Selecciona</option>
+                        <option value="hour">Por hora</option>
+                        <option value="half_hour">Por media hora (30 min)</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <div class="checkbox-group">
@@ -1943,8 +1956,8 @@
                         <input type="text" id="editLocation" placeholder="Ciudad, País">
                     </div>
                     <div class="form-group">
-                        <label for="editPhone">Teléfono:</label>
-                        <input type="tel" id="editPhone" placeholder="+123 456 789">
+                        <label for="editPhone">Teléfono *:</label>
+                        <input type="tel" id="editPhone" required placeholder="+52 555 123 4567">
                     </div>
                     <div class="form-group">
                         <label for="editAge">Edad (verificada):</label>
@@ -2193,6 +2206,7 @@
     <script src="/js/auth-session.js"></script>
     <script src="/js/api-errors.js"></script>
     <script src="/js/verification-gate.js"></script>
+    <script src="/js/service-pricing.js"></script>
     <script src="/js/components.js"></script>
     <script>
         // Global variables
@@ -2646,7 +2660,6 @@
             const description = document.getElementById('createPostDescription').value;
             const contentType = document.getElementById('createPostType').value;
             const category = document.getElementById('createPostCategory').value;
-            const price = document.getElementById('postPrice').value || 0;
             const isPremium = document.getElementById('isPremium').checked;
             const isPublic = document.getElementById('isPublicPost').checked;
             const fileInput = document.getElementById('postFile');
@@ -2656,7 +2669,6 @@
                 description,
                 contentType,
                 category,
-                price,
                 isPremium,
                 isPublic,
                 fileSelected: fileInput.files.length > 0
@@ -2714,8 +2726,18 @@
             formData.append('description', description);
             formData.append('content_type', contentType);
             formData.append('category', category);
-            formData.append('price', price);
             formData.append('is_premium', isPremium ? 'true' : 'false');
+
+            if (typeof DeseoPricing !== 'undefined') {
+                const pricing = DeseoPricing.appendPublishToFormData(formData);
+                if (!pricing.ok) {
+                    showNotification(pricing.error, 'error');
+                    return;
+                }
+            } else {
+                showNotification('Error de validación de precios', 'error');
+                return;
+            }
             formData.append('is_public', 'true');
             formData.append('file', file);
 
@@ -2762,6 +2784,15 @@
                 age: document.getElementById('editAge').value,
                 category: document.getElementById('editCategory').value
             };
+
+            if (typeof DeseoPricing !== 'undefined') {
+                const phoneCheck = DeseoPricing.validatePhone(profileData.phone);
+                if (!phoneCheck.ok) {
+                    showNotification(phoneCheck.error, 'error');
+                    return;
+                }
+                profileData.phone = phoneCheck.phone;
+            }
 
             try {
                 await apiCall(`${API_URL}/api/user/profile`, {
@@ -2856,6 +2887,13 @@
             }
 
             document.getElementById('isPublicPost').checked = true;
+
+            if (typeof DeseoPricing !== 'undefined') {
+                const phoneEl = document.getElementById('postPhone');
+                if (phoneEl && !phoneEl.value.trim() && currentUser?.phone) {
+                    phoneEl.value = currentUser.phone;
+                }
+            }
             
             // Asegurar que los form-groups sean visibles
             const formGroups = modal.querySelectorAll('.form-group');

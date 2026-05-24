@@ -81,9 +81,11 @@
             ? resolveMediaUrl(post.media_url || post.file_url || '')
             : `${API_URL}${post.media_url || post.file_url || ''}`;
         const location = post.location || post.user_location || 'Ubicación no indicada';
-        const price = post.price && Number(post.price) > 0
-            ? `$${Number(post.price).toLocaleString('es')}`
-            : 'Consultar';
+        const price = typeof DeseoPricing !== 'undefined'
+            ? DeseoPricing.formatPrice(post.price, post.price_unit)
+            : (post.price && Number(post.price) > 0
+                ? `$${Number(post.price).toLocaleString('es')}`
+                : 'Consultar');
         const name = post.full_name || post.username || 'Profesional';
         const verified = post.is_verified
             ? '<span class="badge-verified"><i class="fas fa-check-circle"></i> Verificado</span>'
@@ -249,6 +251,9 @@
             if (!ok) return;
         }
         document.getElementById('createPostModal')?.classList.add('show');
+        if (typeof DeseoPricing !== 'undefined') {
+            DeseoPricing.prefillPublishPhone();
+        }
     };
 
     window.publishFromCategory = async function (event) {
@@ -326,7 +331,17 @@
         formData.append('file', fileInput.files[0]);
         formData.append('is_public', 'true');
         formData.append('is_premium', 'false');
-        formData.append('price', document.getElementById('postPrice')?.value || '0');
+
+        if (typeof DeseoPricing !== 'undefined') {
+            const pricing = DeseoPricing.appendPublishToFormData(formData);
+            if (!pricing.ok) {
+                showMessage(pricing.error, 'error');
+                return;
+            }
+        } else {
+            showMessage('Error de validación de precios', 'error');
+            return;
+        }
 
         showMessage('Publicando...', 'success');
 

@@ -96,6 +96,7 @@
                             ${post.is_verified ? '<i class="fas fa-check-circle" style="color: #1da1f2;" title="Usuario verificado"></i>' : ''}
                         </div>
                         <div class="post-meta">
+                            <span class="post-price">${escapeHtml(typeof DeseoPricing !== 'undefined' ? DeseoPricing.formatPrice(post.price, post.price_unit) : (post.price ? `$${post.price}` : 'Consultar'))}</span>
                             <span><i class="fas fa-heart"></i> ${post.likes_count || 0}</span>
                             <span><i class="fas fa-comment"></i> ${post.comments_count || 0}</span>
                         </div>
@@ -139,6 +140,9 @@
             if (!ok) return;
         }
         document.getElementById('createPostModal')?.classList.add('show');
+        if (typeof DeseoPricing !== 'undefined') {
+            DeseoPricing.prefillPublishPhone();
+        }
     };
 
     window.closeModal = function (id) {
@@ -213,7 +217,17 @@
         formData.append('file', fileInput.files[0]);
         formData.append('is_public', 'true');
         formData.append('is_premium', 'false');
-        formData.append('price', '0');
+
+        if (typeof DeseoPricing !== 'undefined') {
+            const pricing = DeseoPricing.appendPublishToFormData(formData);
+            if (!pricing.ok) {
+                showMessage(pricing.error, 'error');
+                return;
+            }
+        } else {
+            showMessage('Error de validación de precios', 'error');
+            return;
+        }
 
         showMessage('Subiendo publicación...', 'success');
 

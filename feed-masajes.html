@@ -478,6 +478,23 @@
                     </select>
                 </div>
                 <div class="form-group">
+                    <label>Teléfono *</label>
+                    <input type="tel" id="postPhone" required placeholder="+52 555 123 4567">
+                    <small>Se guardará en tu perfil</small>
+                </div>
+                <div class="form-group">
+                    <label>Precio *</label>
+                    <input type="number" id="postPrice" step="0.01" min="0.01" required placeholder="Ej: 1500">
+                </div>
+                <div class="form-group">
+                    <label>Tarifa *</label>
+                    <select id="postPriceUnit" required>
+                        <option value="">Selecciona</option>
+                        <option value="hour">Por hora</option>
+                        <option value="half_hour">Por media hora (30 min)</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label>Archivo</label>
                     <input type="file" id="postFile" required accept="image/*,video/*,audio/*">
                 </div>
@@ -491,6 +508,7 @@
     <script src="/js/auth-session.js"></script>
     <script src="/js/api-errors.js"></script>
     <script src="/js/verification-gate.js"></script>
+    <script src="/js/service-pricing.js"></script>
     <script src="/js/category-feed.js"></script>
     <script>initCategoryFeedPage('masajes');</script>
 </body>

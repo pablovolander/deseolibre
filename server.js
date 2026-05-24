@@ -16,6 +16,7 @@ const { persistUploadedFile, resolveMediaUrl, streamPrivateMedia, getBlobAccess 
 const { evaluateAutoVerification, getMaxVideoBytes, MIN_VIDEO_DURATION_SEC, MAX_VIDEO_DURATION_SEC, MIN_FACE_MATCH_SCORE } = require('./lib/auto-verification');
 const { addPostToFeedIndex, getPostsFromFeedIndex, syncPostsToFeedIndex } = require('./lib/category-feed-index');
 const { resolveCityQuery, postMatchesCity, listSupportedCities } = require('./lib/supported-cities');
+const { validatePhoneRequired, validateServicePrice } = require('./lib/service-pricing');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -767,6 +768,7 @@ async function applyDatabaseMigrations(database) {
         `UPDATE content_posts SET category = 'acompañantes-hombres', audience = NULL
          WHERE category = 'acompañantes' AND audience = 'hombres'`
     );
+    await exec('ALTER TABLE content_posts ADD COLUMN price_unit TEXT');
 }
 
 async function ensureDatabaseSchemaUpToDate() {
@@ -787,7 +789,7 @@ const dbReady = (async () => {
             const publicPosts = await new Promise((resolve, reject) => {
                 db.all(
                     `SELECT cp.id, cp.title, cp.description, cp.content_type, cp.file_url as media_url,
-                            cp.thumbnail_url, cp.price, cp.is_premium, cp.is_public, cp.category, cp.audience,
+                            cp.thumbnail_url, cp.price, cp.price_unit, cp.is_premium, cp.is_public, cp.category, cp.audience,
                             cp.likes_count, cp.comments_count, cp.created_at,
                             u.id as user_id, u.username, u.full_name, u.profile_picture, u.is_verified, u.location
                      FROM content_posts cp
@@ -1599,6 +1601,11 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
             console.log('📦 Datos recibidos:', { full_name, bio, location, phone, age, category });
         }
 
+        const phoneCheck = validatePhoneRequired(phone);
+        if (!phoneCheck.ok) {
+            return res.status(400).json({ error: phoneCheck.error });
+        }
+
         const ageValue = age && age !== '' ? parseInt(age, 10) : null;
         const categoryValue = category && category !== '' ? category : null;
 
@@ -1612,7 +1619,7 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
                 category = ?,
                 updated_at = CURRENT_TIMESTAMP 
             WHERE id = ?`,
-            [full_name || null, bio || null, location || null, phone || null, ageValue, categoryValue, userId]
+            [full_name || null, bio || null, location || null, phoneCheck.phone, ageValue, categoryValue, userId]
         );
 
         if (!updateResult.changes) {
@@ -1797,7 +1804,32 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
         });
     }
 
-    const { title, description, content_type, price, is_premium, is_public, category } = req.body;
+    const { title, description, content_type, price, price_unit, phone, is_premium, is_public, category } = req.body;
+
+    if (phone) {
+        const phoneUpdate = validatePhoneRequired(phone);
+        if (!phoneUpdate.ok) {
+            return res.status(400).json({ error: phoneUpdate.error });
+        }
+        await runDb(
+            'UPDATE users SET phone = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+            [phoneUpdate.phone, userId]
+        );
+        authorCheck.phone = phoneUpdate.phone;
+    }
+
+    const authorPhoneCheck = validatePhoneRequired(authorCheck.phone);
+    if (!authorPhoneCheck.ok) {
+        return res.status(400).json({
+            error: 'Teléfono requerido',
+            message: 'Debes indicar tu número de teléfono en el formulario o en tu perfil antes de publicar.'
+        });
+    }
+
+    const priceCheck = validateServicePrice(price, price_unit);
+    if (!priceCheck.ok) {
+        return res.status(400).json({ error: priceCheck.error });
+    }
     
     // Validation
     if (!title || !description || !content_type) {
@@ -1842,8 +1874,8 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
 
     try {
         const insertResult = await runDb(
-            `INSERT INTO content_posts (user_id, title, description, content_type, file_url, thumbnail_url, price, is_premium, is_public, category, audience) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO content_posts (user_id, title, description, content_type, file_url, thumbnail_url, price, price_unit, is_premium, is_public, category, audience) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 userId,
                 title,
@@ -1851,7 +1883,8 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
                 content_type,
                 fileUrl,
                 thumbnailUrl,
-                price || 0,
+                priceCheck.price,
+                priceCheck.price_unit,
                 isPremiumValue,
                 isPublicValue,
                 normalizedCategory,
@@ -1878,7 +1911,8 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
             file_url: fileUrl,
             media_url: fileUrl,
             thumbnail_url: thumbnailUrl,
-            price: price || 0,
+            price: priceCheck.price,
+            price_unit: priceCheck.price_unit,
             is_premium: isPremiumValue,
             is_public: isPublicValue,
             category: normalizedCategory,
@@ -2009,6 +2043,7 @@ app.get('/api/user/content', authenticateToken, async (req, res) => {
                 file_url as media_url,
                 thumbnail_url,
                 price,
+                price_unit,
                 is_premium,
                 is_public,
                 category,
@@ -2108,6 +2143,7 @@ app.get('/api/content/category/:category', async (req, res) => {
             cp.file_url as media_url,
             cp.thumbnail_url,
             cp.price,
+            cp.price_unit,
             cp.is_premium,
             cp.category,
                     cp.audience,

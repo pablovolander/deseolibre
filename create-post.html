@@ -480,8 +480,22 @@
                     </div>
 
                     <div class="option-group">
-                        <label for="postPrice">Precio (opcional)</label>
-                        <input type="number" id="postPrice" placeholder="0" min="0" step="0.01">
+                        <label for="postPhone">Teléfono *</label>
+                        <input type="tel" id="postPhone" required placeholder="+52 555 123 4567">
+                    </div>
+
+                    <div class="option-group">
+                        <label for="postPrice">Precio *</label>
+                        <input type="number" id="postPrice" placeholder="Ej: 1500" min="0.01" step="0.01" required>
+                    </div>
+
+                    <div class="option-group">
+                        <label for="postPriceUnit">Tarifa *</label>
+                        <select id="postPriceUnit" required>
+                            <option value="">Selecciona</option>
+                            <option value="hour">Por hora</option>
+                            <option value="half_hour">Por media hora (30 min)</option>
+                        </select>
                     </div>
 
                     <div class="option-group">
@@ -510,6 +524,9 @@
         </div>
     </div>
 
+    <script src="/js/api-config.js"></script>
+    <script src="/js/auth-session.js"></script>
+    <script src="/js/service-pricing.js"></script>
     <script>
         // Variables globales
         let selectedFiles = [];
@@ -575,6 +592,11 @@
                 const userInfo = await apiCall('/api/user/me');
                 document.getElementById('userName').textContent = userInfo.display_name || userInfo.username;
                 document.getElementById('userStatus').textContent = userInfo.is_verified ? 'Verificado' : 'No verificado';
+                const cached = typeof DeseoAuth !== 'undefined' ? DeseoAuth.getCachedUser() : null;
+                const phone = cached?.phone || userInfo.phone;
+                if (phone && document.getElementById('postPhone')) {
+                    document.getElementById('postPhone').value = phone;
+                }
             } catch (error) {
                 console.error('Error loading user info:', error);
             }
@@ -726,9 +748,17 @@
 
             const content = document.getElementById('postContent').value.trim();
             const contentType = document.getElementById('contentType').value;
-            const price = document.getElementById('postPrice').value || 0;
             const isPremium = document.getElementById('isPremium').checked;
             const isPublic = document.getElementById('isPublic').checked;
+
+            let publishPricing = { ok: true, phone: '', price: 0, price_unit: 'hour' };
+            if (typeof DeseoPricing !== 'undefined') {
+                publishPricing = DeseoPricing.readPublishFields();
+                if (!publishPricing.ok) {
+                    showStatus('error', publishPricing.error);
+                    return;
+                }
+            }
 
             // Validaciones
             if (!content && selectedFiles.length === 0) {
@@ -756,7 +786,9 @@
                     title: content || `Archivo ${file.name}`,
                     description: content,
                     content_type: contentType,
-                    price: price,
+                    phone: publishPricing.phone,
+                    price: publishPricing.price,
+                    price_unit: publishPricing.price_unit,
                     is_premium: isPremium,
                     is_public: isPublic,
                     category: selectedCategory
@@ -785,7 +817,9 @@
             formData.append('title', metadata.title);
             formData.append('description', metadata.description);
             formData.append('content_type', metadata.content_type);
+            formData.append('phone', metadata.phone);
             formData.append('price', metadata.price);
+            formData.append('price_unit', metadata.price_unit);
             formData.append('is_premium', metadata.is_premium);
             formData.append('is_public', metadata.is_public);
             formData.append('category', metadata.category);
