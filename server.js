@@ -448,12 +448,27 @@ const deleteFileIfExists = (relativePath) => {
 const dbPath = isVercel ? path.join(os.tmpdir(), 'deseo_libre.db') : path.join(__dirname, 'deseo_libre.db');
 let db;
 
+let dbDirty = false;
+
+function markDbDirty() {
+    dbDirty = true;
+}
+
 function saveDatabase() {
-    persistDatabase(dbPath, isVercel);
+    markDbDirty();
+    persistDatabaseNow(dbPath, isVercel)
+        .then(() => {
+            dbDirty = false;
+        })
+        .catch((error) => {
+            console.error('Error al guardar la base de datos en Blob:', error.message);
+        });
 }
 
 async function saveDatabaseAsync() {
+    markDbDirty();
     await persistDatabaseNow(dbPath, isVercel);
+    dbDirty = false;
 }
 
 function initializeDatabaseSchema(database) {
@@ -813,6 +828,10 @@ async function refreshDatabaseFromBlob() {
 
     dbRefreshQueue = dbRefreshQueue.then(async () => {
         try {
+            if (dbDirty) {
+                await persistDatabaseNow(dbPath, isVercel);
+                dbDirty = false;
+            }
             if (db) {
                 await new Promise((resolve, reject) => {
                     db.close((err) => (err ? reject(err) : resolve()));
@@ -895,6 +914,36 @@ const authenticateToken = (req, res, next) => {
         next();
     });
 };
+
+function getAuthUserId(req) {
+    const raw = req.user?.userId ?? req.user?.id;
+    const id = Number.parseInt(String(raw), 10);
+    return Number.isFinite(id) ? id : null;
+}
+
+async function findUserRecordById(userId) {
+    return runDbGet(
+        `SELECT id, username, email, full_name, bio, location, phone, category,
+                profile_picture, cover_photo, is_verified, verification_status, age_verified, created_at
+         FROM users WHERE id = ?`,
+        [userId]
+    );
+}
+
+async function resolveAuthUser(req) {
+    const userId = getAuthUserId(req);
+    if (!userId) {
+        return null;
+    }
+
+    let user = await findUserRecordById(userId);
+    if (!user && isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
+        await refreshDatabaseFromBlob();
+        user = await findUserRecordById(userId);
+    }
+
+    return user;
+}
 
 // Age verification middleware
 const requireAgeVerification = (req, res, next) => {
@@ -985,52 +1034,37 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
 
         await dbReady;
 
-        // Check if user already exists
-        db.get('SELECT id FROM users WHERE email = ? OR username = ?', [email, username], async (err, row) => {
-            if (err) {
-                console.error('Error al buscar usuario en registro:', err);
-                return res.status(500).json({ error: 'Error interno del servidor' });
+        const existing = await runDbGet(
+            'SELECT id FROM users WHERE email = ? OR username = ?',
+            [email, username]
+        );
+        if (existing) {
+            return res.status(400).json({ error: 'El usuario o email ya existe' });
+        }
+
+        const passwordHash = await bcrypt.hash(password, 10);
+        const insertResult = await runDb(
+            'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
+            [username, email, passwordHash]
+        );
+
+        await saveDatabaseAsync();
+
+        const token = jwt.sign(
+            { userId: insertResult.lastID, username, email },
+            JWT_SECRET,
+            { expiresIn: '30d' }
+        );
+
+        res.status(201).json({
+            message: 'Usuario registrado exitosamente',
+            token,
+            user: {
+                id: insertResult.lastID,
+                username,
+                email,
+                age_verified: false
             }
-
-            if (row) {
-                return res.status(400).json({ error: 'El usuario o email ya existe' });
-            }
-
-            // Hash password
-            const saltRounds = 10;
-            const passwordHash = await bcrypt.hash(password, saltRounds);
-
-            // Insert new user
-            db.run(
-                'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
-                [username, email, passwordHash],
-                function(insertErr) {
-                    if (insertErr) {
-                        console.error('Error al insertar usuario:', insertErr);
-                        return res.status(500).json({ error: 'Error al crear el usuario' });
-                    }
-
-                    saveDatabase();
-
-                    // Generate JWT token
-                    const token = jwt.sign(
-                        { userId: this.lastID, username, email },
-                        JWT_SECRET,
-                        { expiresIn: '30d' }
-                    );
-
-                    res.status(201).json({
-                        message: 'Usuario registrado exitosamente',
-                        token,
-                        user: {
-                            id: this.lastID,
-                            username,
-                            email,
-                            age_verified: false
-                        }
-                    });
-                }
-            );
         });
     } catch (error) {
         console.error('Error en registro:', error);
@@ -1039,18 +1073,20 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
 });
 
 // Login endpoint
-app.post('/api/auth/login', authLimiter, (req, res) => {
-    const { email, password } = req.body;
+app.post('/api/auth/login', authLimiter, async (req, res) => {
+    try {
+        const { email, password } = req.body;
 
-    if (!email || !password) {
-        return res.status(400).json({ error: 'Email y contraseña son requeridos' });
-    }
-
-    db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error interno del servidor' });
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email y contraseña son requeridos' });
         }
 
+        await dbReady;
+        if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
+            await refreshDatabaseFromBlob();
+        }
+
+        const user = await runDbGet('SELECT * FROM users WHERE email = ?', [email]);
         if (!user) {
             return res.status(401).json({ error: 'Credenciales inválidas' });
         }
@@ -1060,7 +1096,6 @@ app.post('/api/auth/login', authLimiter, (req, res) => {
             return res.status(401).json({ error: 'Credenciales inválidas' });
         }
 
-        // Generate JWT token
         const token = jwt.sign(
             { userId: user.id, username: user.username, email: user.email },
             JWT_SECRET,
@@ -1079,7 +1114,10 @@ app.post('/api/auth/login', authLimiter, (req, res) => {
                 verification_status: user.verification_status
             }
         });
-    });
+    } catch (error) {
+        console.error('Error en login:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
 });
 
 // Age verification endpoint
@@ -1364,43 +1402,38 @@ app.get('/api/user/:userId/posts', (req, res) => {
 });
 
 // Verify token endpoint
-app.get('/api/auth/verify', authenticateToken, (req, res) => {
-    const userId = req.user.userId;
-    
-    db.get(
-        `SELECT id, username, email, full_name, bio, location, phone, category, 
-                profile_picture, cover_photo, is_verified, age_verified, created_at
-         FROM users WHERE id = ?`,
-        [userId],
-        (err, user) => {
-            if (err) {
-                return res.status(500).json({ error: 'Error al verificar token' });
-            }
-            
-            if (!user) {
-                return res.status(404).json({ error: 'Usuario no encontrado' });
-            }
-            
-            res.json({
-                valid: true,
-                user: {
-                    id: user.id,
-                    username: user.username,
-                    email: user.email,
-                    full_name: user.full_name,
-                    bio: user.bio,
-                    location: user.location,
-                    phone: user.phone,
-                    category: user.category,
-                    profile_picture: user.profile_picture,
-                    cover_photo: user.cover_photo,
-                    is_verified: user.is_verified,
-                    age_verified: user.age_verified,
-                    created_at: user.created_at
-                }
+app.get('/api/auth/verify', authenticateToken, async (req, res) => {
+    try {
+        const user = await resolveAuthUser(req);
+        if (!user) {
+            return res.status(404).json({
+                error: 'Usuario no encontrado',
+                message: 'Tu sesión no coincide con la base de datos. Cierra sesión y vuelve a entrar.'
             });
         }
-    );
+
+        res.json({
+            valid: true,
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                full_name: user.full_name,
+                bio: user.bio,
+                location: user.location,
+                phone: user.phone,
+                category: user.category,
+                profile_picture: user.profile_picture,
+                cover_photo: user.cover_photo,
+                is_verified: user.is_verified,
+                age_verified: user.age_verified,
+                created_at: user.created_at
+            }
+        });
+    } catch (error) {
+        console.error('Error al verificar token:', error);
+        res.status(500).json({ error: 'Error al verificar token' });
+    }
 });
 
 // Profile Management Endpoints
@@ -1485,41 +1518,45 @@ app.get('/api/profile/:userId?', authenticateToken, (req, res) => {
 });
 
 // Get current user info
-app.get('/api/user/me', authenticateToken, (req, res) => {
-    const userId = req.user.userId;
-    
-    db.get(
-        `SELECT u.id, u.username, u.email, u.is_verified, u.age_verified, 
-                up.display_name, up.profile_image_url, up.phone_number, up.bio,
-                up.body_verification_video_url, up.face_obscured
-         FROM users u 
-         LEFT JOIN user_profiles up ON u.id = up.user_id 
-         WHERE u.id = ?`,
-        [userId],
-        (err, user) => {
-            if (err) {
-                return res.status(500).json({ error: 'Error interno del servidor' });
-            }
-            
-            if (!user) {
-                return res.status(404).json({ error: 'Usuario no encontrado' });
-            }
-            
-            res.json({
-                id: user.id,
-                username: user.username,
-                email: user.email,
-                is_verified: user.is_verified,
-                age_verified: user.age_verified,
-                display_name: user.display_name,
-                profile_image_url: user.profile_image_url,
-                phone_number: user.phone_number,
-                bio: user.bio,
-                body_verification_video_url: user.body_verification_video_url,
-                face_obscured: user.face_obscured
+app.get('/api/user/me', authenticateToken, async (req, res) => {
+    try {
+        const userId = getAuthUserId(req);
+        if (!userId) {
+            return res.status(401).json({ error: 'Sesión inválida' });
+        }
+
+        const baseUser = await resolveAuthUser(req);
+        if (!baseUser) {
+            return res.status(404).json({
+                error: 'Usuario no encontrado',
+                message: 'Tu sesión no coincide con la base de datos. Cierra sesión y vuelve a entrar.'
             });
         }
-    );
+
+        const profile = await runDbGet(
+            `SELECT display_name, profile_image_url, phone_number, bio,
+                    body_verification_video_url, face_obscured
+             FROM user_profiles WHERE user_id = ?`,
+            [userId]
+        );
+
+        res.json({
+            id: baseUser.id,
+            username: baseUser.username,
+            email: baseUser.email,
+            is_verified: baseUser.is_verified,
+            age_verified: baseUser.age_verified,
+            display_name: profile?.display_name || null,
+            profile_image_url: profile?.profile_image_url || null,
+            phone_number: profile?.phone_number || null,
+            bio: profile?.bio || baseUser.bio || null,
+            body_verification_video_url: profile?.body_verification_video_url || null,
+            face_obscured: profile?.face_obscured || 0
+        });
+    } catch (error) {
+        console.error('Error en /api/user/me:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
 });
 
 // Get upload limits and allowed file types
@@ -1538,109 +1575,136 @@ app.get('/api/upload/info', (req, res) => {
 });
 
 // Update user profile (bio, location, etc)
-app.put('/api/user/profile', authenticateToken, (req, res) => {
-    const userId = req.user.userId;
-    const { full_name, bio, location, phone, age, category } = req.body;
-
-    // Logging condicional (solo en desarrollo)
-    if (isDevelopment) {
-        console.log('📝 Actualizando perfil para usuario:', userId);
-        console.log('📦 Datos recibidos:', { full_name, bio, location, phone, age, category });
-    }
-
-    // Convertir valores vacíos a null
-    const ageValue = age && age !== '' ? parseInt(age) : null;
-    const categoryValue = category && category !== '' ? category : null;
-
-    db.run(
-        `UPDATE users SET 
-            full_name = ?, 
-            bio = ?, 
-            location = ?, 
-            phone = ?, 
-            age = ?,
-            category = ?,
-            updated_at = CURRENT_TIMESTAMP 
-        WHERE id = ?`,
-        [full_name || null, bio || null, location || null, phone || null, ageValue, categoryValue, userId],
-        function(err) {
-            if (err) {
-                console.error('❌ Error updating profile:', err);
-                console.error('❌ Error details:', err.message);
-                return res.status(500).json({ error: 'Error al actualizar perfil: ' + err.message });
-            }
-            if (isDevelopment) {
-                console.log('✅ Perfil actualizado exitosamente para usuario:', userId);
-            }
-            res.json({ message: 'Perfil actualizado exitosamente' });
+app.put('/api/user/profile', authenticateToken, async (req, res) => {
+    try {
+        const user = await resolveAuthUser(req);
+        if (!user) {
+            return res.status(404).json({
+                error: 'Usuario no encontrado',
+                message: 'Tu sesión no coincide con la base de datos. Cierra sesión y vuelve a entrar.'
+            });
         }
-    );
+
+        const userId = user.id;
+        const { full_name, bio, location, phone, age, category } = req.body;
+
+        if (isDevelopment) {
+            console.log('📝 Actualizando perfil para usuario:', userId);
+            console.log('📦 Datos recibidos:', { full_name, bio, location, phone, age, category });
+        }
+
+        const ageValue = age && age !== '' ? parseInt(age, 10) : null;
+        const categoryValue = category && category !== '' ? category : null;
+
+        const updateResult = await runDb(
+            `UPDATE users SET 
+                full_name = ?, 
+                bio = ?, 
+                location = ?, 
+                phone = ?, 
+                age = ?,
+                category = ?,
+                updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ?`,
+            [full_name || null, bio || null, location || null, phone || null, ageValue, categoryValue, userId]
+        );
+
+        if (!updateResult.changes) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        await saveDatabaseAsync();
+        res.json({ message: 'Perfil actualizado exitosamente' });
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        res.status(500).json({ error: 'Error al actualizar perfil' });
+    }
 });
 
 // Upload profile avatar
 app.post('/api/user/avatar', authenticateToken, uploadLimiter, upload.single('avatar'), async (req, res) => {
-    const userId = req.user.userId;
-    
-    if (!req.file) {
-        return res.status(400).json({ error: 'No se proporcionó ningún archivo' });
-    }
-
-    let avatarPath;
     try {
-        avatarPath = await persistUploadedFile(req.file, isVercel, localUploadsDir);
-    } catch (uploadError) {
-        console.error('Error al guardar avatar:', uploadError);
-        return res.status(500).json({ error: uploadError.message || 'Error al guardar la imagen' });
-    }
-
-    db.run(
-        'UPDATE users SET profile_picture = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-        [avatarPath, userId],
-        function(err) {
-            if (err) {
-                console.error('Error updating avatar:', err);
-                return res.status(500).json({ error: 'Error al actualizar avatar' });
-            }
-            saveDatabase();
-            res.json({ 
-                message: 'Avatar actualizado exitosamente',
-                avatar_url: avatarPath
+        const user = await resolveAuthUser(req);
+        if (!user) {
+            return res.status(404).json({
+                error: 'Usuario no encontrado',
+                message: 'Tu sesión no coincide con la base de datos. Cierra sesión y vuelve a entrar.'
             });
         }
-    );
+
+        if (!req.file) {
+            return res.status(400).json({ error: 'No se proporcionó ningún archivo' });
+        }
+
+        let avatarPath;
+        try {
+            avatarPath = await persistUploadedFile(req.file, isVercel, localUploadsDir);
+        } catch (uploadError) {
+            console.error('Error al guardar avatar:', uploadError);
+            return res.status(500).json({ error: uploadError.message || 'Error al guardar la imagen' });
+        }
+
+        const updateResult = await runDb(
+            'UPDATE users SET profile_picture = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+            [avatarPath, user.id]
+        );
+
+        if (!updateResult.changes) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        await saveDatabaseAsync();
+        res.json({
+            message: 'Avatar actualizado exitosamente',
+            avatar_url: avatarPath
+        });
+    } catch (error) {
+        console.error('Error updating avatar:', error);
+        res.status(500).json({ error: 'Error al actualizar avatar' });
+    }
 });
 
 // Upload cover photo
 app.post('/api/user/cover', authenticateToken, uploadLimiter, upload.single('cover'), async (req, res) => {
-    const userId = req.user.userId;
-    
-    if (!req.file) {
-        return res.status(400).json({ error: 'No se proporcionó ningún archivo' });
-    }
-
-    let coverPath;
     try {
-        coverPath = await persistUploadedFile(req.file, isVercel, localUploadsDir);
-    } catch (uploadError) {
-        console.error('Error al guardar portada:', uploadError);
-        return res.status(500).json({ error: uploadError.message || 'Error al guardar la imagen' });
-    }
-
-    db.run(
-        'UPDATE users SET cover_photo = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-        [coverPath, userId],
-        function(err) {
-            if (err) {
-                console.error('Error updating cover:', err);
-                return res.status(500).json({ error: 'Error al actualizar portada' });
-            }
-            saveDatabase();
-            res.json({ 
-                message: 'Foto de portada actualizada exitosamente',
-                cover_url: coverPath
+        const user = await resolveAuthUser(req);
+        if (!user) {
+            return res.status(404).json({
+                error: 'Usuario no encontrado',
+                message: 'Tu sesión no coincide con la base de datos. Cierra sesión y vuelve a entrar.'
             });
         }
-    );
+
+        if (!req.file) {
+            return res.status(400).json({ error: 'No se proporcionó ningún archivo' });
+        }
+
+        let coverPath;
+        try {
+            coverPath = await persistUploadedFile(req.file, isVercel, localUploadsDir);
+        } catch (uploadError) {
+            console.error('Error al guardar portada:', uploadError);
+            return res.status(500).json({ error: uploadError.message || 'Error al guardar la imagen' });
+        }
+
+        const updateResult = await runDb(
+            'UPDATE users SET cover_photo = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+            [coverPath, user.id]
+        );
+
+        if (!updateResult.changes) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        await saveDatabaseAsync();
+        res.json({
+            message: 'Foto de portada actualizada exitosamente',
+            cover_url: coverPath
+        });
+    } catch (error) {
+        console.error('Error updating cover:', error);
+        res.status(500).json({ error: 'Error al actualizar portada' });
+    }
 });
 
 // Upload body verification video
@@ -1705,14 +1769,17 @@ app.post('/api/user/body-video', authenticateToken, uploadLimiter, upload.single
 // Create new content post (requires login only)
 // Enhanced content upload endpoint
 app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file'), async (req, res) => {
-    const userId = req.user.userId;
+    const userId = getAuthUserId(req);
+    if (!userId) {
+        return res.status(401).json({ error: 'Sesión inválida' });
+    }
 
-    const authorCheck = await runDbGet(
-        'SELECT is_verified, verification_status FROM users WHERE id = ?',
-        [userId]
-    );
+    const authorCheck = await resolveAuthUser(req);
     if (!authorCheck) {
-        return res.status(401).json({ error: 'Usuario no encontrado' });
+        return res.status(404).json({
+            error: 'Usuario no encontrado',
+            message: 'Tu sesión no coincide con la base de datos. Cierra sesión y vuelve a entrar.'
+        });
     }
     if (!authorCheck.is_verified) {
         return res.status(403).json({
@@ -1768,8 +1835,6 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
     const categoryVariants = getCategorySearchVariants(normalizedCategory);
 
     try {
-        await refreshDatabaseFromBlob();
-
         const insertResult = await runDb(
             `INSERT INTO content_posts (user_id, title, description, content_type, file_url, thumbnail_url, price, is_premium, is_public, category, audience) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -2401,9 +2466,16 @@ app.post('/api/verification/upload', authenticateToken, upload.fields([
     { name: 'selfie', maxCount: 1 },
     { name: 'body_video', maxCount: 1 }
 ]), async (req, res) => {
-    const userId = req.user.userId;
-
     try {
+        const authUser = await resolveAuthUser(req);
+        if (!authUser) {
+            return res.status(404).json({
+                error: 'Usuario no encontrado',
+                message: 'Tu sesión no coincide con la base de datos. Cierra sesión y vuelve a entrar.'
+            });
+        }
+        const userId = authUser.id;
+
         const { verification_type, additional_info, country, body_video_duration_sec } = req.body;
         const files = req.files || {};
 
