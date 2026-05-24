@@ -1314,6 +1314,7 @@
         }
 </style>
     <script src="/js/api-config.js"></script>
+    <script src="/js/city-search.js"></script>
     <script src="/js/auth-session.js"></script>
 </head>
 <body>
@@ -1387,7 +1388,8 @@
                         🎭 Con nuestra herramienta de pixelado, siéntete libre de elegir qué y hasta dónde mostrar.
                     </p>
                     <div class="directory-search" style="max-width:620px;margin:1.5rem auto 1rem;display:flex;gap:0.5rem;flex-wrap:wrap;justify-content:center;">
-                        <input type="text" id="heroSearchCity" placeholder="Buscar por ciudad..." style="flex:1;min-width:200px;padding:0.85rem 1rem;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.25);color:#fff;">
+                        <input type="text" id="heroSearchCity" list="heroCitiesDatalist" placeholder="Ciudad (México, Colombia, Argentina)..." style="flex:1;min-width:200px;padding:0.85rem 1rem;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.25);color:#fff;">
+                        <datalist id="heroCitiesDatalist"></datalist>
                         <a href="feed-acompañantes-mujeres.html" class="btn btn-primary" id="heroSearchMujeres" style="white-space:nowrap;"><i class="fas fa-female"></i> Mujeres</a>
                         <a href="feed-acompañantes-hombres.html" class="btn btn-primary" id="heroSearchHombres" style="white-space:nowrap;"><i class="fas fa-male"></i> Hombres</a>
                     </div>
@@ -1922,13 +1924,31 @@
         });
 
         function heroGoToFeed(feedPath) {
-            const city = (document.getElementById('heroSearchCity')?.value || '').trim();
-            if (city) {
-                localStorage.setItem('deseo_search_city', city);
-                window.location.href = feedPath + '?ciudad=' + encodeURIComponent(city);
+            const raw = (document.getElementById('heroSearchCity')?.value || '').trim();
+            if (raw && typeof DeseoCitySearch !== 'undefined') {
+                const resolved = DeseoCitySearch.resolveLocal(raw);
+                if (!resolved.ok) {
+                    alert(resolved.error);
+                    return;
+                }
+                localStorage.setItem('deseo_search_city', resolved.city);
+                window.location.href = feedPath + '?ciudad=' + encodeURIComponent(resolved.city);
+                return;
+            }
+            if (raw) {
+                localStorage.setItem('deseo_search_city', raw);
+                window.location.href = feedPath + '?ciudad=' + encodeURIComponent(raw);
             } else {
                 window.location.href = feedPath;
             }
+        }
+        if (typeof DeseoCitySearch !== 'undefined') {
+            DeseoCitySearch.getCities().then((cities) => {
+                const dl = document.getElementById('heroCitiesDatalist');
+                if (dl) {
+                    dl.innerHTML = cities.map((c) => `<option value="${c.name}"></option>`).join('');
+                }
+            }).catch(() => {});
         }
         document.getElementById('heroSearchMujeres')?.addEventListener('click', function(e) {
             e.preventDefault();

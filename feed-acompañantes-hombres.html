@@ -42,9 +42,17 @@
         <h1>👨 Acompañantes Hombres</h1>
         <p>Directorio de acompañantes hombres verificados. Busca por ciudad. Sin comisiones, verificación real y control de privacidad.</p>
         <div class="directory-search">
-            <input type="text" id="searchCity" placeholder="Buscar por ciudad (ej: Madrid, Buenos Aires)..." autocomplete="off">
+            <select id="searchCountry" aria-label="País">
+                <option value="">Todos</option>
+                <option value="MX">México</option>
+                <option value="CO">Colombia</option>
+                <option value="AR">Argentina</option>
+            </select>
+            <input type="text" id="searchCity" list="citiesDatalist" placeholder="Ciudad (ej: Buenos Aires, Medellín)..." autocomplete="off">
+            <datalist id="citiesDatalist"></datalist>
             <button type="button" id="searchBtn"><i class="fas fa-search"></i> Buscar</button>
         </div>
+        <div id="popularCities" class="city-chips-row"></div>
         <div class="directory-cta-row">
             <a href="#" class="cta-pro" onclick="publishFromCategory(event)"><i class="fas fa-user-tie"></i> Soy profesional — Publicar gratis</a>
             <a href="#" class="cta-client" onclick="showRegister(); return false;"><i class="fas fa-search"></i> Busco servicios</a>
@@ -106,6 +114,7 @@
     <script src="/js/api-config.js"></script>
     <script src="/js/auth-session.js"></script>
     <script src="/js/api-errors.js"></script>
+    <script src="/js/city-search.js"></script>
     <script src="/js/verification-gate.js"></script>
     <script src="/js/directory-feed.js"></script>
     <script>initDirectoryFeed({ category: 'acompañantes-hombres' });</script>

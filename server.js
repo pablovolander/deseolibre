@@ -15,6 +15,7 @@ const { restoreDatabaseIfNeeded, persistDatabase, persistDatabaseNow } = require
 const { persistUploadedFile, resolveMediaUrl, streamPrivateMedia, getBlobAccess } = require('./lib/media-storage');
 const { evaluateAutoVerification, getMaxVideoBytes, MIN_VIDEO_DURATION_SEC, MAX_VIDEO_DURATION_SEC, MIN_FACE_MATCH_SCORE } = require('./lib/auto-verification');
 const { addPostToFeedIndex, getPostsFromFeedIndex, syncPostsToFeedIndex } = require('./lib/category-feed-index');
+const { resolveCityQuery, postMatchesCity, listSupportedCities } = require('./lib/supported-cities');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -2031,6 +2032,12 @@ app.get('/api/user/content', authenticateToken, async (req, res) => {
 });
 
 // Get content by category (public endpoint, no auth required)
+app.get('/api/cities', (req, res) => {
+    const country = String(req.query.country || '').trim().toUpperCase();
+    const cities = listSupportedCities(country || null);
+    res.json({ cities, countries: ['MX', 'CO', 'AR'] });
+});
+
 app.get('/api/content/category/:category', async (req, res) => {
     const { category } = resolveCategoryAndAudience(req.params.category, null);
 
@@ -2042,7 +2049,16 @@ app.get('/api/content/category/:category', async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const offset = (page - 1) * limit;
     const genero = String(req.query.genero || 'todos').toLowerCase();
-    const ciudad = String(req.query.ciudad || '').trim();
+    const ciudadRaw = String(req.query.ciudad || '').trim();
+    const cityResolved = ciudadRaw ? resolveCityQuery(ciudadRaw) : null;
+    if (ciudadRaw && !cityResolved.ok) {
+        return res.status(400).json({
+            error: cityResolved.error,
+            posts: [],
+            supported_cities: listSupportedCities()
+        });
+    }
+    const ciudad = cityResolved?.ok ? cityResolved.city.name : '';
     const categoryVariants = getCategorySearchVariants(category);
     const categoryPlaceholders = categoryVariants.map(() => '?').join(', ');
 
@@ -2058,20 +2074,20 @@ app.get('/api/content/category/:category', async (req, res) => {
             });
         }
         if (ciudad) {
-            const q = ciudad.toLowerCase();
-            list = list.filter((p) => {
-                const loc = (p.location || p.user_location || '').toLowerCase();
-                return loc.includes(q);
-            });
+            list = list.filter((p) => postMatchesCity(p, ciudad));
         }
         return list;
     };
 
     try {
-        let posts = filterPosts(await getPostsFromFeedIndex(categoryVariants));
+        let posts = [];
         let source = 'blob_index';
+        const indexPosts = await getPostsFromFeedIndex(categoryVariants);
 
-        if (!posts.length) {
+        if (!ciudad && indexPosts.length) {
+            posts = filterPosts(indexPosts);
+            source = 'blob_index';
+        } else {
             await refreshDatabaseFromBlob();
             source = 'sqlite';
 
@@ -2081,11 +2097,6 @@ app.get('/api/content/category/:category', async (req, res) => {
             if (genero && genero !== 'todos' && category !== 'acompañantes-mujeres' && category !== 'acompañantes-hombres') {
                 extraWhere += ' AND (cp.audience = ? OR cp.audience IS NULL OR cp.audience = "")';
                 queryParams.push(genero);
-            }
-            if (ciudad) {
-                extraWhere += ' AND (LOWER(u.location) LIKE ? OR LOWER(u.bio) LIKE ?)';
-                const like = `%${ciudad.toLowerCase()}%`;
-                queryParams.push(like, like);
             }
 
     const query = `
@@ -2108,7 +2119,8 @@ app.get('/api/content/category/:category', async (req, res) => {
             u.full_name,
             u.profile_picture,
                     u.is_verified,
-                    u.location
+                    u.location,
+                    u.bio
         FROM content_posts cp
         JOIN users u ON cp.user_id = u.id
                 WHERE cp.is_public = 1 AND u.is_verified = 1 AND cp.category IN (${categoryPlaceholders})${extraWhere}
@@ -2123,8 +2135,6 @@ app.get('/api/content/category/:category', async (req, res) => {
                     console.warn('No se pudo sincronizar índice de feeds:', syncErr.message);
                 }
             }
-        } else {
-            posts = filterPosts(posts);
         }
 
         const total = posts.length;
@@ -2139,7 +2149,8 @@ app.get('/api/content/category/:category', async (req, res) => {
                 pages: Math.ceil(total / limit) || 1
                     },
             category,
-            source
+            source,
+            city: ciudad || null
                 });
     } catch (err) {
         console.error('Error loading category content:', err.message || err);

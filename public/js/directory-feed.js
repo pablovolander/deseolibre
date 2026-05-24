@@ -7,6 +7,43 @@
     let FIXED_GENERO = null;
     let authToken = localStorage.getItem('authToken');
     let activeCiudad = '';
+    let citySearchApi = null;
+
+    function setActiveCity(cityName) {
+        activeCiudad = cityName || '';
+        const cityInput = document.getElementById('searchCity');
+        if (cityInput) {
+            cityInput.value = activeCiudad;
+        }
+        localStorage.setItem('deseo_search_city', activeCiudad);
+        const url = new URL(window.location.href);
+        if (activeCiudad) {
+            url.searchParams.set('ciudad', activeCiudad);
+        } else {
+            url.searchParams.delete('ciudad');
+        }
+        window.history.replaceState({}, '', url);
+    }
+
+    async function performCitySearch() {
+        const raw = (document.getElementById('searchCity')?.value || '').trim();
+        if (!raw) {
+            setActiveCity('');
+            loadDirectory();
+            return;
+        }
+        if (typeof DeseoCitySearch !== 'undefined') {
+            const resolved = DeseoCitySearch.resolveLocal(raw);
+            if (!resolved.ok) {
+                showMessage(resolved.error, 'error');
+                return;
+            }
+            setActiveCity(resolved.city);
+        } else {
+            setActiveCity(raw);
+        }
+        loadDirectory();
+    }
 
     function escapeHtml(text) {
         if (!text) return '';
@@ -101,6 +138,9 @@
                 const errInfo = typeof DeseoErrors !== 'undefined'
                     ? DeseoErrors.formatApiError({ status: response.status, message: data.error, data })
                     : { message: data.error || 'Error al cargar' };
+                if (response.status === 400) {
+                    showMessage(errInfo.message, 'error');
+                }
                 grid.innerHTML = `<div class="directory-empty">${escapeHtml(errInfo.message)}</div>`;
                 return;
             }
@@ -151,23 +191,34 @@
             const fromUrl = getCiudadFromUrl();
             const saved = localStorage.getItem('deseo_search_city') || '';
             activeCiudad = fromUrl || saved;
-            if (activeCiudad) cityInput.value = activeCiudad;
+            if (activeCiudad) {
+                cityInput.value = activeCiudad;
+            }
+        }
+
+        if (typeof DeseoCitySearch !== 'undefined') {
+            DeseoCitySearch.bindInput({
+                inputId: 'searchCity',
+                datalistId: 'citiesDatalist',
+                countrySelectId: 'searchCountry',
+                popularContainerId: 'popularCities',
+                onSearch: (city) => {
+                    setActiveCity(city);
+                    loadDirectory();
+                }
+            }).then((api) => {
+                citySearchApi = api;
+            }).catch(() => {});
         }
 
         document.getElementById('searchBtn')?.addEventListener('click', () => {
-            activeCiudad = (document.getElementById('searchCity')?.value || '').trim();
-            localStorage.setItem('deseo_search_city', activeCiudad);
-            const url = new URL(window.location.href);
-            if (activeCiudad) url.searchParams.set('ciudad', activeCiudad);
-            else url.searchParams.delete('ciudad');
-            window.history.replaceState({}, '', url);
-            loadDirectory();
+            performCitySearch();
         });
 
         document.getElementById('searchCity')?.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                document.getElementById('searchBtn')?.click();
+                performCitySearch();
             }
         });
 

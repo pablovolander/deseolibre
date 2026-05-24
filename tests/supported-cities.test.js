@@ -1,0 +1,34 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const {
+    resolveCityQuery,
+    postMatchesCity,
+    listSupportedCities
+} = require('../lib/supported-cities');
+
+test('resolveCityQuery accepts aliases like CDMX', () => {
+    const result = resolveCityQuery('cdmx');
+    assert.equal(result.ok, true);
+    assert.equal(result.city.name, 'Ciudad de México');
+});
+
+test('resolveCityQuery rejects unknown cities', () => {
+    const result = resolveCityQuery('Madrid');
+    assert.equal(result.ok, false);
+});
+
+test('postMatchesCity searches location and bio', () => {
+    const post = {
+        location: '',
+        bio: 'Atiendo en Medellín centro',
+        description: '',
+        title: ''
+    };
+    assert.equal(postMatchesCity(post, 'Medellín'), true);
+});
+
+test('listSupportedCities filters by country', () => {
+    const mx = listSupportedCities('MX');
+    assert.ok(mx.length >= 8);
+    assert.ok(mx.every((c) => c.country === 'MX'));
+});
