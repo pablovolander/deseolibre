@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VerificaciÃ³n obligatoria - Deseo Libre</title>
+    <title>Verificación automática - Deseo Libre</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="/css/directory.css" rel="stylesheet">
@@ -12,7 +12,7 @@
         .verify-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.25rem; }
         .verify-card h2 { font-size: 1.1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
         .verify-steps { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-        .verify-step { flex: 1; min-width: 100px; text-align: center; padding: 0.5rem; border-radius: 8px; font-size: 0.75rem; background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); }
+        .verify-step { flex: 1; min-width: 70px; text-align: center; padding: 0.5rem; border-radius: 8px; font-size: 0.72rem; background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); }
         .verify-step.active { background: linear-gradient(135deg, rgba(255,107,157,0.3), rgba(139,124,248,0.25)); color: #fff; font-weight: 600; }
         .form-row { margin-bottom: 1rem; }
         .form-row label { display: block; font-size: 0.85rem; margin-bottom: 0.35rem; color: rgba(255,255,255,0.8); }
@@ -25,8 +25,6 @@
         .btn-verify:disabled { opacity: 0.5; cursor: not-allowed; }
         .status-box { text-align: center; padding: 2rem 1rem; }
         .status-box.verified { color: #7dffa8; }
-        .status-box.pending { color: #ffd166; }
-        .status-box.rejected { color: #ff8a9b; }
         .tips { font-size: 0.85rem; color: rgba(255,255,255,0.65); line-height: 1.5; }
         .tips li { margin-bottom: 0.35rem; }
         .fm-badge { display: inline-flex; align-items: center; gap: 0.35rem; background: rgba(125,255,168,0.15); color: #7dffa8; padding: 0.35rem 0.75rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; margin-bottom: 1rem; }
@@ -34,24 +32,25 @@
         #messageBox.error { color: #ff8a9b; }
         #messageBox.success { color: #7dffa8; }
         .back-link { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; }
-        .fm-compare { display: grid; gap: 0.75rem; margin-top: 1rem; }
-        .fm-compare div { padding: 0.75rem 1rem; border-radius: 10px; background: rgba(255,255,255,0.04); font-size: 0.9rem; }
+        .video-hint { font-size: 0.8rem; color: #ffd166; margin-top: 0.35rem; }
+        #videoDurationLabel { font-size: 0.85rem; color: #7dffa8; margin-top: 0.35rem; }
     </style>
 </head>
 <body class="directory-page">
     <header class="directory-header">
+        
         <div class="directory-header-inner">
-            <a href="index.html" class="directory-logo">â¤ï¸â€ðŸ”¥ Deseo Libre</a>
+            <a href="index.html" class="directory-logo">Deseo Libre</a>
             <a href="profile.html" class="back-link"><i class="fas fa-arrow-left"></i> Mi perfil</a>
         </div>
     </header>
 
-<div class="verify-wrap">
-        <span class="fm-badge"><i class="fas fa-shield-alt"></i> VerificaciÃ³n obligatoria para profesionales</span>
+    <div class="verify-wrap">
+        <span class="fm-badge"><i class="fas fa-bolt"></i> Verificación automática e instantánea</span>
         <h1 style="font-size:1.75rem;margin-bottom:0.5rem;">Verifica tu identidad</h1>
         <p style="color:rgba(255,255,255,0.65);margin-bottom:1.5rem;">
-            Como en Fatal Model (Brasil): solo perfiles verificados aparecen en el directorio.
-            Operamos en MÃ©xico, Colombia y Argentina.
+            Documento + selfie + <strong>video corporal obligatorio</strong>. Sin costo y sin espera manual.
+            Solo perfiles verificados aparecen en el directorio (MX, CO, AR).
         </p>
 
         <div id="messageBox"></div>
@@ -59,41 +58,37 @@
 
         <div id="uploadPanel" style="display:none;">
             <div class="verify-steps">
-                <div class="verify-step active">1. PaÃ­s</div>
+                <div class="verify-step active">1. País</div>
                 <div class="verify-step active">2. Documento</div>
-                <div class="verify-step active">3. Fotos</div>
+                <div class="verify-step active">3. Selfie</div>
+                <div class="verify-step active">4. Video cuerpo</div>
             </div>
 
             <form id="verifyForm">
                 <div class="verify-card">
-                    <h2><i class="fas fa-globe-americas"></i> PaÃ­s de operaciÃ³n</h2>
+                    <h2><i class="fas fa-globe-americas"></i> País</h2>
                     <div class="form-row">
-                        <label for="country">Â¿DÃ³nde publicarÃ¡s?</label>
+                        <label for="country">¿Dónde publicarás?</label>
                         <select id="country" required>
                             <option value="">Selecciona</option>
-                            <option value="MX">ðŸ‡²ðŸ‡½ MÃ©xico</option>
-                            <option value="CO">ðŸ‡¨ðŸ‡´ Colombia</option>
-                            <option value="AR">ðŸ‡¦ðŸ‡· Argentina</option>
+                            <option value="MX">México</option>
+                            <option value="CO">Colombia</option>
+                            <option value="AR">Argentina</option>
                         </select>
                     </div>
                 </div>
 
                 <div class="verify-card">
-                    <h2><i class="fas fa-id-card"></i> Tipo de documento</h2>
-<div class="form-row">
-                        <label for="verification_type">Documento oficial con foto</label>
+                    <h2><i class="fas fa-id-card"></i> Documento oficial</h2>
+                    <div class="form-row">
+                        <label for="verification_type">Tipo</label>
                         <select id="verification_type" required>
                             <option value="">Selecciona</option>
-                            <option value="id_card">INE / CÃ©dula / DNI</option>
+                            <option value="id_card">INE / Cédula / DNI</option>
                             <option value="passport">Pasaporte</option>
                             <option value="driver_license">Licencia de conducir</option>
                         </select>
                     </div>
-                </div>
-
-                <div class="verify-card">
-                    <h2><i class="fas fa-camera"></i> Sube tus fotos</h2>
-                    <p class="tips" style="margin-bottom:1rem;">Documento legible + selfie sosteniendo el documento junto a tu rostro (mismo proceso que Fatal Model).</p>
                     <div class="form-row">
                         <label for="id_front">Frente del documento *</label>
                         <input type="file" id="id_front" accept="image/*" required>
@@ -103,34 +98,45 @@
                         <input type="file" id="id_back" accept="image/*">
                     </div>
                     <div class="form-row">
-                        <label for="selfie">Selfie con documento junto al rostro *</label>
+                        <label for="selfie">Selfie sosteniendo el documento junto al rostro *</label>
                         <input type="file" id="selfie" accept="image/*" required>
                     </div>
+                </div>
+
+                <div class="verify-card">
+                    <h2><i class="fas fa-video"></i> Video corporal (obligatorio)</h2>
+                    <p class="tips" style="margin-bottom:0.75rem;">
+                        Graba un video de <strong id="minDurLabel">8</strong> a <strong id="maxDurLabel">60</strong> segundos mostrando tu cuerpo completo.
+                        Esto aumenta la credibilidad del perfil. El video <strong>no se publica</strong>; solo lo usa el sistema de verificación.
+                    </p>
                     <div class="form-row">
-                        <label for="additional_info">Notas (opcional)</label>
-                        <textarea id="additional_info" rows="2" placeholder="Nombre legal si difiere del usuario, etc."></textarea>
+                        <label for="body_video">Sube el video (MP4, WebM, MOV) *</label>
+                        <input type="file" id="body_video" accept="video/mp4,video/webm,video/quicktime" required>
+                        <p class="video-hint" id="videoSizeHint"></p>
+                        <p id="videoDurationLabel"></p>
                     </div>
                     <ul class="tips">
-                        <li>Buena iluminaciÃ³n, sin filtros</li>
-                        <li>Texto legible en el documento</li>
-                        <li>Debes ser mayor de 18 aÃ±os</li>
-                        <li>RevisiÃ³n manual en 24-48 horas</li>
+                        <li>Buena luz, sin filtros</li>
+                        <li>Rostro visible al inicio (comparación con selfie)</li>
+                        <li>Gira lentamente o muestra claramente que eres la misma persona</li>
+                        <li>Aprobación automática al enviar si todo es válido</li>
                     </ul>
-                    <button type="submit" class="btn-verify" id="submitBtn"><i class="fas fa-paper-plane"></i> Enviar verificaciÃ³n</button>
+                    <div class="form-row">
+                        <label for="additional_info">Notas (opcional)</label>
+                        <textarea id="additional_info" rows="2" placeholder="Nombre legal si difiere del usuario"></textarea>
+                    </div>
+                    <button type="submit" class="btn-verify" id="submitBtn"><i class="fas fa-shield-alt"></i> Verificar ahora (automático)</button>
                 </div>
             </form>
         </div>
 
         <section class="dl-extras" style="margin-top:2rem;">
-            <h2>Â¿Por quÃ© es obligatorio?</h2>
-            <div class="fm-compare">
-<div><strong>Fatal Model (Brasil):</strong> confianza por perfiles reales y verificados.</div>
-                <div><strong>Deseo Libre (MX Â· CO Â· AR):</strong> mismo estÃ¡ndar + 0% comisiÃ³n y pixelado opcional.</div>
-            </div>
-            <ul class="tips" style="margin-top:1rem;">
-                <li>Solo anuncios verificados en el directorio pÃºblico</li>
-                <li>Sello â€œVerificadoâ€ en tu tarjeta de perfil</li>
-                <li>Tus documentos no se muestran al pÃºblico</li>
+            <h2>¿Cómo funciona?</h2>
+            <ul class="tips">
+                <li>Validación automática de archivos, duración del video y datos obligatorios</li>
+                <li>Sin APIs de pago — reglas en nuestro servidor</li>
+                <li>Sello &quot;Verificado&quot; en tu tarjeta del directorio</li>
+                <li>Documentos y video de verificación no son públicos</li>
             </ul>
         </section>
     </div>
@@ -141,9 +147,12 @@
     <script>
         const authToken = localStorage.getItem('authToken');
         if (!authToken) {
-            alert('Inicia sesiÃ³n para verificar tu identidad');
+            alert('Inicia sesión para verificar tu identidad');
             location.href = 'index.html';
         }
+
+        let limits = { min_video_duration_sec: 8, max_video_duration_sec: 60, max_video_bytes: 4194304 };
+        let measuredVideoDuration = 0;
 
         const flash = sessionStorage.getItem('deseo_verify_message');
         if (flash) {
@@ -155,10 +164,63 @@
         const statusPanel = document.getElementById('statusPanel');
         const uploadPanel = document.getElementById('uploadPanel');
 
+        async function loadLimits() {
+            try {
+                const res = await fetch(`${API_URL}/api/verification/limits`);
+                if (res.ok) {
+                    limits = await res.json();
+                    document.getElementById('minDurLabel').textContent = limits.min_video_duration_sec;
+                    document.getElementById('maxDurLabel').textContent = limits.max_video_duration_sec;
+                    const mb = (limits.max_video_bytes / (1024 * 1024)).toFixed(1);
+                    document.getElementById('videoSizeHint').textContent =
+                        `Tamaño máximo del video: ~${mb} MB (comprime si es necesario).`;
+                }
+            } catch (_) {}
+        }
+
         document.getElementById('verification_type').addEventListener('change', function () {
             const isPassport = this.value === 'passport';
             document.getElementById('idBackRow').style.display = isPassport ? 'none' : 'block';
             document.getElementById('id_back').required = !isPassport;
+        });
+
+        document.getElementById('body_video').addEventListener('change', function () {
+            const file = this.files[0];
+            const label = document.getElementById('videoDurationLabel');
+            measuredVideoDuration = 0;
+            label.textContent = '';
+            if (!file) return;
+
+            if (file.size > limits.max_video_bytes) {
+                label.textContent = 'El video supera el tamaño máximo. Comprime el archivo.';
+                label.style.color = '#ff8a9b';
+                return;
+            }
+
+            const url = URL.createObjectURL(file);
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.onloadedmetadata = function () {
+                URL.revokeObjectURL(url);
+                measuredVideoDuration = video.duration || 0;
+                const min = limits.min_video_duration_sec;
+                const max = limits.max_video_duration_sec;
+                if (measuredVideoDuration < min) {
+                    label.textContent = `Duración: ${measuredVideoDuration.toFixed(1)}s — mínimo ${min}s`;
+                    label.style.color = '#ff8a9b';
+                } else if (measuredVideoDuration > max) {
+                    label.textContent = `Duración: ${measuredVideoDuration.toFixed(1)}s — máximo ${max}s`;
+                    label.style.color = '#ff8a9b';
+                } else {
+                    label.textContent = `Duración OK: ${measuredVideoDuration.toFixed(1)} segundos`;
+                    label.style.color = '#7dffa8';
+                }
+            };
+            video.onerror = function () {
+                label.textContent = 'No se pudo leer el video. Usa MP4 si falla.';
+                label.style.color = '#ff8a9b';
+            };
+            video.src = url;
         });
 
         async function loadStatus() {
@@ -166,31 +228,21 @@
             if (s.is_verified) {
                 statusPanel.innerHTML = `<div class="verify-card status-box verified">
                     <i class="fas fa-check-circle" style="font-size:3rem;"></i>
-                    <h2>Identidad verificada</h2>
-                    <p>Ya puedes publicar anuncios en el directorio.</p>
+                    <h2>Cuenta verificada</h2>
+                    <p>Tu identidad y video corporal fueron validados. Ya puedes publicar.</p>
                     <a href="profile.html" class="btn-verify" style="margin-top:1rem;">Ir a mi perfil</a>
                 </div>`;
                 uploadPanel.style.display = 'none';
                 return;
             }
-            if (s.pending || s.status === 'pending') {
-                statusPanel.innerHTML = `<div class="verify-card status-box pending">
-                    <i class="fas fa-hourglass-half" style="font-size:3rem;"></i>
-                    <h2>VerificaciÃ³n en revisiÃ³n</h2>
-                    <p>Recibimos tus documentos. Respuesta en 24-48 horas.</p>
-                </div>`;
-                uploadPanel.style.display = 'none';
-                return;
-            }
             if (s.status === 'rejected' && s.rejection_reason) {
-                statusPanel.innerHTML = `<div class="verify-card status-box rejected">
-                    <h2>VerificaciÃ³n rechazada</h2>
+                statusPanel.innerHTML = `<div class="verify-card status-box" style="color:#ff8a9b;">
+                    <h2>Verificación rechazada</h2>
                     <p>${s.rejection_reason}</p>
-                    <p>Puedes enviar nuevos documentos abajo.</p>
                 </div>`;
             } else {
                 statusPanel.innerHTML = `<div class="verify-card">
-                    <p><strong>Paso requerido:</strong> sin verificaciÃ³n no puedes publicar. Los clientes solo ven perfiles verificados.</p>
+                    <p><strong>Obligatorio:</strong> documento, selfie y video corporal. Verificación instantánea al enviar.</p>
                 </div>`;
             }
             uploadPanel.style.display = 'block';
@@ -199,19 +251,34 @@
         document.getElementById('verifyForm').addEventListener('submit', async function (e) {
             e.preventDefault();
             const btn = document.getElementById('submitBtn');
+            const videoFile = document.getElementById('body_video').files[0];
+
+            if (!videoFile) {
+                msg.className = 'error';
+                msg.textContent = 'El video corporal es obligatorio';
+                return;
+            }
+            if (measuredVideoDuration < limits.min_video_duration_sec) {
+                msg.className = 'error';
+                msg.textContent = `El video debe durar al menos ${limits.min_video_duration_sec} segundos`;
+                return;
+            }
+
             btn.disabled = true;
             msg.className = '';
-            msg.textContent = 'Subiendo documentos...';
+            msg.textContent = 'Procesando verificación automática...';
 
             const fd = new FormData();
             fd.append('verification_type', document.getElementById('verification_type').value);
             fd.append('country', document.getElementById('country').value);
             fd.append('additional_info', document.getElementById('additional_info').value);
+            fd.append('body_video_duration_sec', String(measuredVideoDuration));
             fd.append('id_front', document.getElementById('id_front').files[0]);
             if (document.getElementById('id_back').files[0]) {
                 fd.append('id_back', document.getElementById('id_back').files[0]);
             }
             fd.append('selfie', document.getElementById('selfie').files[0]);
+            fd.append('body_video', videoFile);
 
             try {
                 const res = await fetch(`${API_URL}/api/verification/upload`, {
@@ -220,10 +287,10 @@
                     body: fd
                 });
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.error || 'Error al enviar');
+                if (!res.ok) throw new Error(data.error || 'Error al verificar');
                 msg.className = 'success';
                 msg.textContent = data.message;
-                setTimeout(loadStatus, 1500);
+                setTimeout(loadStatus, 800);
             } catch (err) {
                 msg.className = 'error';
                 msg.textContent = err.message;
@@ -232,7 +299,7 @@
             }
         });
 
-        loadStatus().catch((e) => {
+        loadLimits().then(loadStatus).catch((e) => {
             msg.className = 'error';
             msg.textContent = e.message;
         });

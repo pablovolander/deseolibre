@@ -13,7 +13,7 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { restoreDatabaseIfNeeded, persistDatabase, persistDatabaseNow } = require('./lib/db-persist');
 const { persistUploadedFile, resolveMediaUrl, streamPrivateMedia, getBlobAccess } = require('./lib/media-storage');
-const { addPostToFeedIndex, getPostsFromFeedIndex, syncPostsToFeedIndex } = require('./lib/category-feed-index');
+const { evaluateAutoVerification, getMaxVideoBytes, MIN_VIDEO_DURATION_SEC, MAX_VIDEO_DURATION_SEC } = require('./lib/auto-verification');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -2394,80 +2394,126 @@ app.use((err, req, res, next) => {
 
 // ==================== IDENTITY VERIFICATION SYSTEM ====================
 
-// Upload verification documents
-app.post('/api/verification/upload', upload.fields([
+// Upload verification documents + video corporal → aprobación automática (sin costo)
+app.post('/api/verification/upload', authenticateToken, upload.fields([
     { name: 'id_front', maxCount: 1 },
     { name: 'id_back', maxCount: 1 },
-    { name: 'selfie', maxCount: 1 }
-]), authenticateToken, (req, res) => {
+    { name: 'selfie', maxCount: 1 },
+    { name: 'body_video', maxCount: 1 }
+]), async (req, res) => {
     const userId = req.user.userId;
-    
+
     try {
-        const { verification_type, additional_info, country } = req.body;
-        
-        // Validate required fields
-        if (!verification_type) {
-            return res.status(400).json({ error: 'Tipo de verificación requerido' });
-        }
-        
-        const validTypes = ['id_card', 'passport', 'driver_license'];
-        if (!validTypes.includes(verification_type)) {
-            return res.status(400).json({ error: 'Tipo de verificación inválido' });
-        }
-        
-        // Check if user already has pending verification
-        db.get(
-            'SELECT id FROM user_verifications WHERE user_id = ? AND status = "pending"',
-            [userId],
-            (err, existingVerification) => {
-                if (err) {
-                    return res.status(500).json({ error: 'Error interno del servidor' });
-                }
-                
-                if (existingVerification) {
-                    return res.status(400).json({ 
-                        error: 'Ya tienes una verificación pendiente',
-                        verification_id: existingVerification.id
-                    });
-                }
-                
-                // Prepare verification data
-                const verificationData = {
-                    type: verification_type,
-                    country: country || null,
-                    id_front_url: req.files.id_front ? `/uploads/${req.files.id_front[0].filename}` : null,
-                    id_back_url: req.files.id_back ? `/uploads/${req.files.id_back[0].filename}` : null,
-                    selfie_url: req.files.selfie ? `/uploads/${req.files.selfie[0].filename}` : null,
-                    additional_info: additional_info || null,
-                    submitted_at: new Date().toISOString()
-                };
-                
-                // Insert verification record
-                db.run(
-                    `INSERT INTO user_verifications (user_id, verification_type, verification_data, status) 
-                     VALUES (?, ?, ?, ?)`,
-                    [userId, verification_type, JSON.stringify(verificationData), 'pending'],
-                    function(err) {
-                        if (err) {
-                            console.error('Database error:', err);
-                            return res.status(500).json({ error: 'Error al guardar la verificación' });
-                        }
-                        
-                        res.json({
-                            message: 'Documentos de verificación subidos exitosamente',
-                            verification_id: this.lastID,
-                            status: 'pending',
-                            estimated_review_time: '24-48 horas'
-                        });
-                    }
-                );
-            }
+        const { verification_type, additional_info, country, body_video_duration_sec } = req.body;
+        const files = req.files || {};
+
+        const existingUser = await runDbGet(
+            'SELECT is_verified FROM users WHERE id = ?',
+            [userId]
         );
-        
+        if (existingUser?.is_verified) {
+            return res.status(400).json({ error: 'Tu cuenta ya está verificada' });
+        }
+
+        const pending = await runDbGet(
+            'SELECT id FROM user_verifications WHERE user_id = ? AND status = "pending"',
+            [userId]
+        );
+        if (pending) {
+            return res.status(400).json({
+                error: 'Ya tienes una verificación en proceso',
+                verification_id: pending.id
+            });
+        }
+
+        const autoEval = evaluateAutoVerification({
+            verification_type,
+            country,
+            id_front: files.id_front?.[0],
+            id_back: files.id_back?.[0],
+            selfie: files.selfie?.[0],
+            body_video: files.body_video?.[0],
+            body_video_duration_sec,
+            isVercel: isServerless
+        });
+
+        if (!autoEval.approved) {
+            return res.status(400).json({ error: autoEval.reason || 'Verificación no aprobada' });
+        }
+
+        const idFrontUrl = await persistUploadedFile(files.id_front[0], isVercel, localUploadsDir);
+        const selfieUrl = await persistUploadedFile(files.selfie[0], isVercel, localUploadsDir);
+        const bodyVideoUrl = await persistUploadedFile(files.body_video[0], isVercel, localUploadsDir);
+        let idBackUrl = null;
+        if (verification_type !== 'passport' && files.id_back?.[0]) {
+            idBackUrl = await persistUploadedFile(files.id_back[0], isVercel, localUploadsDir);
+        }
+
+        const verificationData = {
+            type: verification_type,
+            country: country || null,
+            id_front_url: idFrontUrl,
+            id_back_url: idBackUrl,
+            selfie_url: selfieUrl,
+            body_video_url: bodyVideoUrl,
+            body_video_duration_sec: Number(body_video_duration_sec),
+            additional_info: additional_info || null,
+            submitted_at: new Date().toISOString(),
+            auto_verified: true,
+            auto_method: autoEval.method,
+            auto_checks: autoEval.checks_passed
+        };
+
+        const now = new Date().toISOString();
+
+        const insertResult = await runDb(
+            `INSERT INTO user_verifications (user_id, verification_type, verification_data, status, verified_at)
+             VALUES (?, ?, ?, ?, ?)`,
+            [userId, verification_type, JSON.stringify(verificationData), 'approved', now]
+        );
+
+        await runDb(
+            `UPDATE users SET is_verified = 1, verification_status = ?, verification_date = ? WHERE id = ?`,
+            ['verified', now, userId]
+        );
+
+        const profileRow = await runDbGet('SELECT id FROM user_profiles WHERE user_id = ?', [userId]);
+        if (profileRow) {
+            await runDb(
+                `UPDATE user_profiles SET body_verification_video_url = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?`,
+                [bodyVideoUrl, userId]
+            );
+        } else {
+            await runDb(
+                `INSERT INTO user_profiles (user_id, body_verification_video_url, is_public) VALUES (?, ?, 1)`,
+                [userId, bodyVideoUrl]
+            );
+        }
+
+        await saveDatabaseAsync();
+
+        res.json({
+            message: 'Verificación completada automáticamente. Ya puedes publicar en el directorio.',
+            verification_id: insertResult.lastID,
+            status: 'approved',
+            is_verified: true,
+            auto_verified: true
+        });
     } catch (error) {
         console.error('Verification upload error:', error);
-        res.status(500).json({ error: 'Error interno del servidor' });
+        res.status(500).json({ error: error.message || 'Error al procesar la verificación' });
     }
+});
+
+// Límites públicos para el formulario de verificación
+app.get('/api/verification/limits', (req, res) => {
+    res.json({
+        min_video_duration_sec: MIN_VIDEO_DURATION_SEC,
+        max_video_duration_sec: MAX_VIDEO_DURATION_SEC,
+        max_video_bytes: getMaxVideoBytes(isServerless),
+        auto_verification: true,
+        body_video_required: true
+    });
 });
 
 // Get verification status (incluye is_verified del usuario)
