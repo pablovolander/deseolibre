@@ -475,7 +475,7 @@ function initializeDatabaseSchema(database) {
     return new Promise((resolve) => {
         database.serialize(() => {
     // Users table
-    db.run(`CREATE TABLE IF NOT EXISTS users (
+    database.run(`CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
         email TEXT UNIQUE NOT NULL,
@@ -500,7 +500,7 @@ function initializeDatabaseSchema(database) {
     )`);
 
     // Add is_admin column if it doesn't exist (for existing databases)
-    db.run(`ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE`, (err) => {
+    database.run(`ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE`, (err) => {
         // Ignore error if column already exists
         if (err && !err.message.includes('duplicate column')) {
             console.error('Error adding is_admin column:', err);
@@ -508,7 +508,7 @@ function initializeDatabaseSchema(database) {
     });
 
     // User verification log table
-    db.run(`CREATE TABLE IF NOT EXISTS user_verifications (
+    database.run(`CREATE TABLE IF NOT EXISTS user_verifications (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         verification_type TEXT NOT NULL,
@@ -521,7 +521,7 @@ function initializeDatabaseSchema(database) {
     )`);
 
     // Add rejection_reason column if it doesn't exist (for existing databases)
-    db.run(`ALTER TABLE user_verifications ADD COLUMN rejection_reason TEXT`, (err) => {
+    database.run(`ALTER TABLE user_verifications ADD COLUMN rejection_reason TEXT`, (err) => {
         // Ignore error if column already exists
         if (err && !err.message.includes('duplicate column')) {
             console.error('Error adding rejection_reason column:', err);
@@ -529,7 +529,7 @@ function initializeDatabaseSchema(database) {
     });
 
     // User profiles table
-    db.run(`CREATE TABLE IF NOT EXISTS user_profiles (
+    database.run(`CREATE TABLE IF NOT EXISTS user_profiles (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER UNIQUE NOT NULL,
         display_name TEXT,
@@ -547,19 +547,19 @@ function initializeDatabaseSchema(database) {
     )`);
 
     // Add new verification fields for existing databases
-    db.run(`ALTER TABLE user_profiles ADD COLUMN body_verification_video_url TEXT`, (err) => {
+    database.run(`ALTER TABLE user_profiles ADD COLUMN body_verification_video_url TEXT`, (err) => {
         if (err && !err.message.includes('duplicate column')) {
             console.error('Error adding body_verification_video_url column:', err);
         }
     });
-    db.run(`ALTER TABLE user_profiles ADD COLUMN face_obscured BOOLEAN DEFAULT 0`, (err) => {
+    database.run(`ALTER TABLE user_profiles ADD COLUMN face_obscured BOOLEAN DEFAULT 0`, (err) => {
         if (err && !err.message.includes('duplicate column')) {
             console.error('Error adding face_obscured column:', err);
         }
     });
 
     // Content posts table
-    db.run(`CREATE TABLE IF NOT EXISTS content_posts (
+    database.run(`CREATE TABLE IF NOT EXISTS content_posts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         title TEXT NOT NULL,
@@ -580,7 +580,7 @@ function initializeDatabaseSchema(database) {
     )`);
 
     // Likes table
-    db.run(`CREATE TABLE IF NOT EXISTS post_likes (
+    database.run(`CREATE TABLE IF NOT EXISTS post_likes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         post_id INTEGER NOT NULL,
@@ -591,7 +591,7 @@ function initializeDatabaseSchema(database) {
     )`);
 
     // Comments table
-    db.run(`CREATE TABLE IF NOT EXISTS post_comments (
+    database.run(`CREATE TABLE IF NOT EXISTS post_comments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         post_id INTEGER NOT NULL,
@@ -602,7 +602,7 @@ function initializeDatabaseSchema(database) {
     )`);
 
     // Reels table
-    db.run(`CREATE TABLE IF NOT EXISTS reels (
+    database.run(`CREATE TABLE IF NOT EXISTS reels (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         title TEXT NOT NULL,
@@ -621,7 +621,7 @@ function initializeDatabaseSchema(database) {
     )`);
 
     // Reels likes table
-    db.run(`CREATE TABLE IF NOT EXISTS reel_likes (
+    database.run(`CREATE TABLE IF NOT EXISTS reel_likes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         reel_id INTEGER NOT NULL,
         user_id INTEGER NOT NULL,
@@ -632,7 +632,7 @@ function initializeDatabaseSchema(database) {
     )`);
 
     // Reels comments table
-    db.run(`CREATE TABLE IF NOT EXISTS reel_comments (
+    database.run(`CREATE TABLE IF NOT EXISTS reel_comments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         reel_id INTEGER NOT NULL,
         user_id INTEGER NOT NULL,
@@ -643,7 +643,7 @@ function initializeDatabaseSchema(database) {
     )`);
 
     // Reports table
-    db.run(`CREATE TABLE IF NOT EXISTS reports (
+    database.run(`CREATE TABLE IF NOT EXISTS reports (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         reporter_id INTEGER NOT NULL,
         reported_user_id INTEGER,
@@ -660,7 +660,7 @@ function initializeDatabaseSchema(database) {
     )`);
 
     // User bans table
-    db.run(`CREATE TABLE IF NOT EXISTS user_bans (
+    database.run(`CREATE TABLE IF NOT EXISTS user_bans (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         reason TEXT NOT NULL,
@@ -673,7 +673,7 @@ function initializeDatabaseSchema(database) {
     )`);
 
     // User follows table (for social network features)
-    db.run(`CREATE TABLE IF NOT EXISTS user_follows (
+    database.run(`CREATE TABLE IF NOT EXISTS user_follows (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         follower_id INTEGER NOT NULL,
         following_id INTEGER NOT NULL,
@@ -684,7 +684,7 @@ function initializeDatabaseSchema(database) {
     )`);
 
     // Notifications table
-    db.run(`CREATE TABLE IF NOT EXISTS notifications (
+    database.run(`CREATE TABLE IF NOT EXISTS notifications (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         type TEXT NOT NULL,
@@ -697,7 +697,7 @@ function initializeDatabaseSchema(database) {
     )`);
 
     // Post shares table
-    db.run(`CREATE TABLE IF NOT EXISTS post_shares (
+    database.run(`CREATE TABLE IF NOT EXISTS post_shares (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         post_id INTEGER NOT NULL,
@@ -707,7 +707,7 @@ function initializeDatabaseSchema(database) {
     )`);
 
     // User interests table (for personalized recommendations)
-    db.run(`CREATE TABLE IF NOT EXISTS user_interests (
+    database.run(`CREATE TABLE IF NOT EXISTS user_interests (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         category TEXT NOT NULL,
@@ -718,19 +718,19 @@ function initializeDatabaseSchema(database) {
     )`);
 
     // Add statistics columns to users table if they don't exist
-    db.run(`ALTER TABLE users ADD COLUMN followers_count INTEGER DEFAULT 0`, (err) => {
+    database.run(`ALTER TABLE users ADD COLUMN followers_count INTEGER DEFAULT 0`, (err) => {
         if (err && !err.message.includes('duplicate column')) {
             console.error('Error adding followers_count:', err);
         }
     });
     
-    db.run(`ALTER TABLE users ADD COLUMN following_count INTEGER DEFAULT 0`, (err) => {
+    database.run(`ALTER TABLE users ADD COLUMN following_count INTEGER DEFAULT 0`, (err) => {
         if (err && !err.message.includes('duplicate column')) {
             console.error('Error adding following_count:', err);
         }
     });
     
-    db.run(`ALTER TABLE users ADD COLUMN posts_count INTEGER DEFAULT 0`, (err) => {
+    database.run(`ALTER TABLE users ADD COLUMN posts_count INTEGER DEFAULT 0`, (err) => {
         if (err && !err.message.includes('duplicate column')) {
             console.error('Error adding posts_count:', err);
         }
@@ -740,43 +740,45 @@ function initializeDatabaseSchema(database) {
     });
 }
 
-const dbReady = (async () => {
-    await restoreDatabaseIfNeeded(dbPath, isVercel);
-    db = new sqlite3.Database(dbPath);
-    await initializeDatabaseSchema(db);
-    await new Promise((resolve) => {
-        db.run(
-            'UPDATE content_posts SET is_public = 1 WHERE is_public = 0',
-            (err) => {
-                if (err) {
-                    console.warn('No se pudo normalizar is_public en posts:', err.message);
-                }
-                resolve();
-            }
-        );
-    });
-    await new Promise((resolve) => {
-        db.run('ALTER TABLE content_posts ADD COLUMN audience TEXT', (err) => {
-            if (err && !String(err.message).includes('duplicate column')) {
-                console.warn('audience column:', err.message);
+async function applyDatabaseMigrations(database) {
+    const conn = database || db;
+    if (!conn) {
+        return;
+    }
+
+    const exec = (sql) => new Promise((resolve) => {
+        conn.run(sql, (err) => {
+            if (err && !String(err.message || '').includes('duplicate column')) {
+                console.warn('Migración BD:', err.message);
             }
             resolve();
         });
     });
-    await new Promise((resolve) => {
-        db.run(
-            `UPDATE content_posts SET category = 'acompañantes-mujeres', audience = NULL
-             WHERE category = 'acompañantes' AND (audience IN ('mujeres', 'trans') OR audience IS NULL OR audience = '')`,
-            () => resolve()
-        );
-    });
-    await new Promise((resolve) => {
-        db.run(
-            `UPDATE content_posts SET category = 'acompañantes-hombres', audience = NULL
-             WHERE category = 'acompañantes' AND audience = 'hombres'`,
-            () => resolve()
-        );
-    });
+
+    await exec('UPDATE content_posts SET is_public = 1 WHERE is_public = 0');
+    await exec('ALTER TABLE content_posts ADD COLUMN audience TEXT');
+    await exec(
+        `UPDATE content_posts SET category = 'acompañantes-mujeres', audience = NULL
+         WHERE category = 'acompañantes' AND (audience IN ('mujeres', 'trans') OR audience IS NULL OR audience = '')`
+    );
+    await exec(
+        `UPDATE content_posts SET category = 'acompañantes-hombres', audience = NULL
+         WHERE category = 'acompañantes' AND audience = 'hombres'`
+    );
+}
+
+async function ensureDatabaseSchemaUpToDate() {
+    if (!db) {
+        return;
+    }
+    await initializeDatabaseSchema(db);
+    await applyDatabaseMigrations(db);
+}
+
+const dbReady = (async () => {
+    await restoreDatabaseIfNeeded(dbPath, isVercel);
+    db = new sqlite3.Database(dbPath);
+    await ensureDatabaseSchemaUpToDate();
     if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
         console.log('Persistencia de base de datos en Vercel Blob activa');
         try {
@@ -839,10 +841,12 @@ async function refreshDatabaseFromBlob() {
             }
             await restoreDatabaseIfNeeded(dbPath, isVercel);
             db = new sqlite3.Database(dbPath);
+            await ensureDatabaseSchemaUpToDate();
         } catch (error) {
             console.error('Error al refrescar base de datos desde Blob:', error.message);
             if (!db) {
                 db = new sqlite3.Database(dbPath);
+                await ensureDatabaseSchemaUpToDate();
             }
         }
     });
@@ -2103,7 +2107,11 @@ app.get('/api/content/category/:category', async (req, res) => {
 
             posts = filterPosts(await runDbAll(query, queryParams));
             if (posts.length) {
-                await syncPostsToFeedIndex(posts, categoryVariants);
+                try {
+                    await syncPostsToFeedIndex(posts, categoryVariants);
+                } catch (syncErr) {
+                    console.warn('No se pudo sincronizar índice de feeds:', syncErr.message);
+                }
             }
         } else {
             posts = filterPosts(posts);
@@ -2124,7 +2132,7 @@ app.get('/api/content/category/:category', async (req, res) => {
             source
                 });
     } catch (err) {
-        console.error('Error loading category content:', err);
+        console.error('Error loading category content:', err.message || err);
         res.status(500).json({ error: 'Error al cargar contenido' });
             }
 });
