@@ -14,6 +14,7 @@ const rateLimit = require('express-rate-limit');
 const { restoreDatabaseIfNeeded, persistDatabase, persistDatabaseNow } = require('./lib/db-persist');
 const { persistUploadedFile, resolveMediaUrl, streamPrivateMedia, getBlobAccess } = require('./lib/media-storage');
 const { evaluateAutoVerification, getMaxVideoBytes, MIN_VIDEO_DURATION_SEC, MAX_VIDEO_DURATION_SEC } = require('./lib/auto-verification');
+const { addPostToFeedIndex, getPostsFromFeedIndex, syncPostsToFeedIndex } = require('./lib/category-feed-index');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1891,7 +1892,11 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
             is_verified: author?.is_verified || 0
         };
 
-        await addPostToFeedIndex(postRecord, categoryVariants);
+        try {
+            await addPostToFeedIndex(postRecord, categoryVariants);
+        } catch (indexErr) {
+            console.warn('No se pudo indexar publicación en feed:', indexErr.message);
+        }
         await saveDatabaseAsync();
 
         const origin = getRequestOrigin(req);
@@ -1984,40 +1989,45 @@ app.delete('/api/content/:postId', authenticateToken, (req, res) => {
 });
 
 // Get user's own content
-app.get('/api/user/content', authenticateToken, (req, res) => {
-    const userId = req.user.userId;
-
-    const query = `
-        SELECT 
-            id,
-            title,
-            description,
-            content_type,
-            file_url as media_url,
-            thumbnail_url,
-            price,
-            is_premium,
-            is_public,
-            category,
-            likes_count,
-            comments_count,
-            created_at,
-            updated_at
-        FROM content_posts
-        WHERE user_id = ?
-        ORDER BY created_at DESC
-    `;
-
-    db.all(query, [userId], (err, posts) => {
-        if (err) {
-            console.error('Error loading user content:', err);
-            return res.status(500).json({ error: 'Error al cargar contenido' });
+app.get('/api/user/content', authenticateToken, async (req, res) => {
+    try {
+        const user = await resolveAuthUser(req);
+        if (!user) {
+            return res.status(404).json({
+                error: 'Usuario no encontrado',
+                message: 'Tu sesión no coincide con la base de datos. Cierra sesión y vuelve a entrar.'
+            });
         }
+
+        const posts = await runDbAll(
+            `SELECT 
+                id,
+                title,
+                description,
+                content_type,
+                file_url as media_url,
+                thumbnail_url,
+                price,
+                is_premium,
+                is_public,
+                category,
+                likes_count,
+                comments_count,
+                created_at,
+                updated_at
+            FROM content_posts
+            WHERE user_id = ?
+            ORDER BY created_at DESC`,
+            [user.id]
+        );
 
         res.json({
             content: enrichPostsWithMediaUrls(posts, req)
         });
-    });
+    } catch (err) {
+        console.error('Error loading user content:', err.message || err);
+        res.status(500).json({ error: 'Error al cargar contenido' });
+    }
 });
 
 // Get content by category (public endpoint, no auth required)

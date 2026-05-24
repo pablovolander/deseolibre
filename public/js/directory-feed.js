@@ -184,8 +184,10 @@
     };
 
     window.showCreatePost = async function () {
+        authToken = typeof DeseoAuth !== 'undefined' ? DeseoAuth.getToken() : localStorage.getItem('authToken');
         if (!authToken) {
             showMessage('Inicia sesión para publicar', 'error');
+            showRegister();
             return;
         }
         if (typeof DeseoVerification !== 'undefined') {
@@ -193,6 +195,11 @@
             if (!ok) return;
         }
         document.getElementById('createPostModal')?.classList.add('show');
+    };
+
+    window.publishFromCategory = async function (event) {
+        if (event) event.preventDefault();
+        await showCreatePost();
     };
 
     window.closeModal = function (id) {

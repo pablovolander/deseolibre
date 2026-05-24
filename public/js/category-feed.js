@@ -124,11 +124,16 @@
         document.getElementById('registerModal')?.classList.add('show');
     };
 
-    window.showCreatePost = function () {
-        authToken = localStorage.getItem('authToken');
+    window.showCreatePost = async function () {
+        authToken = typeof DeseoAuth !== 'undefined' ? DeseoAuth.getToken() : localStorage.getItem('authToken');
         if (!authToken) {
             showMessage('Debes iniciar sesión primero', 'error');
+            showRegister();
             return;
+        }
+        if (typeof DeseoVerification !== 'undefined') {
+            const ok = await DeseoVerification.requireVerifiedForPublish('Publicar anuncio');
+            if (!ok) return;
         }
         document.getElementById('createPostModal')?.classList.add('show');
     };
@@ -221,6 +226,9 @@
             await new Promise((r) => setTimeout(r, 1500));
             await loadFeed();
         } catch (error) {
+            if (typeof DeseoVerification !== 'undefined' && DeseoVerification.handlePublishError(error)) {
+                return;
+            }
             showMessage('Error: ' + error.message, 'error');
         }
     };
