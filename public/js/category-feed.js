@@ -56,7 +56,10 @@
             const data = await response.json().catch(() => ({}));
 
             if (!response.ok) {
-                grid.innerHTML = `<div class="no-posts">${escapeHtml(data.error || 'Error al cargar publicaciones')}</div>`;
+                const errInfo = typeof DeseoErrors !== 'undefined'
+                    ? DeseoErrors.formatApiError({ status: response.status, message: data.error, data })
+                    : { message: data.error || 'Error al cargar publicaciones' };
+                grid.innerHTML = `<div class="no-posts">${escapeHtml(errInfo.message)}</div>`;
                 return;
             }
 
@@ -229,7 +232,7 @@
             if (typeof DeseoVerification !== 'undefined' && DeseoVerification.handlePublishError(error)) {
                 return;
             }
-            showMessage('Error: ' + error.message, 'error');
+            showMessage(typeof DeseoErrors !== 'undefined' ? DeseoErrors.formatMessage(error) : ('Error: ' + error.message), 'error');
         }
     };
 })();

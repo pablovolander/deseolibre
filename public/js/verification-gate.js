@@ -51,7 +51,7 @@ window.DeseoVerification = (function () {
             const s = await fetchStatus();
             if (s.is_verified) return true;
             if (s.pending) {
-                alert('Tu verificación está en revisión (24-48 h). Te avisaremos cuando puedas publicar.');
+                alert('Tu verificación está en revisión. Si ya enviaste documentos, espera unos minutos o recarga la página.');
                 redirectToVerify();
                 return false;
             }
@@ -68,6 +68,13 @@ window.DeseoVerification = (function () {
 
     function handlePublishError(error) {
         const data = error?.data || {};
+        if (typeof DeseoErrors !== 'undefined') {
+            const info = DeseoErrors.formatApiError(error);
+            if (info.action === 'verify') {
+                redirectToVerify(info.message);
+                return true;
+            }
+        }
         if (data.requiresVerification || error?.status === 403) {
             redirectToVerify(data.message || error.message || 'Verifica tu identidad para continuar.');
             return true;

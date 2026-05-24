@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -33,7 +33,10 @@
         #messageBox.success { color: #7dffa8; }
         .back-link { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; }
         .video-hint { font-size: 0.8rem; color: #ffd166; margin-top: 0.35rem; }
-        #videoDurationLabel { font-size: 0.85rem; color: #7dffa8; margin-top: 0.35rem; }
+        #videoDurationLabel { font-size: 0.85rem; margin-top: 0.35rem; }
+        #faceMatchLabel { font-size: 0.85rem; margin-top: 0.35rem; min-height: 1.2rem; }
+        .verified-links { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin-top: 1rem; }
+        .verified-links a { flex: 1; min-width: 140px; font-size: 0.85rem; padding: 0.65rem; }
     </style>
 </head>
 <body class="directory-page">
@@ -62,6 +65,7 @@
                 <div class="verify-step active">2. Documento</div>
                 <div class="verify-step active">3. Selfie</div>
                 <div class="verify-step active">4. Video cuerpo</div>
+                <div class="verify-step active">5. Comparación rostro</div>
             </div>
 
             <form id="verifyForm">
@@ -114,6 +118,10 @@
                         <input type="file" id="body_video" accept="video/mp4,video/webm,video/quicktime" required>
                         <p class="video-hint" id="videoSizeHint"></p>
                         <p id="videoDurationLabel"></p>
+                        <p id="faceMatchLabel"></p>
+                        <button type="button" class="btn-verify" id="faceMatchBtn" style="margin-top:0.75rem;background:rgba(255,255,255,0.08);">
+                            <i class="fas fa-user-check"></i> Comparar rostro (selfie vs video)
+                        </button>
                     </div>
                     <ul class="tips">
                         <li>Buena luz, sin filtros</li>
@@ -141,8 +149,12 @@
         </section>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/dist/face-api.js"></script>
     <script src="/js/api-config.js"></script>
     <script src="/js/auth-session.js"></script>
+    <script src="/js/face-match.js"></script>
+    <script src="/js/api-errors.js"></script>
     <script src="/js/verification-gate.js"></script>
     <script>
         const authToken = localStorage.getItem('authToken');
@@ -151,8 +163,9 @@
             location.href = 'index.html';
         }
 
-        let limits = { min_video_duration_sec: 8, max_video_duration_sec: 60, max_video_bytes: 4194304 };
+        let limits = { min_video_duration_sec: 8, max_video_duration_sec: 60, max_video_bytes: 4194304, min_face_match_score: 0.35 };
         let measuredVideoDuration = 0;
+        let faceMatchResult = null;
 
         const flash = sessionStorage.getItem('deseo_verify_message');
         if (flash) {
@@ -184,7 +197,10 @@
             document.getElementById('id_back').required = !isPassport;
         });
 
+        document.getElementById('selfie').addEventListener('change', () => { faceMatchResult = null; });
         document.getElementById('body_video').addEventListener('change', function () {
+            faceMatchResult = null;
+            document.getElementById('faceMatchLabel').textContent = '';
             const file = this.files[0];
             const label = document.getElementById('videoDurationLabel');
             measuredVideoDuration = 0;
@@ -223,14 +239,58 @@
             video.src = url;
         });
 
+        async function runFaceMatch() {
+            const selfieFile = document.getElementById('selfie').files[0];
+            const videoFile = document.getElementById('body_video').files[0];
+            const label = document.getElementById('faceMatchLabel');
+            const btn = document.getElementById('faceMatchBtn');
+
+            if (!selfieFile || !videoFile) {
+                label.style.color = '#ff8a9b';
+                label.textContent = 'Sube la selfie y el video antes de comparar.';
+                return null;
+            }
+
+            btn.disabled = true;
+            label.style.color = 'rgba(255,255,255,0.75)';
+            label.textContent = 'Analizando rostros en tu navegador (gratis)...';
+
+            try {
+                const result = await DeseoFaceMatch.compareSelfieWithVideo(selfieFile, videoFile);
+                faceMatchResult = result;
+                if (result.match) {
+                    label.style.color = '#7dffa8';
+                    label.textContent = `Coincidencia facial OK (${Math.round(result.score * 100)}%). Puedes enviar la verificación.`;
+                } else {
+                    label.style.color = '#ff8a9b';
+                    label.textContent = `Rostro no coincide lo suficiente (${Math.round(result.score * 100)}%). Graba de nuevo con tu cara visible al inicio.`;
+                }
+                return result;
+            } catch (err) {
+                faceMatchResult = null;
+                label.style.color = '#ff8a9b';
+                label.textContent = err.message || 'No se pudo comparar rostros';
+                return null;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        document.getElementById('faceMatchBtn').addEventListener('click', runFaceMatch);
+
         async function loadStatus() {
             const s = await DeseoVerification.fetchStatus();
             if (s.is_verified) {
                 statusPanel.innerHTML = `<div class="verify-card status-box verified">
                     <i class="fas fa-check-circle" style="font-size:3rem;"></i>
                     <h2>Cuenta verificada</h2>
-                    <p>Tu identidad y video corporal fueron validados. Ya puedes publicar.</p>
-                    <a href="profile.html" class="btn-verify" style="margin-top:1rem;">Ir a mi perfil</a>
+                    <p>Tu identidad y video corporal fueron validados. Ya puedes publicar anuncios en el directorio.</p>
+                    <div class="verified-links">
+                        <a href="feed-acompañantes-mujeres.html" class="btn-verify">Publicar (Mujeres)</a>
+                        <a href="feed-acompañantes-hombres.html" class="btn-verify">Publicar (Hombres)</a>
+                        <a href="feed-masajes.html" class="btn-verify">Masajes</a>
+                        <a href="profile.html" class="btn-verify" style="background:rgba(255,255,255,0.1);">Mi perfil</a>
+                    </div>
                 </div>`;
                 uploadPanel.style.display = 'none';
                 return;
@@ -264,6 +324,20 @@
                 return;
             }
 
+            let match = faceMatchResult;
+            if (!match || !match.match) {
+                msg.className = '';
+                msg.textContent = 'Comparando rostro selfie vs video...';
+                match = await runFaceMatch();
+                if (!match || !match.match) {
+                    msg.className = 'error';
+                    msg.textContent = match
+                        ? 'El rostro del video no coincide con la selfie. Intenta de nuevo con mejor luz.'
+                        : 'Debes completar la comparación facial antes de verificar.';
+                    return;
+                }
+            }
+
             btn.disabled = true;
             msg.className = '';
             msg.textContent = 'Procesando verificación automática...';
@@ -273,6 +347,7 @@
             fd.append('country', document.getElementById('country').value);
             fd.append('additional_info', document.getElementById('additional_info').value);
             fd.append('body_video_duration_sec', String(measuredVideoDuration));
+            fd.append('face_match_score', String(match.score));
             fd.append('id_front', document.getElementById('id_front').files[0]);
             if (document.getElementById('id_back').files[0]) {
                 fd.append('id_back', document.getElementById('id_back').files[0]);
@@ -293,13 +368,18 @@
                 setTimeout(loadStatus, 800);
             } catch (err) {
                 msg.className = 'error';
-                msg.textContent = err.message;
+                msg.textContent = typeof DeseoErrors !== 'undefined'
+                    ? DeseoErrors.formatMessage({ message: err.message, status: 400 })
+                    : err.message;
             } finally {
                 btn.disabled = false;
             }
         });
 
-        loadLimits().then(loadStatus).catch((e) => {
+        loadLimits()
+            .then(() => DeseoFaceMatch.loadModels().catch(() => {}))
+            .then(loadStatus)
+            .catch((e) => {
             msg.className = 'error';
             msg.textContent = e.message;
         });

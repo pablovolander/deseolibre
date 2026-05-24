@@ -13,7 +13,7 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { restoreDatabaseIfNeeded, persistDatabase, persistDatabaseNow } = require('./lib/db-persist');
 const { persistUploadedFile, resolveMediaUrl, streamPrivateMedia, getBlobAccess } = require('./lib/media-storage');
-const { evaluateAutoVerification, getMaxVideoBytes, MIN_VIDEO_DURATION_SEC, MAX_VIDEO_DURATION_SEC } = require('./lib/auto-verification');
+const { evaluateAutoVerification, getMaxVideoBytes, MIN_VIDEO_DURATION_SEC, MAX_VIDEO_DURATION_SEC, MIN_FACE_MATCH_SCORE } = require('./lib/auto-verification');
 const { addPostToFeedIndex, getPostsFromFeedIndex, syncPostsToFeedIndex } = require('./lib/category-feed-index');
 
 const app = express();
@@ -2494,7 +2494,7 @@ app.post('/api/verification/upload', authenticateToken, upload.fields([
         }
         const userId = authUser.id;
 
-        const { verification_type, additional_info, country, body_video_duration_sec } = req.body;
+        const { verification_type, additional_info, country, body_video_duration_sec, face_match_score } = req.body;
         const files = req.files || {};
 
         const existingUser = await runDbGet(
@@ -2524,6 +2524,7 @@ app.post('/api/verification/upload', authenticateToken, upload.fields([
             selfie: files.selfie?.[0],
             body_video: files.body_video?.[0],
             body_video_duration_sec,
+            face_match_score,
             isVercel: isServerless
         });
 
@@ -2547,6 +2548,7 @@ app.post('/api/verification/upload', authenticateToken, upload.fields([
             selfie_url: selfieUrl,
             body_video_url: bodyVideoUrl,
             body_video_duration_sec: Number(body_video_duration_sec),
+            face_match_score: Number(face_match_score),
             additional_info: additional_info || null,
             submitted_at: new Date().toISOString(),
             auto_verified: true,
@@ -2601,6 +2603,8 @@ app.get('/api/verification/limits', (req, res) => {
         min_video_duration_sec: MIN_VIDEO_DURATION_SEC,
         max_video_duration_sec: MAX_VIDEO_DURATION_SEC,
         max_video_bytes: getMaxVideoBytes(isServerless),
+        min_face_match_score: MIN_FACE_MATCH_SCORE,
+        face_match_required: true,
         auto_verification: true,
         body_video_required: true
     });

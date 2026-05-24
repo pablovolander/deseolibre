@@ -98,7 +98,10 @@
             const data = await response.json().catch(() => ({}));
 
             if (!response.ok) {
-                grid.innerHTML = `<div class="directory-empty">${escapeHtml(data.error || 'Error al cargar')}</div>`;
+                const errInfo = typeof DeseoErrors !== 'undefined'
+                    ? DeseoErrors.formatApiError({ status: response.status, message: data.error, data })
+                    : { message: data.error || 'Error al cargar' };
+                grid.innerHTML = `<div class="directory-empty">${escapeHtml(errInfo.message)}</div>`;
                 return;
             }
 
@@ -290,7 +293,7 @@
             if (typeof DeseoVerification !== 'undefined' && DeseoVerification.handlePublishError(error)) {
                 return;
             }
-            showMessage(error.message || 'Error al publicar', 'error');
+            showMessage(typeof DeseoErrors !== 'undefined' ? DeseoErrors.formatMessage(error) : (error.message || 'Error al publicar'), 'error');
         }
     };
 })();
