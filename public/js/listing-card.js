@@ -3,15 +3,34 @@
  */
 window.DeseoListing = (function () {
     const COUNTRY_LABELS = { MX: 'México' };
+    const CITY_SHORT = {
+        'Ciudad de México': 'CDMX',
+        Guadalajara: 'GDL',
+        Monterrey: 'MTY'
+    };
 
     function getName(post) {
         return post.full_name || post.display_name || post.username || 'Profesional';
     }
 
+    function getCityShort(city) {
+        return CITY_SHORT[city] || city || '';
+    }
+
     function getLocation(post) {
-        if (post.city && post.country) {
+        const zone = String(post.zone || '').trim();
+        const city = post.city || '';
+        const detail = String(post.zone_detail || '').trim();
+        if (zone && city) {
+            let line = `${zone} · ${getCityShort(city)}`;
+            if (detail) {
+                line = `${line} — ${detail}`;
+            }
+            return line;
+        }
+        if (city && post.country) {
             const country = COUNTRY_LABELS[post.country] || post.country;
-            return `${post.city}, ${country}`;
+            return `${city}, ${country}`;
         }
         return post.location || post.user_location || 'Ubicación no indicada';
     }
@@ -56,6 +75,7 @@ window.DeseoListing = (function () {
         getPhone,
         getTelegramUsername,
         getMessagingLinksHtml,
-        COUNTRY_LABELS
+        COUNTRY_LABELS,
+        CITY_SHORT
     };
 })();

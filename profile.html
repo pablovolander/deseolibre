@@ -1939,10 +1939,21 @@
                     </div>
                     <input type="hidden" id="editCountry" value="MX">
                     <div class="form-group">
-                        <label for="editCity">Ciudad en México *:</label>
+                        <label for="editCity">Ciudad *:</label>
                         <select id="editCity" required>
-                            <option value="">Selecciona tu ciudad</option>
+                            <option value="">CDMX, Guadalajara o Monterrey</option>
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editZone">Zona *:</label>
+                        <select id="editZone" required disabled>
+                            <option value="">Primero elige ciudad</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editZoneDetail">Detalle de ubicación:</label>
+                        <input type="text" id="editZoneDetail" maxlength="120" placeholder="Colonia, referencia (obligatorio si Otra zona)">
+                        <small style="color: var(--text-muted);">Visible en tu perfil público.</small>
                     </div>
                     <div class="form-group">
                         <label for="editPhone">Teléfono * (WhatsApp):</label>
@@ -2211,6 +2222,7 @@
     <script src="/js/api-errors.js"></script>
     <script src="/js/verification-gate.js"></script>
     <script src="/js/city-search.js"></script>
+    <script src="/js/location-search.js"></script>
     <script src="/js/profile-fields.js"></script>
     <script src="/js/contact-links.js"></script>
     <script src="/js/listing-card.js"></script>
@@ -2821,6 +2833,8 @@
                 bio: document.getElementById('editBio').value,
                 country: profilePayload.country,
                 city: profilePayload.city,
+                zone: profilePayload.zone,
+                zone_detail: profilePayload.zone_detail,
                 phone: profilePayload.phone,
                 telegram_username: profilePayload.telegram_username,
                 service_price: profilePayload.service_price,
@@ -2986,7 +3000,9 @@
             if (typeof DeseoProfileFields !== 'undefined') {
                 DeseoProfileFields.initLocationPicker('edit', {
                     country: currentUser.country,
-                    city: currentUser.city
+                    city: currentUser.city,
+                    zone: currentUser.zone,
+                    zone_detail: currentUser.zone_detail
                 });
             }
             document.getElementById('editProfileModal').classList.add('active');

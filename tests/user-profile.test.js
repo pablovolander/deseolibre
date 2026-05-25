@@ -19,13 +19,16 @@ test('validateUserProfileFields requires full profile', () => {
         full_name: 'Ana',
         country: 'MX',
         city: 'Ciudad de México',
+        zone: 'Polanco',
+        zone_detail: 'Cerca del parque',
         phone: '+52 555 123 4567',
         telegram_username: 'ana_mx',
         service_price: 2000,
         service_price_unit: 'hour'
     });
     assert.equal(result.ok, true);
-    assert.match(result.location, /Ciudad de México/);
+    assert.match(result.location, /Polanco/);
+    assert.equal(result.zone, 'Polanco');
     assert.equal(result.telegram_username, 'ana_mx');
 });
 
@@ -36,6 +39,7 @@ test('userHasCompleteProfile detects missing fields', () => {
             full_name: 'Ana',
             country: 'MX',
             city: 'Ciudad de México',
+            zone: 'Condesa',
             phone: '+525551234567',
             telegram_username: 'ana_mx',
             service_price: 1000,

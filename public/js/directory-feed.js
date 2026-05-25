@@ -7,6 +7,7 @@
     let FIXED_GENERO = null;
     let authToken = localStorage.getItem('authToken');
     let activeCiudad = '';
+    let activeZona = '';
     let citySearchApi = null;
 
     function setActiveCity(cityName) {
@@ -21,14 +22,54 @@
             url.searchParams.set('ciudad', activeCiudad);
         } else {
             url.searchParams.delete('ciudad');
+            url.searchParams.delete('zona');
+        }
+        if (!activeCiudad) {
+            setActiveZone('');
         }
         window.history.replaceState({}, '', url);
+    }
+
+    function setActiveZone(zoneName) {
+        activeZona = zoneName || '';
+        const zoneSelect = document.getElementById('searchZone');
+        if (zoneSelect) {
+            zoneSelect.value = activeZona;
+        }
+        localStorage.setItem('deseo_search_zone', activeZona);
+        const url = new URL(window.location.href);
+        if (activeZona) {
+            url.searchParams.set('zona', activeZona);
+        } else {
+            url.searchParams.delete('zona');
+        }
+        window.history.replaceState({}, '', url);
+    }
+
+    async function refreshZoneUiForCity(cityName, selectedZone) {
+        const zoneSelect = document.getElementById('searchZone');
+        const chips = document.getElementById('popularZones');
+        if (typeof DeseoLocationSearch === 'undefined') {
+            return;
+        }
+        await DeseoLocationSearch.fillZoneSelect(zoneSelect, cityName, selectedZone || '');
+        if (chips && cityName) {
+            await DeseoLocationSearch.fetchZones(cityName);
+            DeseoLocationSearch.renderZoneChips(chips, cityName, (zone) => {
+                setActiveZone(zone);
+                loadDirectory();
+            });
+        } else if (chips) {
+            chips.innerHTML = '';
+        }
     }
 
     async function performCitySearch() {
         const raw = (document.getElementById('searchCity')?.value || '').trim();
         if (!raw) {
             setActiveCity('');
+            setActiveZone('');
+            await refreshZoneUiForCity('', '');
             loadDirectory();
             return;
         }
@@ -39,8 +80,12 @@
                 return;
             }
             setActiveCity(resolved.city);
+            await refreshZoneUiForCity(resolved.city, '');
+            setActiveZone('');
         } else {
             setActiveCity(raw);
+            await refreshZoneUiForCity(raw, '');
+            setActiveZone('');
         }
         loadDirectory();
     }
@@ -66,6 +111,11 @@
     function getCiudadFromUrl() {
         const params = new URLSearchParams(window.location.search);
         return (params.get('ciudad') || '').trim();
+    }
+
+    function getZonaFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        return (params.get('zona') || '').trim();
     }
 
     function updateUI() {
@@ -129,6 +179,9 @@
         if (activeCiudad) {
             params.set('ciudad', activeCiudad);
         }
+        if (activeZona) {
+            params.set('zona', activeZona);
+        }
 
         try {
             const url = `${API_URL}/api/content/category/${encodeURIComponent(CATEGORY)}?${params}`;
@@ -148,8 +201,13 @@
 
             const posts = data.posts || [];
             if (countEl) {
-                const ciudadTxt = activeCiudad ? ` en "${activeCiudad}"` : '';
-                countEl.textContent = `${posts.length} anuncio${posts.length !== 1 ? 's' : ''}${ciudadTxt}`;
+                let placeTxt = '';
+                if (activeZona) {
+                    placeTxt = ` en ${activeZona}`;
+                } else if (activeCiudad) {
+                    placeTxt = ` en ${activeCiudad}`;
+                }
+                countEl.textContent = `${posts.length} anuncio${posts.length !== 1 ? 's' : ''}${placeTxt}`;
             }
 
             if (!posts.length) {
@@ -188,6 +246,7 @@
         if (toolbar) toolbar.style.display = 'none';
 
         const cityInput = document.getElementById('searchCity');
+        const zoneSelect = document.getElementById('searchZone');
         if (cityInput) {
             const fromUrl = getCiudadFromUrl();
             const saved = localStorage.getItem('deseo_search_city') || '';
@@ -196,8 +255,31 @@
                 cityInput.value = activeCiudad;
             }
         }
+        activeZona = getZonaFromUrl() || localStorage.getItem('deseo_search_zone') || '';
 
-        if (typeof DeseoCitySearch !== 'undefined') {
+        if (typeof DeseoLocationSearch !== 'undefined') {
+            DeseoLocationSearch.getCities('MX').then(() => {
+                if (typeof DeseoCitySearch !== 'undefined') {
+                    return DeseoCitySearch.bindInput({
+                        inputId: 'searchCity',
+                        datalistId: 'citiesDatalist',
+                        countrySelectId: 'searchCountry',
+                        popularContainerId: 'popularCities',
+                        onSearch: async (city) => {
+                            setActiveCity(city);
+                            setActiveZone('');
+                            await refreshZoneUiForCity(city, '');
+                            loadDirectory();
+                        }
+                    });
+                }
+            }).then((api) => {
+                citySearchApi = api;
+                if (activeCiudad) {
+                    refreshZoneUiForCity(activeCiudad, activeZona).then(() => loadDirectory());
+                }
+            }).catch(() => {});
+        } else if (typeof DeseoCitySearch !== 'undefined') {
             DeseoCitySearch.bindInput({
                 inputId: 'searchCity',
                 datalistId: 'citiesDatalist',
@@ -211,6 +293,11 @@
                 citySearchApi = api;
             }).catch(() => {});
         }
+
+        zoneSelect?.addEventListener('change', () => {
+            setActiveZone(zoneSelect.value);
+            loadDirectory();
+        });
 
         document.getElementById('searchBtn')?.addEventListener('click', () => {
             performCitySearch();
@@ -308,6 +395,8 @@
                     full_name: profilePayload.full_name,
                     country: profilePayload.country,
                     city: profilePayload.city,
+                    zone: profilePayload.zone,
+                    zone_detail: profilePayload.zone_detail,
                     phone: profilePayload.phone,
                     telegram_username: profilePayload.telegram_username,
                     service_price: profilePayload.service_price,

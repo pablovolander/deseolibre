@@ -26,14 +26,18 @@
 
     <section class="directory-hero">
         <h1>🏳️‍⚧️ Acompañantes Trans</h1>
-        <p>Busca por ciudad en México. Verificación, 0% comisión y contacto directo.</p>
+        <p>CDMX, Guadalajara y Monterrey — busca por zona. Verificación, 0% comisión y contacto directo.</p>
         <div class="directory-search">
             <input type="hidden" id="searchCountry" value="MX">
-            <input type="text" id="searchCity" list="citiesDatalist" placeholder="Ciudad en México (ej: CDMX, Guadalajara)..." autocomplete="off">
+            <input type="text" id="searchCity" list="citiesDatalist" placeholder="Ciudad..." autocomplete="off">
             <datalist id="citiesDatalist"></datalist>
+            <select id="searchZone" class="directory-zone-select" title="Zona">
+                <option value="">Toda la ciudad</option>
+            </select>
             <button type="button" id="searchBtn"><i class="fas fa-search"></i> Buscar</button>
         </div>
         <div id="popularCities" class="city-chips-row"></div>
+        <div id="popularZones" class="city-chips-row"></div>
         <div class="directory-cta-row">
             <a href="#" class="cta-pro" onclick="publishFromCategory(event)"><i class="fas fa-user-tie"></i> Soy profesional — Publicar gratis</a>
             <a href="#" class="cta-client" onclick="showRegister(); return false;"><i class="fas fa-search"></i> Busco servicios</a>
@@ -78,7 +82,9 @@
                 <div class="dl-form-group"><label>Contraseña</label><input type="password" id="regPassword" required minlength="6"></div>
                 <input type="hidden" id="regCountry" value="MX">
                 <div class="dl-form-group"><label>Nombre profesional *</label><input type="text" id="regFullName" required minlength="2"></div>
-                <div class="dl-form-group"><label>Ciudad en México *</label><select id="regCity" required><option value="">Ciudad</option></select></div>
+                <div class="dl-form-group"><label>Ciudad *</label><select id="regCity" required><option value="">Ciudad</option></select></div>
+                <div class="dl-form-group"><label>Zona *</label><select id="regZone" required disabled><option value="">Primero ciudad</option></select></div>
+                <div class="dl-form-group"><label>Detalle ubicación</label><input type="text" id="regZoneDetail" maxlength="120" placeholder="Colonia o referencia (oblig. si Otra zona)"></div>
                 <div class="dl-form-group"><label>Teléfono * (WhatsApp)</label><input type="tel" id="regPhone" required placeholder="10 dígitos"></div>
                 <div class="dl-form-group"><label>Usuario Telegram *</label><input type="text" id="regTelegram" required placeholder="mi_usuario" minlength="5" maxlength="32"><small>Sin @</small></div>
                 <div class="dl-form-group"><label>Tarifa *</label><input type="number" id="regPrice" step="0.01" min="0.01" required placeholder="1500"></div>
@@ -107,6 +113,7 @@
     <script src="/js/auth-session.js"></script>
     <script src="/js/api-errors.js"></script>
     <script src="/js/city-search.js"></script>
+    <script src="/js/location-search.js"></script>
     <script src="/js/profile-fields.js"></script>
     <script src="/js/contact-links.js"></script>
     <script src="/js/listing-card.js"></script>

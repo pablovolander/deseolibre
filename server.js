@@ -15,7 +15,14 @@ const { restoreDatabaseIfNeeded, persistDatabase, persistDatabaseNow } = require
 const { persistUploadedFile, resolveMediaUrl, streamPrivateMedia, getBlobAccess } = require('./lib/media-storage');
 const { evaluateAutoVerification, getMaxVideoBytes, MIN_VIDEO_DURATION_SEC, MAX_VIDEO_DURATION_SEC, MIN_FACE_MATCH_SCORE } = require('./lib/auto-verification');
 const { addPostToFeedIndex, getPostsFromFeedIndex, syncPostsToFeedIndex } = require('./lib/category-feed-index');
-const { resolveCityQuery, postMatchesCity, listSupportedCities } = require('./lib/supported-cities');
+const {
+    resolveCityQuery,
+    resolveZoneQuery,
+    postMatchesCity,
+    postMatchesLocation,
+    listSupportedCities,
+    listZonesForCity
+} = require('./lib/supported-locations');
 const { validatePhoneRequired, validateServicePrice } = require('./lib/service-pricing');
 const {
     validateUserProfileFields,
@@ -796,6 +803,8 @@ async function applyDatabaseMigrations(database) {
     await exec('ALTER TABLE users ADD COLUMN service_price DECIMAL(10,2)');
     await exec('ALTER TABLE users ADD COLUMN service_price_unit TEXT');
     await exec('ALTER TABLE users ADD COLUMN telegram_username TEXT');
+    await exec('ALTER TABLE users ADD COLUMN zone TEXT');
+    await exec('ALTER TABLE users ADD COLUMN zone_detail TEXT');
 }
 
 async function ensureDatabaseSchemaUpToDate() {
@@ -819,7 +828,8 @@ const dbReady = (async () => {
                             cp.thumbnail_url, cp.price, cp.price_unit, cp.is_premium, cp.is_public, cp.category, cp.audience,
                             cp.likes_count, cp.comments_count, cp.created_at,
                             u.id as user_id, u.username, u.full_name, u.profile_picture, u.is_verified,
-                            u.location, u.country, u.city, u.phone, u.telegram_username, u.service_price, u.service_price_unit
+                            u.location, u.country, u.city, u.zone, u.zone_detail,
+                            u.phone, u.telegram_username, u.service_price, u.service_price_unit
                      FROM content_posts cp
                      JOIN users u ON cp.user_id = u.id
                      WHERE cp.is_public = 1`,
@@ -959,8 +969,8 @@ function getAuthUserId(req) {
 
 async function findUserRecordById(userId) {
     return runDbGet(
-        `SELECT id, username, email, full_name, bio, location, country, city, phone, telegram_username,
-                service_price, service_price_unit, category,
+        `SELECT id, username, email, full_name, bio, location, country, city, zone, zone_detail,
+                phone, telegram_username, service_price, service_price_unit, category,
                 profile_picture, cover_photo, is_verified, verification_status, age_verified, created_at
          FROM users WHERE id = ?`,
         [userId]
@@ -980,6 +990,8 @@ function mapUserForClient(user) {
         location: user.location,
         country: user.country,
         city: user.city,
+        zone: user.zone,
+        zone_detail: user.zone_detail,
         phone: user.phone,
         telegram_username: user.telegram_username,
         service_price: user.service_price,
@@ -1084,6 +1096,8 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
             full_name,
             country,
             city,
+            zone,
+            zone_detail,
             phone,
             telegram_username,
             service_price,
@@ -1098,6 +1112,8 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
             full_name,
             country,
             city,
+            zone,
+            zone_detail,
             phone,
             telegram_username,
             service_price,
@@ -1133,9 +1149,9 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
         const passwordHash = await bcrypt.hash(password, 10);
         const insertResult = await runDb(
             `INSERT INTO users (
-                username, email, password_hash, full_name, country, city, location,
+                username, email, password_hash, full_name, country, city, zone, zone_detail, location,
                 phone, telegram_username, service_price, service_price_unit
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 username,
                 email,
@@ -1143,6 +1159,8 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
                 profileCheck.full_name,
                 profileCheck.country,
                 profileCheck.city,
+                profileCheck.zone,
+                profileCheck.zone_detail,
                 profileCheck.location,
                 profileCheck.phone,
                 profileCheck.telegram_username,
@@ -1444,8 +1462,8 @@ app.get('/api/user/public/:userId', (req, res) => {
     const userId = req.params.userId;
 
     db.get(
-        `SELECT id, username, full_name, bio, location, country, city, phone, telegram_username,
-                service_price, service_price_unit, category, 
+        `SELECT id, username, full_name, bio, location, country, city, zone, zone_detail,
+                phone, telegram_username, service_price, service_price_unit, category, 
                 profile_picture, cover_photo, is_verified, created_at,
                 followers_count, following_count, posts_count
          FROM users WHERE id = ?`,
@@ -1673,12 +1691,36 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
         }
 
         const userId = user.id;
-        const { full_name, bio, country, city, phone, telegram_username, service_price, service_price_unit, age, category } = req.body;
+        const {
+            full_name,
+            bio,
+            country,
+            city,
+            zone,
+            zone_detail,
+            phone,
+            telegram_username,
+            service_price,
+            service_price_unit,
+            age,
+            category
+        } = req.body;
 
         if (isDevelopment) {
             console.log('📝 Actualizando perfil para usuario:', userId);
             console.log('📦 Datos recibidos:', {
-                full_name, bio, country, city, phone, telegram_username, service_price, service_price_unit, age, category
+                full_name,
+                bio,
+                country,
+                city,
+                zone,
+                zone_detail,
+                phone,
+                telegram_username,
+                service_price,
+                service_price_unit,
+                age,
+                category
             });
         }
 
@@ -1686,6 +1728,8 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
             full_name,
             country,
             city,
+            zone,
+            zone_detail,
             phone,
             telegram_username,
             service_price,
@@ -1705,6 +1749,8 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
                 location = ?,
                 country = ?,
                 city = ?,
+                zone = ?,
+                zone_detail = ?,
                 phone = ?, 
                 telegram_username = ?,
                 service_price = ?,
@@ -1719,6 +1765,8 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
                 profileCheck.location,
                 profileCheck.country,
                 profileCheck.city,
+                profileCheck.zone,
+                profileCheck.zone_detail,
                 profileCheck.phone,
                 profileCheck.telegram_username,
                 profileCheck.service_price,
@@ -2176,6 +2224,19 @@ app.get('/api/cities', (req, res) => {
     res.json({ cities, countries: listCountries() });
 });
 
+app.get('/api/zones', (req, res) => {
+    const ciudadRaw = String(req.query.ciudad || req.query.city || '').trim();
+    if (!ciudadRaw) {
+        return res.status(400).json({ error: 'Indica la ciudad (ciudad=)' });
+    }
+    const cityResolved = resolveCityQuery(ciudadRaw);
+    if (!cityResolved.ok) {
+        return res.status(400).json({ error: cityResolved.error });
+    }
+    const zones = listZonesForCity(cityResolved.city.name);
+    res.json({ city: cityResolved.city.name, zones });
+});
+
 app.get('/api/content/category/:category', async (req, res) => {
     const { category } = resolveCategoryAndAudience(req.params.category, null);
 
@@ -2197,6 +2258,16 @@ app.get('/api/content/category/:category', async (req, res) => {
         });
     }
     const ciudad = cityResolved?.ok ? cityResolved.city.name : '';
+    const zonaRaw = String(req.query.zona || req.query.zone || '').trim();
+    const zoneResolved = zonaRaw && ciudad ? resolveZoneQuery(ciudad, zonaRaw) : null;
+    if (zonaRaw && ciudad && !zoneResolved.ok) {
+        return res.status(400).json({
+            error: zoneResolved.error,
+            posts: [],
+            supported_cities: listSupportedCities()
+        });
+    }
+    const zona = zoneResolved?.ok ? zoneResolved.zone : '';
     const categoryVariants = getCategorySearchVariants(category);
     const categoryPlaceholders = categoryVariants.map(() => '?').join(', ');
 
@@ -2212,7 +2283,7 @@ app.get('/api/content/category/:category', async (req, res) => {
             });
         }
         if (ciudad) {
-            list = list.filter((p) => postMatchesCity(p, ciudad));
+            list = list.filter((p) => postMatchesLocation(p, ciudad, zona));
         }
         return list;
     };
@@ -2261,6 +2332,8 @@ app.get('/api/content/category/:category', async (req, res) => {
                     u.location,
                     u.country,
                     u.city,
+                    u.zone,
+                    u.zone_detail,
                     u.phone,
                     u.telegram_username,
                     u.service_price,
@@ -2295,7 +2368,8 @@ app.get('/api/content/category/:category', async (req, res) => {
                     },
             category,
             source,
-            city: ciudad || null
+            city: ciudad || null,
+            zone: zona || null
                 });
     } catch (err) {
         console.error('Error loading category content:', err.message || err);

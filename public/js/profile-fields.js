@@ -1,5 +1,5 @@
 /**
- * Ciudad en México y campos de perfil profesional (registro / edición).
+ * Ciudad, zona y detalle de ubicación (registro / edición de perfil).
  */
 window.DeseoProfileFields = (function () {
     const DEFAULT_COUNTRY = 'MX';
@@ -13,10 +13,21 @@ window.DeseoProfileFields = (function () {
                 <input type="text" id="${p}FullName" required placeholder="Tu nombre artístico o real" minlength="2">
             </div>
             <div class="form-group">
-                <label for="${p}City">Ciudad en México *</label>
+                <label for="${p}City">Ciudad *</label>
                 <select id="${p}City" required>
-                    <option value="">Selecciona tu ciudad</option>
+                    <option value="">Ciudad de México, Guadalajara o Monterrey</option>
                 </select>
+            </div>
+            <div class="form-group">
+                <label for="${p}Zone">Zona *</label>
+                <select id="${p}Zone" required disabled>
+                    <option value="">Primero elige ciudad</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="${p}ZoneDetail">Detalle de ubicación</label>
+                <input type="text" id="${p}ZoneDetail" maxlength="120" placeholder="Opcional: colonia, referencia o punto de encuentro">
+                <small>Obligatorio si eliges &quot;Otra zona&quot;. Se muestra en tu perfil.</small>
             </div>
             <div class="form-group">
                 <label for="${p}Phone">Teléfono * (WhatsApp)</label>
@@ -45,6 +56,7 @@ window.DeseoProfileFields = (function () {
         initial = initial || {};
         const countryEl = document.getElementById(`${prefix}Country`);
         const cityEl = document.getElementById(`${prefix}City`);
+        const zoneEl = document.getElementById(`${prefix}Zone`);
         if (!cityEl) {
             return;
         }
@@ -52,17 +64,36 @@ window.DeseoProfileFields = (function () {
             countryEl.value = DEFAULT_COUNTRY;
         }
 
-        if (typeof DeseoCitySearch === 'undefined') {
+        const locApi = typeof DeseoLocationSearch !== 'undefined' ? DeseoLocationSearch : null;
+        if (!locApi) {
             return;
         }
 
-        await DeseoCitySearch.getCities(DEFAULT_COUNTRY);
-        const cities = await DeseoCitySearch.getCities(DEFAULT_COUNTRY);
+        const cities = await locApi.getCities(DEFAULT_COUNTRY);
         cityEl.innerHTML =
             '<option value="">Selecciona tu ciudad</option>' +
             cities.map((c) => `<option value="${c.name}">${c.name}</option>`).join('');
+
+        const onCityChange = async () => {
+            const city = cityEl.value;
+            await locApi.fillZoneSelect(zoneEl, city, '');
+            if (zoneEl) {
+                zoneEl.required = Boolean(city);
+            }
+        };
+
+        cityEl.addEventListener('change', onCityChange);
+
         if (initial.city) {
             cityEl.value = initial.city;
+            await locApi.fillZoneSelect(zoneEl, initial.city, initial.zone || '');
+        }
+        if (initial.zone && zoneEl) {
+            zoneEl.value = initial.zone;
+        }
+        const detailEl = document.getElementById(`${prefix}ZoneDetail`);
+        if (detailEl && initial.zone_detail) {
+            detailEl.value = initial.zone_detail;
         }
     }
 
@@ -72,6 +103,8 @@ window.DeseoProfileFields = (function () {
             full_name: document.getElementById(`${prefix}FullName`)?.value?.trim() || '',
             country: document.getElementById(`${prefix}Country`)?.value || DEFAULT_COUNTRY,
             city: document.getElementById(`${prefix}City`)?.value || '',
+            zone: document.getElementById(`${prefix}Zone`)?.value || '',
+            zone_detail: document.getElementById(`${prefix}ZoneDetail`)?.value?.trim() || '',
             phone: document.getElementById(`${prefix}Phone`)?.value?.trim() || '',
             telegram_username: document.getElementById(`${prefix}Telegram`)?.value?.trim() || '',
             service_price: document.getElementById(`${prefix}Price`)?.value || '',
@@ -105,8 +138,25 @@ window.DeseoProfileFields = (function () {
             return { ok: false, error: 'Indica tu nombre profesional' };
         }
         if (!payload.city) {
-            return { ok: false, error: 'Selecciona una ciudad de México' };
+            return { ok: false, error: 'Selecciona tu ciudad' };
         }
+        if (!payload.zone) {
+            return { ok: false, error: 'Selecciona tu zona' };
+        }
+
+        const isOther =
+            payload.zone.toLowerCase().includes('otra zona');
+        if (isOther && (!payload.zone_detail || payload.zone_detail.length < 4)) {
+            return {
+                ok: false,
+                error: 'Si eliges "Otra zona", completa el detalle de ubicación (mín. 4 caracteres)'
+            };
+        }
+
+        if (payload.zone_detail && payload.zone_detail.length > 120) {
+            return { ok: false, error: 'El detalle de ubicación no puede superar 120 caracteres' };
+        }
+
         if (!payload.telegram_username && typeof DeseoContact === 'undefined') {
             return { ok: false, error: 'Indica tu usuario de Telegram' };
         }
@@ -129,7 +179,8 @@ window.DeseoProfileFields = (function () {
         set(`${prefix}Telegram`, user.telegram_username);
         set(`${prefix}Price`, user.service_price);
         set(`${prefix}PriceUnit`, user.service_price_unit);
-        initLocationPicker(prefix, { city: user.city });
+        set(`${prefix}ZoneDetail`, user.zone_detail);
+        initLocationPicker(prefix, { city: user.city, zone: user.zone, zone_detail: user.zone_detail });
     }
 
     return {

@@ -62,7 +62,9 @@
     margin-bottom: 1.25rem;
 }
 
-.directory-search select {
+.directory-search select,
+.directory-zone-select,
+.hero-zone-select {
     min-width: 140px;
     padding: 0.9rem 0.75rem;
     border-radius: 12px;

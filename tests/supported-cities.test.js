@@ -31,6 +31,6 @@ test('postMatchesCity matches by city field', () => {
 
 test('listSupportedCities filters by country', () => {
     const mx = listSupportedCities('MX');
-    assert.ok(mx.length >= 8);
+    assert.equal(mx.length, 3);
     assert.ok(mx.every((c) => c.country === 'MX'));
 });

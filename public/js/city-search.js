@@ -60,14 +60,7 @@ window.DeseoCitySearch = (function () {
         if (!container || !citiesCache) {
             return;
         }
-        const picks = [
-            'Ciudad de México',
-            'Guadalajara',
-            'Monterrey',
-            'Puebla',
-            'Tijuana',
-            'Cancún'
-        ];
+        const picks = ['Ciudad de México', 'Guadalajara', 'Monterrey'];
         container.innerHTML = picks
             .map(
                 (name) =>

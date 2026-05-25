@@ -11,6 +11,7 @@
     <link href="/css/home.css" rel="stylesheet">
     <script src="/js/api-config.js"></script>
     <script src="/js/city-search.js"></script>
+    <script src="/js/location-search.js"></script>
     <script src="/js/profile-fields.js"></script>
     <script src="/js/contact-links.js"></script>
     <script src="/js/service-pricing.js"></script>
@@ -72,10 +73,13 @@
             <section class="home-hero">
                 <span class="hero-emoji">❤️‍🔥</span>
                 <h1>Deseo Libre</h1>
-                <p class="hero-tagline">Directorio de acompañantes verificadas en México. Sin comisiones, contacto directo y con la opción de pixelado de rostro incluido.</p>
+                <p class="hero-tagline">Directorio en CDMX, Guadalajara y Monterrey. Busca por zona. Sin comisiones, contacto directo y pixelado de rostro incluido.</p>
                 <div class="home-search-row directory-search">
-                    <input type="text" id="heroSearchCity" list="heroCitiesDatalist" placeholder="Ciudad en México (ej: CDMX, Guadalajara)...">
+                    <input type="text" id="heroSearchCity" list="heroCitiesDatalist" placeholder="Ciudad (CDMX, Guadalajara, Monterrey)...">
                     <datalist id="heroCitiesDatalist"></datalist>
+                    <select id="heroSearchZone" class="hero-zone-select" title="Zona">
+                        <option value="">Toda la ciudad</option>
+                    </select>
                     <a href="feed-acompañantes-mujeres.html" class="btn btn-primary" id="heroSearchMujeres"><i class="fas fa-female"></i> Mujeres</a>
                     <a href="feed-acompañantes-hombres.html" class="btn btn-primary" id="heroSearchHombres"><i class="fas fa-male"></i> Hombres</a>
                     <a href="feed-acompañantes-trans.html" class="btn btn-primary" id="heroSearchTrans"><i class="fas fa-transgender"></i> Trans</a>
@@ -204,10 +208,20 @@
                 </div>
                 <input type="hidden" id="regCountry" value="MX">
                 <div class="form-group">
-                    <label for="regCity">Ciudad en México *</label>
+                    <label for="regCity">Ciudad *</label>
                     <select id="regCity" required>
-                        <option value="">Selecciona tu ciudad</option>
+                        <option value="">CDMX, Guadalajara o Monterrey</option>
                     </select>
+                </div>
+                <div class="form-group">
+                    <label for="regZone">Zona *</label>
+                    <select id="regZone" required disabled>
+                        <option value="">Primero elige ciudad</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="regZoneDetail">Detalle de ubicación</label>
+                    <input type="text" id="regZoneDetail" maxlength="120" placeholder="Opcional: colonia, referencia (obligatorio si Otra zona)">
                 </div>
                 <div class="form-group">
                     <label for="regPhone">Teléfono * (WhatsApp)</label>
@@ -410,6 +424,8 @@
                         full_name: profilePayload.full_name,
                         country: profilePayload.country,
                         city: profilePayload.city,
+                        zone: profilePayload.zone,
+                        zone_detail: profilePayload.zone_detail,
                         phone: profilePayload.phone,
                         telegram_username: profilePayload.telegram_username,
                         service_price: profilePayload.service_price,
@@ -643,30 +659,41 @@
 
         function heroGoToFeed(feedPath) {
             const raw = (document.getElementById('heroSearchCity')?.value || '').trim();
+            const zone = (document.getElementById('heroSearchZone')?.value || '').trim();
+            let cityName = raw;
             if (raw && typeof DeseoCitySearch !== 'undefined') {
                 const resolved = DeseoCitySearch.resolveLocal(raw);
                 if (!resolved.ok) {
                     alert(resolved.error);
                     return;
                 }
-                localStorage.setItem('deseo_search_city', resolved.city);
-                window.location.href = feedPath + '?ciudad=' + encodeURIComponent(resolved.city);
-                return;
+                cityName = resolved.city;
             }
-            if (raw) {
-                localStorage.setItem('deseo_search_city', raw);
-                window.location.href = feedPath + '?ciudad=' + encodeURIComponent(raw);
-            } else {
-                window.location.href = feedPath;
+            const params = new URLSearchParams();
+            if (cityName) {
+                params.set('ciudad', cityName);
+                localStorage.setItem('deseo_search_city', cityName);
             }
+            if (zone) {
+                params.set('zona', zone);
+                localStorage.setItem('deseo_search_zone', zone);
+            }
+            const qs = params.toString();
+            window.location.href = qs ? `${feedPath}?${qs}` : feedPath;
         }
-        if (typeof DeseoCitySearch !== 'undefined') {
-            DeseoCitySearch.getCities().then((cities) => {
+        const heroCityEl = document.getElementById('heroSearchCity');
+        const heroZoneEl = document.getElementById('heroSearchZone');
+        if (typeof DeseoLocationSearch !== 'undefined') {
+            DeseoLocationSearch.getCities('MX').then((cities) => {
                 const dl = document.getElementById('heroCitiesDatalist');
                 if (dl) {
                     dl.innerHTML = cities.map((c) => `<option value="${c.name}"></option>`).join('');
                 }
             }).catch(() => {});
+            heroCityEl?.addEventListener('change', async () => {
+                const c = heroCityEl.value;
+                await DeseoLocationSearch.fillZoneSelect(heroZoneEl, c, '');
+            });
         }
         document.getElementById('heroSearchMujeres')?.addEventListener('click', function(e) {
             e.preventDefault();
