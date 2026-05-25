@@ -479,24 +479,9 @@
                         </select>
                     </div>
 
-                    <div class="option-group">
-                        <label for="postPhone">Teléfono *</label>
-                        <input type="tel" id="postPhone" required placeholder="+52 555 123 4567">
-                    </div>
-
-                    <div class="option-group">
-                        <label for="postPrice">Precio *</label>
-                        <input type="number" id="postPrice" placeholder="Ej: 1500" min="0.01" step="0.01" required>
-                    </div>
-
-                    <div class="option-group">
-                        <label for="postPriceUnit">Tarifa *</label>
-                        <select id="postPriceUnit" required>
-                            <option value="">Selecciona</option>
-                            <option value="hour">Por hora</option>
-                            <option value="half_hour">Por media hora (30 min)</option>
-                        </select>
-                    </div>
+                    <p class="status-message status-warning" style="display:block;">
+                        Tu nombre, ciudad, tarifa y teléfono se configuran en <a href="profile.html">tu perfil</a>.
+                    </p>
 
                     <div class="option-group">
                         <div class="checkbox-group">
@@ -751,15 +736,6 @@
             const isPremium = document.getElementById('isPremium').checked;
             const isPublic = document.getElementById('isPublic').checked;
 
-            let publishPricing = { ok: true, phone: '', price: 0, price_unit: 'hour' };
-            if (typeof DeseoPricing !== 'undefined') {
-                publishPricing = DeseoPricing.readPublishFields();
-                if (!publishPricing.ok) {
-                    showStatus('error', publishPricing.error);
-                    return;
-                }
-            }
-
             // Validaciones
             if (!content && selectedFiles.length === 0) {
                 showStatus('error', 'Debes escribir algo o subir un archivo');
@@ -786,9 +762,6 @@
                     title: content || `Archivo ${file.name}`,
                     description: content,
                     content_type: contentType,
-                    phone: publishPricing.phone,
-                    price: publishPricing.price,
-                    price_unit: publishPricing.price_unit,
                     is_premium: isPremium,
                     is_public: isPublic,
                     category: selectedCategory
@@ -804,6 +777,10 @@
 
             } catch (error) {
                 console.error('Error publishing:', error);
+                if (error.requiresProfile) {
+                    showStatus('error', error.message || 'Completa tu perfil en profile.html');
+                    return;
+                }
                 showStatus('error', error.message || 'Error al publicar el contenido');
             } finally {
                 showProgress(false);
@@ -817,9 +794,6 @@
             formData.append('title', metadata.title);
             formData.append('description', metadata.description);
             formData.append('content_type', metadata.content_type);
-            formData.append('phone', metadata.phone);
-            formData.append('price', metadata.price);
-            formData.append('price_unit', metadata.price_unit);
             formData.append('is_premium', metadata.is_premium);
             formData.append('is_public', metadata.is_public);
             formData.append('category', metadata.category);
@@ -901,7 +875,9 @@
                 const data = await response.json();
                 
                 if (!response.ok) {
-                    throw new Error(data.error || `Error ${response.status}: ${response.statusText}`);
+                    const err = new Error(data.message || data.error || `Error ${response.status}`);
+                    err.requiresProfile = data.requiresProfile;
+                    throw err;
                 }
                 
                 return data;

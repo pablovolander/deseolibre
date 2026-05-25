@@ -1743,7 +1743,11 @@
                         </div>
                         <div class="bio-detail-item" id="phoneDetail" style="display:none;">
                             <i class="fas fa-phone"></i>
-                            <span id="phoneText"></span>
+                            <a id="phoneText" href="#"></a>
+                        </div>
+                        <div class="bio-detail-item" id="priceDetail" style="display:none;">
+                            <i class="fas fa-tag"></i>
+                            <span id="priceText"></span>
                         </div>
                         <div class="bio-detail-item" id="categoryDetail" style="display:none;">
                             <i class="fas fa-tag"></i>
@@ -1856,23 +1860,7 @@
                         </div>
                         <input type="file" id="postFile" accept="image/*,video/*,audio/*" required style="display:none;" onchange="updateFileInfo(this)">
                 </div>
-                <div class="form-group">
-                    <label for="postPhone">Teléfono *:</label>
-                    <input type="tel" id="postPhone" required placeholder="+52 555 123 4567">
-                    <small style="color: var(--text-muted);">Se guardará en tu perfil</small>
-                </div>
-                <div class="form-group">
-                    <label for="postPrice">Precio *:</label>
-                    <input type="number" id="postPrice" step="0.01" min="0.01" required placeholder="Ej: 1500">
-                </div>
-                <div class="form-group">
-                    <label for="postPriceUnit">Tarifa *:</label>
-                    <select id="postPriceUnit" required>
-                        <option value="">Selecciona</option>
-                        <option value="hour">Por hora</option>
-                        <option value="half_hour">Por media hora (30 min)</option>
-                    </select>
-                </div>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Tu nombre, ciudad, tarifa y teléfono se toman de tu perfil.</p>
                 <div class="form-group">
                     <div class="checkbox-group">
                         <input type="checkbox" id="isPremium">
@@ -1944,20 +1932,43 @@
             <form id="editProfileForm" onsubmit="saveProfile(event)">
                 <div class="modal-body">
                     <div class="form-group">
-                        <label for="editFullName">Nombre completo:</label>
-                        <input type="text" id="editFullName" placeholder="Tu nombre">
+                        <label for="editFullName">Nombre profesional *:</label>
+                        <input type="text" id="editFullName" required placeholder="Tu nombre" minlength="2">
                     </div>
                     <div class="form-group">
                         <label for="editBio">Biografía:</label>
                         <textarea id="editBio" placeholder="Cuéntanos sobre ti..."></textarea>
                     </div>
                     <div class="form-group">
-                        <label for="editLocation">Ubicación:</label>
-                        <input type="text" id="editLocation" placeholder="Ciudad, País">
+                        <label for="editCountry">País *:</label>
+                        <select id="editCountry" required>
+                            <option value="">Selecciona país</option>
+                            <option value="MX">México</option>
+                            <option value="CO">Colombia</option>
+                            <option value="AR">Argentina</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editCity">Ciudad *:</label>
+                        <select id="editCity" required disabled>
+                            <option value="">Primero elige el país</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="editPhone">Teléfono *:</label>
                         <input type="tel" id="editPhone" required placeholder="+52 555 123 4567">
+                    </div>
+                    <div class="form-group">
+                        <label for="editPrice">Tarifa *:</label>
+                        <input type="number" id="editPrice" step="0.01" min="0.01" required placeholder="Ej: 1500">
+                    </div>
+                    <div class="form-group">
+                        <label for="editPriceUnit">Cobro por *:</label>
+                        <select id="editPriceUnit" required>
+                            <option value="">Selecciona</option>
+                            <option value="hour">Por hora</option>
+                            <option value="half_hour">Por media hora (30 min)</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="editAge">Edad (verificada):</label>
@@ -2206,6 +2217,9 @@
     <script src="/js/auth-session.js"></script>
     <script src="/js/api-errors.js"></script>
     <script src="/js/verification-gate.js"></script>
+    <script src="/js/city-search.js"></script>
+    <script src="/js/profile-fields.js"></script>
+    <script src="/js/listing-card.js"></script>
     <script src="/js/service-pricing.js"></script>
     <script src="/js/components.js"></script>
     <script>
@@ -2418,15 +2432,7 @@
                 document.getElementById('bioText').textContent = currentUser.bio;
             }
 
-            if (currentUser.location) {
-                document.getElementById('locationDetail').style.display = 'flex';
-                document.getElementById('locationText').textContent = currentUser.location;
-            }
-
-            if (currentUser.phone) {
-                document.getElementById('phoneDetail').style.display = 'flex';
-                document.getElementById('phoneText').textContent = currentUser.phone;
-            }
+            applyProfileDetailsToBio(currentUser);
 
             if (currentUser.category) {
                 document.getElementById('categoryDetail').style.display = 'flex';
@@ -2727,17 +2733,6 @@
             formData.append('content_type', contentType);
             formData.append('category', category);
             formData.append('is_premium', isPremium ? 'true' : 'false');
-
-            if (typeof DeseoPricing !== 'undefined') {
-                const pricing = DeseoPricing.appendPublishToFormData(formData);
-                if (!pricing.ok) {
-                    showNotification(pricing.error, 'error');
-                    return;
-                }
-            } else {
-                showNotification('Error de validación de precios', 'error');
-                return;
-            }
             formData.append('is_public', 'true');
             formData.append('file', file);
 
@@ -2768,7 +2763,50 @@
                 if (typeof DeseoVerification !== 'undefined' && DeseoVerification.handlePublishError(error)) {
                     return;
                 }
+                if (error.data?.requiresProfile) {
+                    showNotification(error.data.message || 'Completa tu perfil primero', 'error');
+                    openEditProfileModal();
+                    return;
+                }
                 showNotification(error.message || 'Error al crear la publicación', 'error');
+            }
+        }
+
+        function applyProfileDetailsToBio(user) {
+            const locEl = document.getElementById('locationDetail');
+            const locText = document.getElementById('locationText');
+            const phoneEl = document.getElementById('phoneDetail');
+            const phoneText = document.getElementById('phoneText');
+            const priceEl = document.getElementById('priceDetail');
+            const priceText = document.getElementById('priceText');
+
+            const location = typeof DeseoListing !== 'undefined'
+                ? DeseoListing.getLocation(user)
+                : (user.location || '');
+            if (location && location !== 'Ubicación no indicada') {
+                locEl.style.display = 'flex';
+                locText.textContent = location;
+            } else {
+                locEl.style.display = 'none';
+            }
+
+            const phone = user.phone || '';
+            if (phone) {
+                phoneEl.style.display = 'flex';
+                phoneText.textContent = phone;
+                phoneText.href = `tel:${phone.replace(/\s/g, '')}`;
+            } else {
+                phoneEl.style.display = 'none';
+            }
+
+            const price = typeof DeseoListing !== 'undefined'
+                ? DeseoListing.getPrice(user)
+                : '';
+            if (price && price !== 'Consultar') {
+                priceEl.style.display = 'flex';
+                priceText.textContent = price;
+            } else {
+                priceEl.style.display = 'none';
             }
         }
 
@@ -2776,23 +2814,25 @@
         async function saveProfile(event) {
             event.preventDefault();
 
+            const profilePayload = typeof DeseoProfileFields !== 'undefined'
+                ? DeseoProfileFields.readProfilePayload('edit')
+                : { ok: false, error: 'Formulario no disponible' };
+            if (!profilePayload.ok) {
+                showNotification(profilePayload.error, 'error');
+                return;
+            }
+
             const profileData = {
-                full_name: document.getElementById('editFullName').value,
+                full_name: profilePayload.full_name,
                 bio: document.getElementById('editBio').value,
-                location: document.getElementById('editLocation').value,
-                phone: document.getElementById('editPhone').value,
+                country: profilePayload.country,
+                city: profilePayload.city,
+                phone: profilePayload.phone,
+                service_price: profilePayload.service_price,
+                service_price_unit: profilePayload.service_price_unit,
                 age: document.getElementById('editAge').value,
                 category: document.getElementById('editCategory').value
             };
-
-            if (typeof DeseoPricing !== 'undefined') {
-                const phoneCheck = DeseoPricing.validatePhone(profileData.phone);
-                if (!phoneCheck.ok) {
-                    showNotification(phoneCheck.error, 'error');
-                    return;
-                }
-                profileData.phone = phoneCheck.phone;
-            }
 
             try {
                 await apiCall(`${API_URL}/api/user/profile`, {
@@ -2888,11 +2928,10 @@
 
             document.getElementById('isPublicPost').checked = true;
 
-            if (typeof DeseoPricing !== 'undefined') {
-                const phoneEl = document.getElementById('postPhone');
-                if (phoneEl && !phoneEl.value.trim() && currentUser?.phone) {
-                    phoneEl.value = currentUser.phone;
-                }
+            if (currentUser && !currentUser.profile_complete) {
+                showNotification('Completa tu perfil (nombre, país, ciudad, teléfono y tarifa) antes de publicar.', 'error');
+                openEditProfileModal();
+                return;
             }
             
             // Asegurar que los form-groups sean visibles
@@ -2943,10 +2982,17 @@
         function openEditProfileModal() {
             document.getElementById('editFullName').value = currentUser.full_name || '';
             document.getElementById('editBio').value = currentUser.bio || '';
-            document.getElementById('editLocation').value = currentUser.location || '';
             document.getElementById('editPhone').value = currentUser.phone || '';
+            document.getElementById('editPrice').value = currentUser.service_price || '';
+            document.getElementById('editPriceUnit').value = currentUser.service_price_unit || '';
             document.getElementById('editAge').value = currentUser.age || '';
             document.getElementById('editCategory').value = currentUser.category || '';
+            if (typeof DeseoProfileFields !== 'undefined') {
+                DeseoProfileFields.initLocationPicker('edit', {
+                    country: currentUser.country,
+                    city: currentUser.city
+                });
+            }
             document.getElementById('editProfileModal').classList.add('active');
         }
 

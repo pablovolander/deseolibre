@@ -80,13 +80,14 @@
         const mediaUrl = typeof resolveMediaUrl === 'function'
             ? resolveMediaUrl(post.media_url || post.file_url || '')
             : `${API_URL}${post.media_url || post.file_url || ''}`;
-        const location = post.location || post.user_location || 'Ubicación no indicada';
-        const price = typeof DeseoPricing !== 'undefined'
-            ? DeseoPricing.formatPrice(post.price, post.price_unit)
-            : (post.price && Number(post.price) > 0
-                ? `$${Number(post.price).toLocaleString('es')}`
-                : 'Consultar');
-        const name = post.full_name || post.username || 'Profesional';
+        const listing = typeof DeseoListing !== 'undefined' ? DeseoListing : null;
+        const name = listing ? listing.getName(post) : (post.full_name || post.username || 'Profesional');
+        const location = listing ? listing.getLocation(post) : (post.location || 'Ubicación no indicada');
+        const price = listing ? listing.getPrice(post) : 'Consultar';
+        const phone = listing ? listing.getPhone(post) : (post.phone || '');
+        const phoneHtml = phone
+            ? `<a class="profile-phone" href="tel:${encodeURIComponent(phone.replace(/\s/g, ''))}" onclick="event.stopPropagation()"><i class="fas fa-phone"></i> ${escapeHtml(phone)}</a>`
+            : '';
         const verified = post.is_verified
             ? '<span class="badge-verified"><i class="fas fa-check-circle"></i> Verificado</span>'
             : '';
@@ -107,9 +108,12 @@
             <div class="profile-card-body">
                 <h3>${escapeHtml(name)}</h3>
                 <div class="profile-location"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(location)}</div>
-                <p>${escapeHtml(post.description || post.title)}</p>
                 <div class="profile-meta-row">
                     <span class="profile-price">${escapeHtml(price)}</span>
+                    ${phoneHtml}
+                </div>
+                <p class="profile-snippet">${escapeHtml(post.description || post.title)}</p>
+                <div class="profile-meta-row profile-meta-secondary">
                     <span><i class="fas fa-heart"></i> ${post.likes_count || 0}</span>
                 </div>
             </div>
@@ -237,6 +241,9 @@
 
     window.showRegister = function () {
         document.getElementById('registerModal')?.classList.add('show');
+        if (typeof DeseoProfileFields !== 'undefined') {
+            DeseoProfileFields.initLocationPicker('reg');
+        }
     };
 
     window.showCreatePost = async function () {
@@ -289,13 +296,26 @@
 
     window.register = async function (e) {
         e.preventDefault();
+        const profilePayload = typeof DeseoProfileFields !== 'undefined'
+            ? DeseoProfileFields.readProfilePayload('reg')
+            : { ok: false, error: 'Campos de perfil no disponibles' };
+        if (!profilePayload.ok) {
+            showMessage(profilePayload.error, 'error');
+            return;
+        }
         try {
             const data = await DeseoAuth.authFetch(`${API_URL}/api/auth/register`, {
                 method: 'POST',
                 body: JSON.stringify({
                     username: document.getElementById('regUsername').value,
                     email: document.getElementById('regEmail').value,
-                    password: document.getElementById('regPassword').value
+                    password: document.getElementById('regPassword').value,
+                    full_name: profilePayload.full_name,
+                    country: profilePayload.country,
+                    city: profilePayload.city,
+                    phone: profilePayload.phone,
+                    service_price: profilePayload.service_price,
+                    service_price_unit: profilePayload.service_price_unit
                 })
             });
             authToken = data.token;
@@ -332,17 +352,6 @@
         formData.append('is_public', 'true');
         formData.append('is_premium', 'false');
 
-        if (typeof DeseoPricing !== 'undefined') {
-            const pricing = DeseoPricing.appendPublishToFormData(formData);
-            if (!pricing.ok) {
-                showMessage(pricing.error, 'error');
-                return;
-            }
-        } else {
-            showMessage('Error de validación de precios', 'error');
-            return;
-        }
-
         showMessage('Publicando...', 'success');
 
         try {
@@ -357,6 +366,11 @@
             loadDirectory();
         } catch (error) {
             if (typeof DeseoVerification !== 'undefined' && DeseoVerification.handlePublishError(error)) {
+                return;
+            }
+            if (error.data?.requiresProfile) {
+                showMessage(error.data.message || 'Completa tu perfil primero', 'error');
+                window.location.href = 'profile.html';
                 return;
             }
             showMessage(typeof DeseoErrors !== 'undefined' ? DeseoErrors.formatMessage(error) : (error.message || 'Error al publicar'), 'error');

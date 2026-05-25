@@ -1315,6 +1315,8 @@
 </style>
     <script src="/js/api-config.js"></script>
     <script src="/js/city-search.js"></script>
+    <script src="/js/profile-fields.js"></script>
+    <script src="/js/service-pricing.js"></script>
     <script src="/js/auth-session.js"></script>
 </head>
 <body>
@@ -1532,6 +1534,41 @@
                     <label for="registerPassword">Contraseña:</label>
                     <input type="password" id="registerPassword" required minlength="6">
                 </div>
+                <div class="form-group">
+                    <label for="regFullName">Nombre profesional *</label>
+                    <input type="text" id="regFullName" required minlength="2">
+                </div>
+                <div class="form-group">
+                    <label for="regCountry">País *</label>
+                    <select id="regCountry" required>
+                        <option value="">Selecciona país</option>
+                        <option value="MX">México</option>
+                        <option value="CO">Colombia</option>
+                        <option value="AR">Argentina</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="regCity">Ciudad *</label>
+                    <select id="regCity" required disabled>
+                        <option value="">Primero elige el país</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="regPhone">Teléfono *</label>
+                    <input type="tel" id="regPhone" required placeholder="+52 555 123 4567">
+                </div>
+                <div class="form-group">
+                    <label for="regPrice">Tarifa *</label>
+                    <input type="number" id="regPrice" step="0.01" min="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="regPriceUnit">Cobro por *</label>
+                    <select id="regPriceUnit" required>
+                        <option value="">Selecciona</option>
+                        <option value="hour">Por hora</option>
+                        <option value="half_hour">Por media hora (30 min)</option>
+                    </select>
+                </div>
                 <button type="submit" class="btn btn-primary">Registrarse</button>
                 <div class="form-toggle">
                     <p>¿Ya tienes cuenta? <a href="#" onclick="showLoginForm()">Inicia sesión aquí</a></p>
@@ -1695,10 +1732,27 @@
         }
 
         async function register(username, email, password) {
+            const profilePayload = typeof DeseoProfileFields !== 'undefined'
+                ? DeseoProfileFields.readProfilePayload('reg')
+                : { ok: false, error: 'Completa todos los campos del perfil' };
+            if (!profilePayload.ok) {
+                showError(profilePayload.error);
+                return;
+            }
             try {
                 const response = await apiCall('/api/auth/register', {
                     method: 'POST',
-                    body: JSON.stringify({ username, email, password })
+                    body: JSON.stringify({
+                        username,
+                        email,
+                        password,
+                        full_name: profilePayload.full_name,
+                        country: profilePayload.country,
+                        city: profilePayload.city,
+                        phone: profilePayload.phone,
+                        service_price: profilePayload.service_price,
+                        service_price_unit: profilePayload.service_price_unit
+                    })
                 });
 
                 authToken = response.token;
@@ -1819,7 +1873,9 @@
             modal.style.display = 'block';
             modal.classList.add('show');
             document.body.classList.add('modal-open');
-            // Focus on first input
+            if (typeof DeseoProfileFields !== 'undefined') {
+                DeseoProfileFields.initLocationPicker('reg');
+            }
             setTimeout(() => {
                 const firstInput = modal.querySelector('input');
                 if (firstInput) firstInput.focus();

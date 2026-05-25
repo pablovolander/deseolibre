@@ -17,6 +17,12 @@ const { evaluateAutoVerification, getMaxVideoBytes, MIN_VIDEO_DURATION_SEC, MAX_
 const { addPostToFeedIndex, getPostsFromFeedIndex, syncPostsToFeedIndex } = require('./lib/category-feed-index');
 const { resolveCityQuery, postMatchesCity, listSupportedCities } = require('./lib/supported-cities');
 const { validatePhoneRequired, validateServicePrice } = require('./lib/service-pricing');
+const {
+    validateUserProfileFields,
+    userHasCompleteProfile,
+    getProfileIncompleteMessage
+} = require('./lib/user-profile');
+const { listCountries } = require('./lib/supported-cities');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -769,6 +775,10 @@ async function applyDatabaseMigrations(database) {
          WHERE category = 'acompañantes' AND audience = 'hombres'`
     );
     await exec('ALTER TABLE content_posts ADD COLUMN price_unit TEXT');
+    await exec('ALTER TABLE users ADD COLUMN country TEXT');
+    await exec('ALTER TABLE users ADD COLUMN city TEXT');
+    await exec('ALTER TABLE users ADD COLUMN service_price DECIMAL(10,2)');
+    await exec('ALTER TABLE users ADD COLUMN service_price_unit TEXT');
 }
 
 async function ensureDatabaseSchemaUpToDate() {
@@ -791,7 +801,8 @@ const dbReady = (async () => {
                     `SELECT cp.id, cp.title, cp.description, cp.content_type, cp.file_url as media_url,
                             cp.thumbnail_url, cp.price, cp.price_unit, cp.is_premium, cp.is_public, cp.category, cp.audience,
                             cp.likes_count, cp.comments_count, cp.created_at,
-                            u.id as user_id, u.username, u.full_name, u.profile_picture, u.is_verified, u.location
+                            u.id as user_id, u.username, u.full_name, u.profile_picture, u.is_verified,
+                            u.location, u.country, u.city, u.phone, u.service_price, u.service_price_unit
                      FROM content_posts cp
                      JOIN users u ON cp.user_id = u.id
                      WHERE cp.is_public = 1`,
@@ -931,11 +942,38 @@ function getAuthUserId(req) {
 
 async function findUserRecordById(userId) {
     return runDbGet(
-        `SELECT id, username, email, full_name, bio, location, phone, category,
+        `SELECT id, username, email, full_name, bio, location, country, city, phone,
+                service_price, service_price_unit, category,
                 profile_picture, cover_photo, is_verified, verification_status, age_verified, created_at
          FROM users WHERE id = ?`,
         [userId]
     );
+}
+
+function mapUserForClient(user) {
+    if (!user) {
+        return null;
+    }
+    return {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        full_name: user.full_name,
+        bio: user.bio,
+        location: user.location,
+        country: user.country,
+        city: user.city,
+        phone: user.phone,
+        service_price: user.service_price,
+        service_price_unit: user.service_price_unit,
+        category: user.category,
+        profile_picture: user.profile_picture,
+        cover_photo: user.cover_photo,
+        is_verified: user.is_verified,
+        age_verified: user.age_verified,
+        profile_complete: userHasCompleteProfile(user),
+        created_at: user.created_at
+    };
 }
 
 async function resolveAuthUser(req) {
@@ -1021,10 +1059,32 @@ app.get('/api/health', async (req, res) => {
 // Register endpoint
 app.post('/api/auth/register', authLimiter, async (req, res) => {
     try {
-        const { username, email, password } = req.body;
+        const {
+            username,
+            email,
+            password,
+            full_name,
+            country,
+            city,
+            phone,
+            service_price,
+            service_price_unit
+        } = req.body;
 
         if (!username || !email || !password) {
-            return res.status(400).json({ error: 'Todos los campos son requeridos' });
+            return res.status(400).json({ error: 'Usuario, email y contraseña son requeridos' });
+        }
+
+        const profileCheck = validateUserProfileFields({
+            full_name,
+            country,
+            city,
+            phone,
+            service_price,
+            service_price_unit
+        });
+        if (!profileCheck.ok) {
+            return res.status(400).json({ error: profileCheck.error });
         }
 
         if (username.length < 3) {
@@ -1052,11 +1112,27 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
 
         const passwordHash = await bcrypt.hash(password, 10);
         const insertResult = await runDb(
-            'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
-            [username, email, passwordHash]
+            `INSERT INTO users (
+                username, email, password_hash, full_name, country, city, location,
+                phone, service_price, service_price_unit
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                username,
+                email,
+                passwordHash,
+                profileCheck.full_name,
+                profileCheck.country,
+                profileCheck.city,
+                profileCheck.location,
+                profileCheck.phone,
+                profileCheck.service_price,
+                profileCheck.service_price_unit
+            ]
         );
 
         await saveDatabaseAsync();
+
+        const newUser = await findUserRecordById(insertResult.lastID);
 
         const token = jwt.sign(
             { userId: insertResult.lastID, username, email },
@@ -1067,12 +1143,7 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
         res.status(201).json({
             message: 'Usuario registrado exitosamente',
             token,
-            user: {
-                id: insertResult.lastID,
-                username,
-                email,
-                age_verified: false
-            }
+            user: mapUserForClient(newUser)
         });
     } catch (error) {
         console.error('Error en registro:', error);
@@ -1352,7 +1423,8 @@ app.get('/api/user/public/:userId', (req, res) => {
     const userId = req.params.userId;
 
     db.get(
-        `SELECT id, username, full_name, bio, location, phone, category, 
+        `SELECT id, username, full_name, bio, location, country, city, phone,
+                service_price, service_price_unit, category, 
                 profile_picture, cover_photo, is_verified, created_at,
                 followers_count, following_count, posts_count
          FROM users WHERE id = ?`,
@@ -1422,21 +1494,7 @@ app.get('/api/auth/verify', authenticateToken, async (req, res) => {
 
         res.json({
             valid: true,
-            user: {
-                id: user.id,
-                username: user.username,
-                email: user.email,
-                full_name: user.full_name,
-                bio: user.bio,
-                location: user.location,
-                phone: user.phone,
-                category: user.category,
-                profile_picture: user.profile_picture,
-                cover_photo: user.cover_photo,
-                is_verified: user.is_verified,
-                age_verified: user.age_verified,
-                created_at: user.created_at
-            }
+            user: mapUserForClient(user)
         });
     } catch (error) {
         console.error('Error al verificar token:', error);
@@ -1594,16 +1652,25 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
         }
 
         const userId = user.id;
-        const { full_name, bio, location, phone, age, category } = req.body;
+        const { full_name, bio, country, city, phone, service_price, service_price_unit, age, category } = req.body;
 
         if (isDevelopment) {
             console.log('📝 Actualizando perfil para usuario:', userId);
-            console.log('📦 Datos recibidos:', { full_name, bio, location, phone, age, category });
+            console.log('📦 Datos recibidos:', {
+                full_name, bio, country, city, phone, service_price, service_price_unit, age, category
+            });
         }
 
-        const phoneCheck = validatePhoneRequired(phone);
-        if (!phoneCheck.ok) {
-            return res.status(400).json({ error: phoneCheck.error });
+        const profileCheck = validateUserProfileFields({
+            full_name,
+            country,
+            city,
+            phone,
+            service_price,
+            service_price_unit
+        });
+        if (!profileCheck.ok) {
+            return res.status(400).json({ error: profileCheck.error });
         }
 
         const ageValue = age && age !== '' ? parseInt(age, 10) : null;
@@ -1613,13 +1680,29 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
             `UPDATE users SET 
                 full_name = ?, 
                 bio = ?, 
-                location = ?, 
+                location = ?,
+                country = ?,
+                city = ?,
                 phone = ?, 
+                service_price = ?,
+                service_price_unit = ?,
                 age = ?,
                 category = ?,
                 updated_at = CURRENT_TIMESTAMP 
             WHERE id = ?`,
-            [full_name || null, bio || null, location || null, phoneCheck.phone, ageValue, categoryValue, userId]
+            [
+                profileCheck.full_name,
+                bio || null,
+                profileCheck.location,
+                profileCheck.country,
+                profileCheck.city,
+                profileCheck.phone,
+                profileCheck.service_price,
+                profileCheck.service_price_unit,
+                ageValue,
+                categoryValue,
+                userId
+            ]
         );
 
         if (!updateResult.changes) {
@@ -1804,33 +1887,26 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
         });
     }
 
-    const { title, description, content_type, price, price_unit, phone, is_premium, is_public, category } = req.body;
+    const { title, description, content_type, is_premium, is_public, category } = req.body;
 
-    if (phone) {
-        const phoneUpdate = validatePhoneRequired(phone);
-        if (!phoneUpdate.ok) {
-            return res.status(400).json({ error: phoneUpdate.error });
-        }
-        await runDb(
-            'UPDATE users SET phone = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-            [phoneUpdate.phone, userId]
-        );
-        authorCheck.phone = phoneUpdate.phone;
-    }
-
-    const authorPhoneCheck = validatePhoneRequired(authorCheck.phone);
-    if (!authorPhoneCheck.ok) {
+    if (!userHasCompleteProfile(authorCheck)) {
         return res.status(400).json({
-            error: 'Teléfono requerido',
-            message: 'Debes indicar tu número de teléfono en el formulario o en tu perfil antes de publicar.'
+            error: 'Perfil incompleto',
+            message: getProfileIncompleteMessage(),
+            requiresProfile: true,
+            profileUrl: '/profile.html'
         });
     }
 
-    const priceCheck = validateServicePrice(price, price_unit);
+    const priceCheck = validateServicePrice(authorCheck.service_price, authorCheck.service_price_unit);
     if (!priceCheck.ok) {
-        return res.status(400).json({ error: priceCheck.error });
+        return res.status(400).json({
+            error: 'Tarifa incompleta',
+            message: getProfileIncompleteMessage(),
+            requiresProfile: true
+        });
     }
-    
+
     // Validation
     if (!title || !description || !content_type) {
         return res.status(400).json({ error: 'Título, descripción y tipo de contenido son requeridos' });
@@ -1897,10 +1973,7 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
             [normalizedCategory, userId]
         );
 
-        const author = await runDbGet(
-            'SELECT id, username, full_name, profile_picture, is_verified, location FROM users WHERE id = ?',
-            [userId]
-        );
+        const author = await findUserRecordById(userId);
 
         const postRecord = {
             id: insertResult.lastID,
@@ -1913,11 +1986,16 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
             thumbnail_url: thumbnailUrl,
             price: priceCheck.price,
             price_unit: priceCheck.price_unit,
+            service_price: author?.service_price,
+            service_price_unit: author?.service_price_unit,
             is_premium: isPremiumValue,
             is_public: isPublicValue,
             category: normalizedCategory,
             audience: postAudience,
             location: author?.location || null,
+            country: author?.country || null,
+            city: author?.city || null,
+            phone: author?.phone || null,
             likes_count: 0,
             comments_count: 0,
             created_at: new Date().toISOString(),
@@ -2070,7 +2148,7 @@ app.get('/api/user/content', authenticateToken, async (req, res) => {
 app.get('/api/cities', (req, res) => {
     const country = String(req.query.country || '').trim().toUpperCase();
     const cities = listSupportedCities(country || null);
-    res.json({ cities, countries: ['MX', 'CO', 'AR'] });
+    res.json({ cities, countries: listCountries() });
 });
 
 app.get('/api/content/category/:category', async (req, res) => {
@@ -2156,6 +2234,11 @@ app.get('/api/content/category/:category', async (req, res) => {
             u.profile_picture,
                     u.is_verified,
                     u.location,
+                    u.country,
+                    u.city,
+                    u.phone,
+                    u.service_price,
+                    u.service_price_unit,
                     u.bio
         FROM content_posts cp
         JOIN users u ON cp.user_id = u.id

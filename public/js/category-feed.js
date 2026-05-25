@@ -84,19 +84,29 @@
                     ? '<div class="premium-badge"><i class="fas fa-crown"></i> PREMIUM</div>'
                     : '';
 
+                const listing = typeof DeseoListing !== 'undefined' ? DeseoListing : null;
+                const proName = listing ? listing.getName(post) : (post.full_name || post.username);
+                const proLocation = listing ? listing.getLocation(post) : '';
+                const proPrice = listing ? listing.getPrice(post) : 'Consultar';
+                const proPhone = listing ? listing.getPhone(post) : '';
+                const phoneLink = proPhone
+                    ? `<a class="post-phone" href="tel:${encodeURIComponent(proPhone.replace(/\s/g, ''))}" onclick="event.stopPropagation()"><i class="fas fa-phone"></i> ${escapeHtml(proPhone)}</a>`
+                    : '';
+
                 return `
                 <div class="post-card ${premiumClass}" onclick="window.location.href='profile.html?user=${post.user_id}'" style="cursor: pointer;">
                     ${premiumBadge}
                     ${renderPostMedia(post, mediaUrl)}
                     <div class="post-content">
+                        <div class="post-professional">
+                            <strong>${escapeHtml(proName)}</strong>
+                            ${post.is_verified ? '<i class="fas fa-check-circle" style="color: #1da1f2;" title="Verificado"></i>' : ''}
+                        </div>
+                        <div class="post-location"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(proLocation)}</div>
+                        <div class="post-price-row"><span class="post-price">${escapeHtml(proPrice)}</span>${phoneLink}</div>
                         <div class="post-title">${escapeHtml(post.title)}</div>
                         <div class="post-description">${escapeHtml(post.description)}</div>
-                        <div class="post-user">
-                            <i class="fas fa-user"></i> ${escapeHtml(post.username)}
-                            ${post.is_verified ? '<i class="fas fa-check-circle" style="color: #1da1f2;" title="Usuario verificado"></i>' : ''}
-                        </div>
                         <div class="post-meta">
-                            <span class="post-price">${escapeHtml(typeof DeseoPricing !== 'undefined' ? DeseoPricing.formatPrice(post.price, post.price_unit) : (post.price ? `$${post.price}` : 'Consultar'))}</span>
                             <span><i class="fas fa-heart"></i> ${post.likes_count || 0}</span>
                             <span><i class="fas fa-comment"></i> ${post.comments_count || 0}</span>
                         </div>
@@ -173,13 +183,26 @@
 
     window.register = async function (e) {
         e.preventDefault();
+        const profilePayload = typeof DeseoProfileFields !== 'undefined'
+            ? DeseoProfileFields.readProfilePayload('reg')
+            : { ok: false, error: 'Campos de perfil no disponibles' };
+        if (!profilePayload.ok) {
+            showMessage(profilePayload.error, 'error');
+            return;
+        }
         try {
             const data = await DeseoAuth.authFetch(`${API_URL}/api/auth/register`, {
                 method: 'POST',
                 body: JSON.stringify({
                     username: document.getElementById('regUsername').value,
                     email: document.getElementById('regEmail').value,
-                    password: document.getElementById('regPassword').value
+                    password: document.getElementById('regPassword').value,
+                    full_name: profilePayload.full_name,
+                    country: profilePayload.country,
+                    city: profilePayload.city,
+                    phone: profilePayload.phone,
+                    service_price: profilePayload.service_price,
+                    service_price_unit: profilePayload.service_price_unit
                 })
             });
             authToken = data.token;
@@ -218,17 +241,6 @@
         formData.append('is_public', 'true');
         formData.append('is_premium', 'false');
 
-        if (typeof DeseoPricing !== 'undefined') {
-            const pricing = DeseoPricing.appendPublishToFormData(formData);
-            if (!pricing.ok) {
-                showMessage(pricing.error, 'error');
-                return;
-            }
-        } else {
-            showMessage('Error de validación de precios', 'error');
-            return;
-        }
-
         showMessage('Subiendo publicación...', 'success');
 
         try {
@@ -244,6 +256,11 @@
             await loadFeed();
         } catch (error) {
             if (typeof DeseoVerification !== 'undefined' && DeseoVerification.handlePublishError(error)) {
+                return;
+            }
+            if (error.data?.requiresProfile) {
+                showMessage(error.data.message || 'Completa tu perfil primero', 'error');
+                window.location.href = 'profile.html';
                 return;
             }
             showMessage(typeof DeseoErrors !== 'undefined' ? DeseoErrors.formatMessage(error) : ('Error: ' + error.message), 'error');
