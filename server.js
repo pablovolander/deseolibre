@@ -779,6 +779,7 @@ async function applyDatabaseMigrations(database) {
     await exec('ALTER TABLE users ADD COLUMN city TEXT');
     await exec('ALTER TABLE users ADD COLUMN service_price DECIMAL(10,2)');
     await exec('ALTER TABLE users ADD COLUMN service_price_unit TEXT');
+    await exec('ALTER TABLE users ADD COLUMN telegram_username TEXT');
 }
 
 async function ensureDatabaseSchemaUpToDate() {
@@ -802,7 +803,7 @@ const dbReady = (async () => {
                             cp.thumbnail_url, cp.price, cp.price_unit, cp.is_premium, cp.is_public, cp.category, cp.audience,
                             cp.likes_count, cp.comments_count, cp.created_at,
                             u.id as user_id, u.username, u.full_name, u.profile_picture, u.is_verified,
-                            u.location, u.country, u.city, u.phone, u.service_price, u.service_price_unit
+                            u.location, u.country, u.city, u.phone, u.telegram_username, u.service_price, u.service_price_unit
                      FROM content_posts cp
                      JOIN users u ON cp.user_id = u.id
                      WHERE cp.is_public = 1`,
@@ -942,7 +943,7 @@ function getAuthUserId(req) {
 
 async function findUserRecordById(userId) {
     return runDbGet(
-        `SELECT id, username, email, full_name, bio, location, country, city, phone,
+        `SELECT id, username, email, full_name, bio, location, country, city, phone, telegram_username,
                 service_price, service_price_unit, category,
                 profile_picture, cover_photo, is_verified, verification_status, age_verified, created_at
          FROM users WHERE id = ?`,
@@ -964,6 +965,7 @@ function mapUserForClient(user) {
         country: user.country,
         city: user.city,
         phone: user.phone,
+        telegram_username: user.telegram_username,
         service_price: user.service_price,
         service_price_unit: user.service_price_unit,
         category: user.category,
@@ -1067,6 +1069,7 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
             country,
             city,
             phone,
+            telegram_username,
             service_price,
             service_price_unit
         } = req.body;
@@ -1080,6 +1083,7 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
             country,
             city,
             phone,
+            telegram_username,
             service_price,
             service_price_unit
         });
@@ -1114,8 +1118,8 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
         const insertResult = await runDb(
             `INSERT INTO users (
                 username, email, password_hash, full_name, country, city, location,
-                phone, service_price, service_price_unit
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                phone, telegram_username, service_price, service_price_unit
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 username,
                 email,
@@ -1125,6 +1129,7 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
                 profileCheck.city,
                 profileCheck.location,
                 profileCheck.phone,
+                profileCheck.telegram_username,
                 profileCheck.service_price,
                 profileCheck.service_price_unit
             ]
@@ -1423,7 +1428,7 @@ app.get('/api/user/public/:userId', (req, res) => {
     const userId = req.params.userId;
 
     db.get(
-        `SELECT id, username, full_name, bio, location, country, city, phone,
+        `SELECT id, username, full_name, bio, location, country, city, phone, telegram_username,
                 service_price, service_price_unit, category, 
                 profile_picture, cover_photo, is_verified, created_at,
                 followers_count, following_count, posts_count
@@ -1652,12 +1657,12 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
         }
 
         const userId = user.id;
-        const { full_name, bio, country, city, phone, service_price, service_price_unit, age, category } = req.body;
+        const { full_name, bio, country, city, phone, telegram_username, service_price, service_price_unit, age, category } = req.body;
 
         if (isDevelopment) {
             console.log('📝 Actualizando perfil para usuario:', userId);
             console.log('📦 Datos recibidos:', {
-                full_name, bio, country, city, phone, service_price, service_price_unit, age, category
+                full_name, bio, country, city, phone, telegram_username, service_price, service_price_unit, age, category
             });
         }
 
@@ -1666,6 +1671,7 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
             country,
             city,
             phone,
+            telegram_username,
             service_price,
             service_price_unit
         });
@@ -1684,6 +1690,7 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
                 country = ?,
                 city = ?,
                 phone = ?, 
+                telegram_username = ?,
                 service_price = ?,
                 service_price_unit = ?,
                 age = ?,
@@ -1697,6 +1704,7 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
                 profileCheck.country,
                 profileCheck.city,
                 profileCheck.phone,
+                profileCheck.telegram_username,
                 profileCheck.service_price,
                 profileCheck.service_price_unit,
                 ageValue,
@@ -1996,6 +2004,7 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
             country: author?.country || null,
             city: author?.city || null,
             phone: author?.phone || null,
+            telegram_username: author?.telegram_username || null,
             likes_count: 0,
             comments_count: 0,
             created_at: new Date().toISOString(),
@@ -2237,6 +2246,7 @@ app.get('/api/content/category/:category', async (req, res) => {
                     u.country,
                     u.city,
                     u.phone,
+                    u.telegram_username,
                     u.service_price,
                     u.service_price_unit,
                     u.bio

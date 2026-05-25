@@ -32,13 +32,30 @@ window.DeseoListing = (function () {
         return String(post.phone || '').trim();
     }
 
+    function getTelegramUsername(post) {
+        return String(post.telegram_username || '').trim();
+    }
+
     function getMessagingLinksHtml(post, options) {
-        const phone = getPhone(post);
         if (typeof DeseoContact !== 'undefined') {
-            return DeseoContact.renderMessagingLinksHtml(phone, options);
+            return DeseoContact.renderMessagingLinksHtml(
+                {
+                    phone: getPhone(post),
+                    telegram_username: getTelegramUsername(post)
+                },
+                options
+            );
         }
         return '';
     }
 
-    return { getName, getLocation, getPrice, getPhone, getMessagingLinksHtml, COUNTRY_LABELS };
+    return {
+        getName,
+        getLocation,
+        getPrice,
+        getPhone,
+        getTelegramUsername,
+        getMessagingLinksHtml,
+        COUNTRY_LABELS
+    };
 })();

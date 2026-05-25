@@ -1947,8 +1947,13 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="editPhone">Teléfono * (WhatsApp / Telegram):</label>
+                        <label for="editPhone">Teléfono * (WhatsApp):</label>
                         <input type="tel" id="editPhone" required placeholder="10 dígitos, ej: 55 1234 5678">
+                    </div>
+                    <div class="form-group">
+                        <label for="editTelegram">Usuario de Telegram *:</label>
+                        <input type="text" id="editTelegram" required placeholder="ej: mi_usuario" minlength="5" maxlength="32">
+                        <small style="color: var(--text-muted);">Sin @ — enlace t.me/tu_usuario</small>
                     </div>
                     <div class="form-group">
                         <label for="editPrice">Tarifa *:</label>
@@ -2776,15 +2781,17 @@
             }
 
             const phone = user.phone || '';
-            if (phone && phoneLinksEl) {
+            if ((phone || user.telegram_username) && phoneLinksEl) {
                 phoneEl.style.display = 'flex';
                 if (typeof DeseoContact !== 'undefined') {
-                    phoneLinksEl.innerHTML = DeseoContact.renderMessagingLinksHtml(phone, {
-                        stopPropagation: false,
-                        className: 'contact-links contact-links-profile'
-                    });
+                    phoneLinksEl.innerHTML = DeseoContact.renderMessagingLinksHtml(
+                        { phone, telegram_username: user.telegram_username },
+                        { stopPropagation: false, className: 'contact-links contact-links-profile' }
+                    );
                 } else {
-                    phoneLinksEl.textContent = phone;
+                    phoneLinksEl.textContent = [phone, user.telegram_username ? `@${user.telegram_username}` : '']
+                        .filter(Boolean)
+                        .join(' · ');
                 }
             } else if (phoneEl) {
                 phoneEl.style.display = 'none';
@@ -2819,6 +2826,7 @@
                 country: profilePayload.country,
                 city: profilePayload.city,
                 phone: profilePayload.phone,
+                telegram_username: profilePayload.telegram_username,
                 service_price: profilePayload.service_price,
                 service_price_unit: profilePayload.service_price_unit,
                 age: document.getElementById('editAge').value,
@@ -2974,6 +2982,7 @@
             document.getElementById('editFullName').value = currentUser.full_name || '';
             document.getElementById('editBio').value = currentUser.bio || '';
             document.getElementById('editPhone').value = currentUser.phone || '';
+            document.getElementById('editTelegram').value = currentUser.telegram_username || '';
             document.getElementById('editPrice').value = currentUser.service_price || '';
             document.getElementById('editPriceUnit').value = currentUser.service_price_unit || '';
             document.getElementById('editAge').value = currentUser.age || '';

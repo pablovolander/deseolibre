@@ -201,6 +201,7 @@
                     country: profilePayload.country,
                     city: profilePayload.city,
                     phone: profilePayload.phone,
+                    telegram_username: profilePayload.telegram_username,
                     service_price: profilePayload.service_price,
                     service_price_unit: profilePayload.service_price_unit
                 })

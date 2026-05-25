@@ -19,9 +19,13 @@ window.DeseoProfileFields = (function () {
                 </select>
             </div>
             <div class="form-group">
-                <label for="${p}Phone">Teléfono * (WhatsApp / Telegram)</label>
+                <label for="${p}Phone">Teléfono * (WhatsApp)</label>
                 <input type="tel" id="${p}Phone" required placeholder="10 dígitos, ej: 55 1234 5678">
-                <small>Se usará para abrir WhatsApp y Telegram</small>
+            </div>
+            <div class="form-group">
+                <label for="${p}Telegram">Usuario de Telegram *</label>
+                <input type="text" id="${p}Telegram" required placeholder="ej: mi_usuario" autocomplete="off" minlength="5" maxlength="32">
+                <small>Sin @ — se abrirá t.me/tu_usuario</small>
             </div>
             <div class="form-group">
                 <label for="${p}Price">Tarifa *</label>
@@ -69,6 +73,7 @@ window.DeseoProfileFields = (function () {
             country: document.getElementById(`${prefix}Country`)?.value || DEFAULT_COUNTRY,
             city: document.getElementById(`${prefix}City`)?.value || '',
             phone: document.getElementById(`${prefix}Phone`)?.value?.trim() || '',
+            telegram_username: document.getElementById(`${prefix}Telegram`)?.value?.trim() || '',
             service_price: document.getElementById(`${prefix}Price`)?.value || '',
             service_price_unit: document.getElementById(`${prefix}PriceUnit`)?.value || ''
         };
@@ -79,6 +84,14 @@ window.DeseoProfileFields = (function () {
                 return phoneCheck;
             }
             payload.phone = phoneCheck.phone;
+
+            if (typeof DeseoContact !== 'undefined') {
+                const tgCheck = DeseoContact.normalizeTelegramUsername(payload.telegram_username);
+                if (!tgCheck.ok) {
+                    return tgCheck;
+                }
+                payload.telegram_username = tgCheck.telegram_username;
+            }
 
             const priceCheck = DeseoPricing.validatePricing(payload.service_price, payload.service_price_unit);
             if (!priceCheck.ok) {
@@ -93,6 +106,9 @@ window.DeseoProfileFields = (function () {
         }
         if (!payload.city) {
             return { ok: false, error: 'Selecciona una ciudad de México' };
+        }
+        if (!payload.telegram_username && typeof DeseoContact === 'undefined') {
+            return { ok: false, error: 'Indica tu usuario de Telegram' };
         }
 
         return { ok: true, ...payload };
@@ -110,6 +126,7 @@ window.DeseoProfileFields = (function () {
         };
         set(`${prefix}FullName`, user.full_name);
         set(`${prefix}Phone`, user.phone);
+        set(`${prefix}Telegram`, user.telegram_username);
         set(`${prefix}Price`, user.service_price);
         set(`${prefix}PriceUnit`, user.service_price_unit);
         initLocationPicker(prefix, { city: user.city });
