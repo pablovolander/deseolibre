@@ -1316,6 +1316,7 @@
     <script src="/js/api-config.js"></script>
     <script src="/js/city-search.js"></script>
     <script src="/js/profile-fields.js"></script>
+    <script src="/js/contact-links.js"></script>
     <script src="/js/service-pricing.js"></script>
     <script src="/js/auth-session.js"></script>
 </head>
@@ -1390,7 +1391,7 @@
                         🎭 Con nuestra herramienta de pixelado, siéntete libre de elegir qué y hasta dónde mostrar.
                     </p>
                     <div class="directory-search" style="max-width:620px;margin:1.5rem auto 1rem;display:flex;gap:0.5rem;flex-wrap:wrap;justify-content:center;">
-                        <input type="text" id="heroSearchCity" list="heroCitiesDatalist" placeholder="Ciudad (México, Colombia, Argentina)..." style="flex:1;min-width:200px;padding:0.85rem 1rem;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.25);color:#fff;">
+                        <input type="text" id="heroSearchCity" list="heroCitiesDatalist" placeholder="Ciudad en México (ej: CDMX, Guadalajara)..." style="flex:1;min-width:200px;padding:0.85rem 1rem;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.25);color:#fff;">
                         <datalist id="heroCitiesDatalist"></datalist>
                         <a href="feed-acompañantes-mujeres.html" class="btn btn-primary" id="heroSearchMujeres" style="white-space:nowrap;"><i class="fas fa-female"></i> Mujeres</a>
                         <a href="feed-acompañantes-hombres.html" class="btn btn-primary" id="heroSearchHombres" style="white-space:nowrap;"><i class="fas fa-male"></i> Hombres</a>
@@ -1538,24 +1539,16 @@
                     <label for="regFullName">Nombre profesional *</label>
                     <input type="text" id="regFullName" required minlength="2">
                 </div>
+                <input type="hidden" id="regCountry" value="MX">
                 <div class="form-group">
-                    <label for="regCountry">País *</label>
-                    <select id="regCountry" required>
-                        <option value="">Selecciona país</option>
-                        <option value="MX">México</option>
-                        <option value="CO">Colombia</option>
-                        <option value="AR">Argentina</option>
+                    <label for="regCity">Ciudad en México *</label>
+                    <select id="regCity" required>
+                        <option value="">Selecciona tu ciudad</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="regCity">Ciudad *</label>
-                    <select id="regCity" required disabled>
-                        <option value="">Primero elige el país</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="regPhone">Teléfono *</label>
-                    <input type="tel" id="regPhone" required placeholder="+52 555 123 4567">
+                    <label for="regPhone">Teléfono * (WhatsApp / Telegram)</label>
+                    <input type="tel" id="regPhone" required placeholder="10 dígitos, ej: 55 1234 5678">
                 </div>
                 <div class="form-group">
                     <label for="regPrice">Tarifa *</label>

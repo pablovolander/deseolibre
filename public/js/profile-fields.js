@@ -1,36 +1,27 @@
 /**
- * País → ciudad y campos de perfil profesional (registro / edición).
+ * Ciudad en México y campos de perfil profesional (registro / edición).
  */
 window.DeseoProfileFields = (function () {
-    const COUNTRIES = [
-        { code: 'MX', label: 'México' },
-        { code: 'CO', label: 'Colombia' },
-        { code: 'AR', label: 'Argentina' }
-    ];
+    const DEFAULT_COUNTRY = 'MX';
 
     function profileFieldHtml(prefix) {
         const p = prefix || 'reg';
         return `
+            <input type="hidden" id="${p}Country" value="MX">
             <div class="form-group">
                 <label for="${p}FullName">Nombre profesional *</label>
                 <input type="text" id="${p}FullName" required placeholder="Tu nombre artístico o real" minlength="2">
             </div>
             <div class="form-group">
-                <label for="${p}Country">País *</label>
-                <select id="${p}Country" required>
-                    <option value="">Selecciona país</option>
-                    ${COUNTRIES.map((c) => `<option value="${c.code}">${c.label}</option>`).join('')}
+                <label for="${p}City">Ciudad en México *</label>
+                <select id="${p}City" required>
+                    <option value="">Selecciona tu ciudad</option>
                 </select>
             </div>
             <div class="form-group">
-                <label for="${p}City">Ciudad *</label>
-                <select id="${p}City" required disabled>
-                    <option value="">Primero elige el país</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="${p}Phone">Teléfono *</label>
-                <input type="tel" id="${p}Phone" required placeholder="+52 555 123 4567">
+                <label for="${p}Phone">Teléfono * (WhatsApp / Telegram)</label>
+                <input type="tel" id="${p}Phone" required placeholder="10 dígitos, ej: 55 1234 5678">
+                <small>Se usará para abrir WhatsApp y Telegram</small>
             </div>
             <div class="form-group">
                 <label for="${p}Price">Tarifa *</label>
@@ -50,39 +41,24 @@ window.DeseoProfileFields = (function () {
         initial = initial || {};
         const countryEl = document.getElementById(`${prefix}Country`);
         const cityEl = document.getElementById(`${prefix}City`);
-        if (!countryEl || !cityEl) {
+        if (!cityEl) {
             return;
+        }
+        if (countryEl) {
+            countryEl.value = DEFAULT_COUNTRY;
         }
 
         if (typeof DeseoCitySearch === 'undefined') {
             return;
         }
 
-        await DeseoCitySearch.getCities();
-
-        function fillCities() {
-            const code = countryEl.value;
-            if (!code) {
-                cityEl.innerHTML = '<option value="">Primero elige el país</option>';
-                cityEl.disabled = true;
-                return;
-            }
-            DeseoCitySearch.getCities(code).then((cities) => {
-                cityEl.disabled = false;
-                cityEl.innerHTML =
-                    '<option value="">Selecciona ciudad</option>' +
-                    cities.map((c) => `<option value="${c.name}">${c.name}</option>`).join('');
-                if (initial.city) {
-                    cityEl.value = initial.city;
-                }
-            });
-        }
-
-        countryEl.addEventListener('change', fillCities);
-
-        if (initial.country) {
-            countryEl.value = initial.country;
-            fillCities();
+        await DeseoCitySearch.getCities(DEFAULT_COUNTRY);
+        const cities = await DeseoCitySearch.getCities(DEFAULT_COUNTRY);
+        cityEl.innerHTML =
+            '<option value="">Selecciona tu ciudad</option>' +
+            cities.map((c) => `<option value="${c.name}">${c.name}</option>`).join('');
+        if (initial.city) {
+            cityEl.value = initial.city;
         }
     }
 
@@ -90,7 +66,7 @@ window.DeseoProfileFields = (function () {
         prefix = prefix || 'reg';
         const payload = {
             full_name: document.getElementById(`${prefix}FullName`)?.value?.trim() || '',
-            country: document.getElementById(`${prefix}Country`)?.value || '',
+            country: document.getElementById(`${prefix}Country`)?.value || DEFAULT_COUNTRY,
             city: document.getElementById(`${prefix}City`)?.value || '',
             phone: document.getElementById(`${prefix}Phone`)?.value?.trim() || '',
             service_price: document.getElementById(`${prefix}Price`)?.value || '',
@@ -115,11 +91,8 @@ window.DeseoProfileFields = (function () {
         if (!payload.full_name || payload.full_name.length < 2) {
             return { ok: false, error: 'Indica tu nombre profesional' };
         }
-        if (!payload.country) {
-            return { ok: false, error: 'Selecciona un país' };
-        }
         if (!payload.city) {
-            return { ok: false, error: 'Selecciona una ciudad' };
+            return { ok: false, error: 'Selecciona una ciudad de México' };
         }
 
         return { ok: true, ...payload };
@@ -139,11 +112,11 @@ window.DeseoProfileFields = (function () {
         set(`${prefix}Phone`, user.phone);
         set(`${prefix}Price`, user.service_price);
         set(`${prefix}PriceUnit`, user.service_price_unit);
-        initLocationPicker(prefix, { country: user.country, city: user.city });
+        initLocationPicker(prefix, { city: user.city });
     }
 
     return {
-        COUNTRIES,
+        DEFAULT_COUNTRY,
         profileFieldHtml,
         initLocationPicker,
         readProfilePayload,

@@ -382,6 +382,41 @@
     font-weight: 700;
 }
 
+.contact-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.contact-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.contact-whatsapp {
+    background: rgba(37, 211, 102, 0.2);
+    color: #25d366;
+    border: 1px solid rgba(37, 211, 102, 0.45);
+}
+
+.contact-telegram {
+    background: rgba(0, 136, 204, 0.2);
+    color: #2aabee;
+    border: 1px solid rgba(0, 136, 204, 0.45);
+}
+
+.bio-contact-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+
 @media (max-width: 600px) {
     .profile-grid {
         grid-template-columns: 1fr;

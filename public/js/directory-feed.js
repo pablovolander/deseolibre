@@ -84,9 +84,8 @@
         const name = listing ? listing.getName(post) : (post.full_name || post.username || 'Profesional');
         const location = listing ? listing.getLocation(post) : (post.location || 'Ubicación no indicada');
         const price = listing ? listing.getPrice(post) : 'Consultar';
-        const phone = listing ? listing.getPhone(post) : (post.phone || '');
-        const phoneHtml = phone
-            ? `<a class="profile-phone" href="tel:${encodeURIComponent(phone.replace(/\s/g, ''))}" onclick="event.stopPropagation()"><i class="fas fa-phone"></i> ${escapeHtml(phone)}</a>`
+        const contactHtml = listing
+            ? listing.getMessagingLinksHtml(post, { stopPropagation: true })
             : '';
         const verified = post.is_verified
             ? '<span class="badge-verified"><i class="fas fa-check-circle"></i> Verificado</span>'
@@ -110,7 +109,7 @@
                 <div class="profile-location"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(location)}</div>
                 <div class="profile-meta-row">
                     <span class="profile-price">${escapeHtml(price)}</span>
-                    ${phoneHtml}
+                    ${contactHtml}
                 </div>
                 <p class="profile-snippet">${escapeHtml(post.description || post.title)}</p>
                 <div class="profile-meta-row profile-meta-secondary">

@@ -88,9 +88,8 @@
                 const proName = listing ? listing.getName(post) : (post.full_name || post.username);
                 const proLocation = listing ? listing.getLocation(post) : '';
                 const proPrice = listing ? listing.getPrice(post) : 'Consultar';
-                const proPhone = listing ? listing.getPhone(post) : '';
-                const phoneLink = proPhone
-                    ? `<a class="post-phone" href="tel:${encodeURIComponent(proPhone.replace(/\s/g, ''))}" onclick="event.stopPropagation()"><i class="fas fa-phone"></i> ${escapeHtml(proPhone)}</a>`
+                const contactHtml = listing
+                    ? listing.getMessagingLinksHtml(post, { stopPropagation: true })
                     : '';
 
                 return `
@@ -103,7 +102,8 @@
                             ${post.is_verified ? '<i class="fas fa-check-circle" style="color: #1da1f2;" title="Verificado"></i>' : ''}
                         </div>
                         <div class="post-location"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(proLocation)}</div>
-                        <div class="post-price-row"><span class="post-price">${escapeHtml(proPrice)}</span>${phoneLink}</div>
+                        <div class="post-price-row"><span class="post-price">${escapeHtml(proPrice)}</span></div>
+                        ${contactHtml}
                         <div class="post-title">${escapeHtml(post.title)}</div>
                         <div class="post-description">${escapeHtml(post.description)}</div>
                         <div class="post-meta">

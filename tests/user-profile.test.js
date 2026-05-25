@@ -3,15 +3,15 @@ const assert = require('node:assert/strict');
 const { validateUserProfileFields, userHasCompleteProfile } = require('../lib/user-profile');
 const { validateCountryCity } = require('../lib/supported-cities');
 
-test('validateCountryCity rejects city from wrong country', () => {
-    const result = validateCountryCity('MX', 'Bogotá');
+test('validateCountryCity rejects non-Mexico country', () => {
+    const result = validateCountryCity('CO', 'Bogotá');
     assert.equal(result.ok, false);
 });
 
-test('validateCountryCity accepts matching city', () => {
-    const result = validateCountryCity('CO', 'Bogotá');
+test('validateCountryCity accepts Mexican city', () => {
+    const result = validateCountryCity('MX', 'Guadalajara');
     assert.equal(result.ok, true);
-    assert.equal(result.city, 'Bogotá');
+    assert.equal(result.city, 'Guadalajara');
 });
 
 test('validateUserProfileFields requires full profile', () => {

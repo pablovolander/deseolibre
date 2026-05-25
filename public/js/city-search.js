@@ -63,10 +63,10 @@ window.DeseoCitySearch = (function () {
         const picks = [
             'Ciudad de México',
             'Guadalajara',
-            'Buenos Aires',
-            'Bogotá',
-            'Medellín',
-            'Monterrey'
+            'Monterrey',
+            'Puebla',
+            'Tijuana',
+            'Cancún'
         ];
         container.innerHTML = picks
             .map(

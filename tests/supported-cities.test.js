@@ -17,14 +17,16 @@ test('resolveCityQuery rejects unknown cities', () => {
     assert.equal(result.ok, false);
 });
 
-test('postMatchesCity searches location and bio', () => {
+test('postMatchesCity matches by city field', () => {
     const post = {
+        city: 'Monterrey',
+        country: 'MX',
         location: '',
-        bio: 'Atiendo en Medellín centro',
+        bio: '',
         description: '',
         title: ''
     };
-    assert.equal(postMatchesCity(post, 'Medellín'), true);
+    assert.equal(postMatchesCity(post, 'Monterrey'), true);
 });
 
 test('listSupportedCities filters by country', () => {

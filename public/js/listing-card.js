@@ -2,7 +2,7 @@
  * Datos del profesional en tarjetas de directorio y feeds.
  */
 window.DeseoListing = (function () {
-    const COUNTRY_LABELS = { MX: 'México', CO: 'Colombia', AR: 'Argentina' };
+    const COUNTRY_LABELS = { MX: 'México' };
 
     function getName(post) {
         return post.full_name || post.display_name || post.username || 'Profesional';
@@ -32,5 +32,13 @@ window.DeseoListing = (function () {
         return String(post.phone || '').trim();
     }
 
-    return { getName, getLocation, getPrice, getPhone, COUNTRY_LABELS };
+    function getMessagingLinksHtml(post, options) {
+        const phone = getPhone(post);
+        if (typeof DeseoContact !== 'undefined') {
+            return DeseoContact.renderMessagingLinksHtml(phone, options);
+        }
+        return '';
+    }
+
+    return { getName, getLocation, getPrice, getPhone, getMessagingLinksHtml, COUNTRY_LABELS };
 })();

@@ -1741,9 +1741,9 @@
                             <i class="fas fa-map-marker-alt"></i>
                             <span id="locationText"></span>
                         </div>
-                        <div class="bio-detail-item" id="phoneDetail" style="display:none;">
+                        <div class="bio-detail-item bio-contact-row" id="phoneDetail" style="display:none;">
                             <i class="fas fa-phone"></i>
-                            <a id="phoneText" href="#"></a>
+                            <div id="phoneContactLinks"></div>
                         </div>
                         <div class="bio-detail-item" id="priceDetail" style="display:none;">
                             <i class="fas fa-tag"></i>
@@ -1939,24 +1939,16 @@
                         <label for="editBio">Biografía:</label>
                         <textarea id="editBio" placeholder="Cuéntanos sobre ti..."></textarea>
                     </div>
+                    <input type="hidden" id="editCountry" value="MX">
                     <div class="form-group">
-                        <label for="editCountry">País *:</label>
-                        <select id="editCountry" required>
-                            <option value="">Selecciona país</option>
-                            <option value="MX">México</option>
-                            <option value="CO">Colombia</option>
-                            <option value="AR">Argentina</option>
+                        <label for="editCity">Ciudad en México *:</label>
+                        <select id="editCity" required>
+                            <option value="">Selecciona tu ciudad</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="editCity">Ciudad *:</label>
-                        <select id="editCity" required disabled>
-                            <option value="">Primero elige el país</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="editPhone">Teléfono *:</label>
-                        <input type="tel" id="editPhone" required placeholder="+52 555 123 4567">
+                        <label for="editPhone">Teléfono * (WhatsApp / Telegram):</label>
+                        <input type="tel" id="editPhone" required placeholder="10 dígitos, ej: 55 1234 5678">
                     </div>
                     <div class="form-group">
                         <label for="editPrice">Tarifa *:</label>
@@ -2219,6 +2211,7 @@
     <script src="/js/verification-gate.js"></script>
     <script src="/js/city-search.js"></script>
     <script src="/js/profile-fields.js"></script>
+    <script src="/js/contact-links.js"></script>
     <script src="/js/listing-card.js"></script>
     <script src="/js/service-pricing.js"></script>
     <script src="/js/components.js"></script>
@@ -2479,15 +2472,7 @@
                     document.getElementById('bioText').textContent = user.bio;
                 }
 
-                if (user.location) {
-                    document.getElementById('locationDetail').style.display = 'flex';
-                    document.getElementById('locationText').textContent = user.location;
-                }
-
-                if (user.phone) {
-                    document.getElementById('phoneDetail').style.display = 'flex';
-                    document.getElementById('phoneText').textContent = user.phone;
-                }
+                applyProfileDetailsToBio(user);
 
                 if (user.category) {
                     document.getElementById('categoryDetail').style.display = 'flex';
@@ -2776,7 +2761,7 @@
             const locEl = document.getElementById('locationDetail');
             const locText = document.getElementById('locationText');
             const phoneEl = document.getElementById('phoneDetail');
-            const phoneText = document.getElementById('phoneText');
+            const phoneLinksEl = document.getElementById('phoneContactLinks');
             const priceEl = document.getElementById('priceDetail');
             const priceText = document.getElementById('priceText');
 
@@ -2791,11 +2776,17 @@
             }
 
             const phone = user.phone || '';
-            if (phone) {
+            if (phone && phoneLinksEl) {
                 phoneEl.style.display = 'flex';
-                phoneText.textContent = phone;
-                phoneText.href = `tel:${phone.replace(/\s/g, '')}`;
-            } else {
+                if (typeof DeseoContact !== 'undefined') {
+                    phoneLinksEl.innerHTML = DeseoContact.renderMessagingLinksHtml(phone, {
+                        stopPropagation: false,
+                        className: 'contact-links contact-links-profile'
+                    });
+                } else {
+                    phoneLinksEl.textContent = phone;
+                }
+            } else if (phoneEl) {
                 phoneEl.style.display = 'none';
             }
 
