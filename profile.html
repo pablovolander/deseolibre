@@ -1846,9 +1846,7 @@
                             <option value="">Selecciona una categoría</option>
                             <option value="acompañantes-mujeres">👩 Acompañantes Mujeres</option>
                             <option value="acompañantes-hombres">👨 Acompañantes Hombres</option>
-                            <option value="masajes">💆 Masajes</option>
-                            <option value="sugar-daddy">💎 Sugar Daddy</option>
-                            <option value="sugar-mommy">💎 Sugar Mommy</option>
+                            <option value="acompañantes-trans">🏳️‍⚧️ Acompañantes Trans</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -1977,9 +1975,7 @@
                             <option value="">Selecciona una categoría</option>
                             <option value="acompañantes-mujeres">👩 Acompañantes Mujeres</option>
                             <option value="acompañantes-hombres">👨 Acompañantes Hombres</option>
-                            <option value="masajes">💆 Masajes</option>
-                            <option value="sugar-daddy">💎 Sugar Daddy</option>
-                            <option value="sugar-mommy">💎 Sugar Mommy</option>
+                            <option value="acompañantes-trans">🏳️‍⚧️ Acompañantes Trans</option>
                         </select>
                     </div>
                 </div>
@@ -2911,7 +2907,7 @@
             const categorySelect = document.getElementById('createPostCategory');
             const urlCategory = new URLSearchParams(window.location.search).get('category');
             const preferredCategory = urlCategory || currentUser?.category;
-            const legacyUnified = { 'acompañantes': 'acompañantes-mujeres', 'acompañantes-trans': 'acompañantes-mujeres' };
+            const legacyUnified = { 'acompañantes': 'acompañantes-mujeres' };
             let resolvedCategory = preferredCategory;
             if (preferredCategory && legacyUnified[preferredCategory]) {
                 resolvedCategory = legacyUnified[preferredCategory];
@@ -3169,10 +3165,7 @@
                 'acompañantes': '👩 Acompañantes Mujeres',
                 'acompañantes-mujeres': '👩 Acompañantes Mujeres',
                 'acompañantes-hombres': '👨 Acompañantes Hombres',
-                'acompañantes-trans': '👩 Acompañantes Mujeres',
-                'masajes': '💆 Masajes',
-                'sugar-daddy': '💎 Sugar Daddy',
-                'sugar-mommy': '💎 Sugar Mommy'
+                'acompañantes-trans': '🏳️‍⚧️ Acompañantes Trans'
             };
             return categories[category] || category;
         }

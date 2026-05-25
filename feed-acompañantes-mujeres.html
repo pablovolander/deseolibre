@@ -7,30 +7,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <link href="/css/directory.css" rel="stylesheet">
-    <style>
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; align-items: center; justify-content: center; padding: 1rem; }
-        .modal.show { display: flex; }
-        .modal-content { background: #1a1d29; padding: 1.5rem; border-radius: 16px; max-width: 420px; width: 100%; border: 1px solid rgba(255,255,255,0.1); color: #fff; }
-        .form-group { margin-bottom: 1rem; }
-        .form-group label { display: block; margin-bottom: 0.35rem; font-size: 0.9rem; }
-        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 0.65rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #fff; }
-        .modal .btn { margin-right: 0.5rem; margin-top: 0.5rem; padding: 0.6rem 1rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; }
-        .modal .btn[type=submit] { background: linear-gradient(135deg, #ff6b9d, #8b7cf8); color: #fff; }
-        #messageBox.success { color: #7dffa8; }
-        #messageBox.error { color: #ff8a9b; }
-        .header-actions .btn-link { color: #fff; text-decoration: none; font-size: 0.9rem; margin-left: 0.75rem; opacity: 0.85; }
-        .header-actions .btn-primary-sm { background: linear-gradient(135deg, #ff6b9d, #8b7cf8); color: #fff; padding: 0.5rem 1rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: 0.9rem; }
-        .switch-category { text-align: center; margin: 0 0 1rem; }
-        .switch-category a { color: #ff9ec8; margin: 0 0.75rem; }
-        .form-hint { font-size: 0.85rem; color: rgba(255,255,255,0.65); margin: 0.5rem 0 1rem; }
-        .contact-links { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.35rem; }
-        .contact-link { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.65rem; border-radius: 8px; font-size: 0.8rem; font-weight: 600; text-decoration: none; }
-        .contact-whatsapp { background: rgba(37, 211, 102, 0.2); color: #25d366; border: 1px solid rgba(37, 211, 102, 0.4); }
-        .contact-telegram { background: rgba(0, 136, 204, 0.2); color: #2aabee; border: 1px solid rgba(0, 136, 204, 0.4); }
-        .post-professional { font-size: 1rem; margin-bottom: 0.35rem; }
-        .post-location { font-size: 0.85rem; opacity: 0.85; margin-bottom: 0.35rem; }
-        .post-price-row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 0.5rem; }
-    </style>
+    <link href="/css/directory-modals.css" rel="stylesheet">
 </head>
 <body class="directory-page" data-category="acompañantes-mujeres">
     <header class="directory-header">
@@ -39,6 +16,7 @@
             <div class="header-actions">
                 <a href="index.html" class="btn-link">Inicio</a>
                 <a href="feed-acompañantes-hombres.html" class="btn-link">Hombres</a>
+                <a href="feed-acompañantes-trans.html" class="btn-link">Trans</a>
                 <button type="button" class="btn-primary-sm" onclick="showLogin()">Entrar</button>
                 <button type="button" class="btn-primary-sm" onclick="showRegister()">Registro</button>
                 <button type="button" class="btn-primary-sm" id="createBtn" style="display:none;" onclick="showCreatePost()">+ Publicar</button>
@@ -48,7 +26,7 @@
 
     <section class="directory-hero">
         <h1>👩 Acompañantes Mujeres</h1>
-        <p>Directorio de acompañantes mujeres verificadas. Busca por ciudad. Sin comisiones, verificación real y control de privacidad.</p>
+        <p>Busca por ciudad en México. Verificación, 0% comisión y contacto directo.</p>
         <div class="directory-search">
             <input type="hidden" id="searchCountry" value="MX">
             <input type="text" id="searchCity" list="citiesDatalist" placeholder="Ciudad en México (ej: CDMX, Guadalajara)..." autocomplete="off">
@@ -68,7 +46,11 @@
         </div>
     </section>
 
-    <p class="switch-category">¿Buscas hombres? <a href="feed-acompañantes-hombres.html">Ver Acompañantes Hombres</a></p>
+    <nav class="category-nav" aria-label="Categorías">
+        <a href="feed-acompañantes-mujeres.html" class="active">Mujeres</a>
+        <a href="feed-acompañantes-hombres.html">Hombres</a>
+        <a href="feed-acompañantes-trans.html">Trans</a>
+    </nav>
 
     <div id="messageBox"></div>
     <section class="directory-results">

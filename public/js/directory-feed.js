@@ -107,14 +107,10 @@
             <div class="profile-card-body">
                 <h3>${escapeHtml(name)}</h3>
                 <div class="profile-location"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(location)}</div>
-                <div class="profile-meta-row">
+                <div class="profile-price-block">
                     <span class="profile-price">${escapeHtml(price)}</span>
-                    ${contactHtml}
                 </div>
-                <p class="profile-snippet">${escapeHtml(post.description || post.title)}</p>
-                <div class="profile-meta-row profile-meta-secondary">
-                    <span><i class="fas fa-heart"></i> ${post.likes_count || 0}</span>
-                </div>
+                <div class="profile-contact-row">${contactHtml}</div>
             </div>
         </article>`;
     }

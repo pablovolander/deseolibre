@@ -54,15 +54,15 @@ if (!JWT_SECRET && isDevelopment) {
 const VALID_CONTENT_CATEGORIES = [
     'acompañantes-mujeres',
     'acompañantes-hombres',
-    'masajes',
-    'sugar-daddy',
-    'sugar-mommy'
+    'acompañantes-trans'
 ];
 
 const LEGACY_CATEGORY_MAP = {
     'acompañantes-mujeres': { category: 'acompañantes-mujeres', audience: null },
     'acompañantes-hombres': { category: 'acompañantes-hombres', audience: null },
-    'acompañantes-trans': { category: 'acompañantes-mujeres', audience: null }
+    'masajes': { category: 'acompañantes-mujeres', audience: null },
+    'sugar-daddy': { category: 'acompañantes-mujeres', audience: null },
+    'sugar-mommy': { category: 'acompañantes-mujeres', audience: null }
 };
 
 const CATEGORY_ALIASES = {
@@ -106,7 +106,7 @@ function isValidCategory(category) {
 
 function getCategorySearchVariants(canonical) {
     const variants = new Set([canonical]);
-    if (canonical === 'acompañantes-mujeres' || canonical === 'acompañantes-hombres') {
+    if (canonical === 'acompañantes-mujeres' || canonical === 'acompañantes-hombres' || canonical === 'acompañantes-trans') {
         variants.add('acompañantes');
     }
     Object.entries(CATEGORY_ALIASES).forEach(([alias, target]) => {
@@ -125,8 +125,16 @@ function filterPostsForCategory(canonical, rows) {
             const cat = normalizeCategorySlug(p.category);
             if (cat === 'acompañantes-mujeres') return true;
             if (cat === 'acompañantes') {
-                return !p.audience || p.audience === 'mujeres' || p.audience === 'trans';
+                return !p.audience || p.audience === 'mujeres';
             }
+            return false;
+        });
+    }
+    if (canonical === 'acompañantes-trans') {
+        return list.filter((p) => {
+            const cat = normalizeCategorySlug(p.category);
+            if (cat === 'acompañantes-trans') return true;
+            if (cat === 'acompañantes') return p.audience === 'trans';
             return false;
         });
     }
@@ -768,11 +776,19 @@ async function applyDatabaseMigrations(database) {
     await exec('ALTER TABLE content_posts ADD COLUMN audience TEXT');
     await exec(
         `UPDATE content_posts SET category = 'acompañantes-mujeres', audience = NULL
-         WHERE category = 'acompañantes' AND (audience IN ('mujeres', 'trans') OR audience IS NULL OR audience = '')`
+         WHERE category = 'acompañantes' AND (audience IN ('mujeres') OR audience IS NULL OR audience = '')`
+    );
+    await exec(
+        `UPDATE content_posts SET category = 'acompañantes-trans', audience = NULL
+         WHERE category = 'acompañantes' AND audience = 'trans'`
     );
     await exec(
         `UPDATE content_posts SET category = 'acompañantes-hombres', audience = NULL
          WHERE category = 'acompañantes' AND audience = 'hombres'`
+    );
+    await exec(
+        `UPDATE content_posts SET category = 'acompañantes-mujeres', audience = NULL
+         WHERE category IN ('masajes', 'sugar-daddy', 'sugar-mommy')`
     );
     await exec('ALTER TABLE content_posts ADD COLUMN price_unit TEXT');
     await exec('ALTER TABLE users ADD COLUMN country TEXT');
@@ -1640,7 +1656,7 @@ app.get('/api/upload/info', (req, res) => {
             audio: ['wav', 'mp3', 'm4a']
         },
         categories: [
-            'acompañantes-mujeres', 'acompañantes-hombres', 'masajes', 'sugar-daddy', 'sugar-mommy'
+            'acompañantes-mujeres', 'acompañantes-hombres', 'acompañantes-trans'
         ]
     });
 });

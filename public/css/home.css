@@ -1,0 +1,536 @@
+/* Home — design system alineado con directorio oscuro */
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+.home-page {
+    min-height: 100vh;
+    background: #0f1118;
+    color: #f4f5f8;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.home-page .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.25rem;
+}
+
+.home-page header {
+    background: linear-gradient(135deg, #1a1d29 0%, #12141c 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.home-page .header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.home-page .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.home-page .logo-text {
+    background: linear-gradient(135deg, #ff6b9d, #8b7cf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.home-page .logo-emoji {
+    font-size: 1.5rem;
+}
+
+.home-page nav {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+}
+
+.home-page .nav-menu {
+    display: flex;
+    list-style: none;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.home-page .nav-menu a {
+    text-decoration: none;
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 500;
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+}
+
+.home-page .nav-menu a:hover {
+    background: rgba(255, 107, 157, 0.15);
+    color: #ff9ec8;
+}
+
+.home-page .auth-buttons {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.home-page .btn {
+    padding: 0.55rem 1.1rem;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    transition: transform 0.2s, opacity 0.2s;
+}
+
+.home-page .btn-primary {
+    background: linear-gradient(135deg, #ff6b9d, #8b7cf8);
+    color: #fff;
+}
+
+.home-page .btn-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.home-page .btn:hover {
+    transform: translateY(-2px);
+    opacity: 0.95;
+}
+
+.home-page .mobile-menu-btn {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    cursor: pointer;
+    padding: 8px;
+}
+
+.home-page .mobile-menu-btn span {
+    display: block;
+    height: 2px;
+    background: #fff;
+    border-radius: 2px;
+    transition: transform 0.2s, opacity 0.2s;
+}
+
+.home-page .mobile-menu-btn.active span:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+}
+
+.home-page .mobile-menu-btn.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.home-page .mobile-menu-btn.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(5px, -5px);
+}
+
+.home-page .user-menu {
+    display: none;
+    align-items: center;
+    gap: 0.75rem;
+    position: relative;
+}
+
+.home-page .user-menu.show {
+    display: flex;
+}
+
+.home-page .user-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.5rem;
+    background: #1a1d29;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 0.5rem 0;
+    min-width: 160px;
+    z-index: 100;
+}
+
+.home-page .user-menu:hover .user-dropdown,
+.home-page .user-menu:focus-within .user-dropdown {
+    display: block;
+}
+
+.home-page .user-dropdown a {
+    display: block;
+    padding: 0.5rem 1rem;
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.home-page .user-dropdown a:hover {
+    background: rgba(255, 107, 157, 0.12);
+}
+
+.home-hero {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 3rem 1.25rem 2rem;
+    text-align: center;
+}
+
+.home-hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 5vw, 3rem);
+    margin: 0.5rem 0 0.75rem;
+    background: linear-gradient(135deg, #ff6b9d, #8b7cf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.home-hero .hero-emoji {
+    font-size: 2.5rem;
+}
+
+.home-hero .hero-tagline {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.05rem;
+    margin-bottom: 1.75rem;
+}
+
+.home-search-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+}
+
+.home-search-row input {
+    flex: 1;
+    min-width: 200px;
+    max-width: 320px;
+    padding: 0.85rem 1rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+}
+
+.home-search-row input::placeholder {
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.home-hero-cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+.home-trust {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.home-trust .trust-pill {
+    font-size: 0.78rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.home-services {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 1rem 1.25rem 4rem;
+}
+
+.home-services h2 {
+    text-align: center;
+    font-size: 1.35rem;
+    margin-bottom: 1.5rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.home-services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.25rem;
+}
+
+.home-service-card {
+    display: block;
+    text-decoration: none;
+    background: #1a1d29;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 1.5rem;
+    transition: transform 0.2s, border-color 0.2s;
+    color: inherit;
+}
+
+.home-service-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(255, 107, 157, 0.4);
+}
+
+.home-service-card .icon {
+    font-size: 2.25rem;
+    margin-bottom: 0.75rem;
+}
+
+.home-service-card h3 {
+    font-size: 1.15rem;
+    margin-bottom: 0.35rem;
+    color: #fff;
+}
+
+.home-service-card p {
+    font-size: 0.88rem;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.45;
+}
+
+.home-page footer {
+    background: #12141c;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 2.5rem 0 1.5rem;
+}
+
+.home-page .footer-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.home-page footer h3 {
+    color: #fff;
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+}
+
+.home-page footer p,
+.home-page footer a,
+.home-page footer li {
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.9rem;
+}
+
+.home-page footer ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.home-page footer li {
+    margin-bottom: 0.35rem;
+}
+
+.home-page footer a {
+    text-decoration: none;
+}
+
+.home-page footer a:hover {
+    color: #ff9ec8;
+}
+
+.home-page .social-links {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.home-page .footer-bottom {
+    text-align: center;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* Modales home */
+.home-page .modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.home-page .modal.show {
+    display: flex;
+}
+
+.home-page .modal .modal-content {
+    background: #1a1d29;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 1.5rem;
+    max-width: 480px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.home-page .modal h2 {
+    font-family: 'Playfair Display', serif;
+    margin-bottom: 1rem;
+    font-size: 1.35rem;
+}
+
+.home-page .form-group {
+    margin-bottom: 1rem;
+}
+
+.home-page .form-group label {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.9rem;
+}
+
+.home-page .form-group input,
+.home-page .form-group select {
+    width: 100%;
+    padding: 0.65rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+}
+
+.home-page .form-toggle {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.home-page .form-toggle a {
+    color: #ff9ec8;
+}
+
+.home-page .age-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1rem 0;
+}
+
+.home-page .modal-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.home-page .modal-btn {
+    padding: 0.65rem 1.25rem;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.home-page .modal-btn-primary {
+    background: linear-gradient(135deg, #ff6b9d, #8b7cf8);
+    color: #fff;
+}
+
+.home-page .modal-btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.home-page body.modal-open {
+    overflow: hidden;
+}
+
+.error-message,
+.success-message {
+    position: fixed;
+    top: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3000;
+    padding: 0.75rem 1.25rem;
+    border-radius: 10px;
+    font-weight: 600;
+    max-width: 90%;
+}
+
+.error-message {
+    background: rgba(255, 77, 109, 0.95);
+    color: #fff;
+}
+
+.success-message {
+    background: rgba(46, 204, 113, 0.95);
+    color: #fff;
+}
+
+@media (max-width: 768px) {
+    .home-page .mobile-menu-btn {
+        display: flex;
+    }
+
+    .home-page nav {
+        display: none;
+        width: 100%;
+        order: 3;
+    }
+
+    .home-page nav.active {
+        display: block;
+    }
+
+    .home-page .nav-menu {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .home-hero {
+        padding-top: 2rem;
+    }
+
+    .home-page .header-content {
+        flex-wrap: wrap;
+    }
+}

@@ -293,10 +293,7 @@ function getCategoryName(category) {
         'acompañantes': 'Acompañantes Mujeres',
         'acompañantes-mujeres': 'Acompañantes Mujeres',
         'acompañantes-hombres': 'Acompañantes Hombres',
-        'acompañantes-trans': 'Acompañantes Mujeres',
-        'masajes': 'Masajes',
-        'sugar-daddy': 'Sugar Daddy',
-        'sugar-mommy': 'Sugar Mommy'
+        'acompañantes-trans': 'Acompañantes Trans'
     };
     return categories[category] || category;
 }
