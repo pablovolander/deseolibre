@@ -7,7 +7,6 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <link href="/css/responsive.css" rel="stylesheet">
-    <link href="/css/directory.css" rel="stylesheet">
     <link href="/css/home.css" rel="stylesheet">
     <script src="/js/api-config.js"></script>
     <script src="/js/city-search.js"></script>
@@ -44,7 +43,7 @@
                 <nav class="nav" id="nav">
                     <ul class="nav-menu">
                         <li><a href="index.html">Inicio</a></li>
-                        <li><a href="#servicios">Directorio</a></li>
+                        <li><a href="feed-acompañantes-mujeres.html">Directorio</a></li>
                         <li><a href="profile.html">Mi Perfil</a></li>
                     </ul>
                 </nav>
@@ -68,51 +67,60 @@
         </div>
     </header>
 
-    <main>
+    <main class="home-main">
+        <div class="home-bg" aria-hidden="true"></div>
         <div class="container">
             <section class="home-hero">
-                <span class="hero-emoji">❤️‍🔥</span>
-                <h1>Deseo Libre</h1>
-                <p class="hero-tagline">Directorio en CDMX, Guadalajara y Monterrey. Busca por zona. Sin comisiones, contacto directo y pixelado de rostro incluido.</p>
-                <div class="home-search-row directory-search">
-                    <input type="text" id="heroSearchCity" list="heroCitiesDatalist" placeholder="Ciudad (CDMX, Guadalajara, Monterrey)...">
-                    <datalist id="heroCitiesDatalist"></datalist>
-                    <select id="heroSearchZone" class="hero-zone-select" title="Zona">
-                        <option value="">Toda la ciudad</option>
-                    </select>
-                    <a href="feed-acompañantes-mujeres.html" class="btn btn-primary" id="heroSearchMujeres"><i class="fas fa-female"></i> Mujeres</a>
-                    <a href="feed-acompañantes-hombres.html" class="btn btn-primary" id="heroSearchHombres"><i class="fas fa-male"></i> Hombres</a>
-                    <a href="feed-acompañantes-trans.html" class="btn btn-primary" id="heroSearchTrans"><i class="fas fa-transgender"></i> Trans</a>
+                <p class="hero-kicker"><i class="fas fa-map-marker-alt"></i> CDMX · Guadalajara · Monterrey</p>
+                <h1 class="hero-title"><span class="hero-emoji">❤️‍🔥</span> Deseo Libre</h1>
+                <p class="hero-tagline">Busca por zona. Sin comisiones, contacto directo y pixelado de rostro incluido.</p>
+
+                <div class="hero-search-card">
+                    <div class="hero-field-group">
+                        <span class="hero-field-label">Ciudad rápida</span>
+                        <div class="hero-city-chips" role="group" aria-label="Ciudades">
+                            <button type="button" class="hero-city-chip" data-city="Ciudad de México">CDMX</button>
+                            <button type="button" class="hero-city-chip" data-city="Guadalajara">GDL</button>
+                            <button type="button" class="hero-city-chip" data-city="Monterrey">MTY</button>
+                        </div>
+                    </div>
+                    <div class="hero-field-group">
+                        <span class="hero-field-label">Ubicación</span>
+                        <div class="hero-location-row">
+                            <input type="text" id="heroSearchCity" list="heroCitiesDatalist" placeholder="Ciudad" autocomplete="off">
+                            <datalist id="heroCitiesDatalist"></datalist>
+                            <select id="heroSearchZone" class="hero-zone-select" title="Zona" aria-label="Zona">
+                                <option value="">Toda la ciudad</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="hero-field-group">
+                        <span class="hero-field-label">Categoría</span>
+                        <div class="hero-category-grid">
+                            <a href="feed-acompañantes-mujeres.html" class="hero-cat-btn" id="heroSearchMujeres">
+                                <i class="fas fa-female"></i>
+                                <span>Mujeres</span>
+                            </a>
+                            <a href="feed-acompañantes-hombres.html" class="hero-cat-btn" id="heroSearchHombres">
+                                <i class="fas fa-male"></i>
+                                <span>Hombres</span>
+                            </a>
+                            <a href="feed-acompañantes-trans.html" class="hero-cat-btn" id="heroSearchTrans">
+                                <i class="fas fa-transgender"></i>
+                                <span>Trans</span>
+                            </a>
+                        </div>
+                    </div>
                 </div>
+
                 <div class="home-hero-cta">
-                    <a href="profile.html" class="btn btn-secondary"><i class="fas fa-user-tie"></i> Soy profesional</a>
-                    <a href="verificar-identidad.html" class="btn btn-secondary"><i class="fas fa-shield-alt"></i> Verificar identidad</a>
+                    <a href="profile.html" class="btn btn-secondary btn-block-sm"><i class="fas fa-user-tie"></i> Soy profesional</a>
+                    <a href="verificar-identidad.html" class="btn btn-secondary btn-block-sm"><i class="fas fa-shield-alt"></i> Verificar identidad</a>
                 </div>
                 <div class="home-trust">
                     <span class="trust-pill"><i class="fas fa-shield-alt"></i> Verificación</span>
                     <span class="trust-pill"><i class="fas fa-percent"></i> 0% comisión</span>
-                    <span class="trust-pill"><i class="fas fa-user-secret"></i> Pixelado opcional</span>
-                </div>
-            </section>
-
-            <section id="servicios" class="home-services">
-                <h2>Explorar directorio</h2>
-                <div class="home-services-grid">
-                    <a href="feed-acompañantes-mujeres.html" class="home-service-card">
-                        <div class="icon">👩</div>
-                        <h3>Acompañantes Mujeres</h3>
-                        <p>Busca por ciudad. Publica gratis, sin intermediarios.</p>
-                    </a>
-                    <a href="feed-acompañantes-hombres.html" class="home-service-card">
-                        <div class="icon">👨</div>
-                        <h3>Acompañantes Hombres</h3>
-                        <p>Directorio verificado. Contacto por WhatsApp y Telegram.</p>
-                    </a>
-                    <a href="feed-acompañantes-trans.html" class="home-service-card">
-                        <div class="icon">🏳️‍⚧️</div>
-                        <h3>Acompañantes Trans</h3>
-                        <p>Espacio inclusivo. Misma verificación y privacidad.</p>
-                    </a>
+                    <span class="trust-pill"><i class="fas fa-user-secret"></i> Pixelado incluido</span>
                 </div>
             </section>
 
@@ -124,7 +132,7 @@
             <div class="footer-content">
                 <div class="footer-section">
                     <h3>Deseo Libre</h3>
-                    <p>La plataforma líder en servicios para adultos, donde la privacidad y la satisfacción son nuestra prioridad.</p>
+                    <p>Directorio de acompañantes en CDMX, Guadalajara y Monterrey. Sin comisiones y contacto directo.</p>
                     <div class="social-links">
                         <a href="#"><i class="fab fa-facebook-f"></i></a>
                         <a href="#"><i class="fab fa-twitter"></i></a>
@@ -299,16 +307,12 @@
                     this.classList.toggle('active');
                     nav.classList.toggle('active');
                     
-                    // Move auth buttons inside nav for mobile
-                    if (window.innerWidth <= 768) {
-                        if (nav.classList.contains('active')) {
-                            nav.appendChild(authButtons);
-                            authButtons.style.display = 'flex';
-                            authButtons.style.flexDirection = 'column';
-                            authButtons.style.gap = '0.8rem';
-                            authButtons.style.marginTop = '1rem';
-                            authButtons.style.paddingTop = '1rem';
-                            authButtons.style.borderTop = '1px solid var(--soft-pink)';
+                    if (window.innerWidth <= 900 && nav.classList.contains('active') && authButtons.parentElement !== nav) {
+                        nav.appendChild(authButtons);
+                    } else if (window.innerWidth <= 900 && !nav.classList.contains('active')) {
+                        const headerContent = document.querySelector('.header-content');
+                        if (headerContent && authButtons.parentElement === nav) {
+                            headerContent.insertBefore(authButtons, document.getElementById('userMenu'));
                         }
                     }
                 });
@@ -329,7 +333,7 @@
             const navLinks = document.querySelectorAll('.nav-menu a');
             navLinks.forEach(link => {
                 link.addEventListener('click', function() {
-                    if (window.innerWidth <= 768) {
+                    if (window.innerWidth <= 900) {
                         nav.classList.remove('active');
                         mobileMenuBtn.classList.remove('active');
                     }
@@ -526,7 +530,7 @@
                 usernameSpan.textContent = currentUser.username;
                 if (logoutBtn) logoutBtn.style.display = 'inline-flex';
             } else {
-                authButtons.style.display = 'flex';
+                authButtons.style.display = '';
                 userMenu.classList.remove('show');
                 if (logoutBtn) logoutBtn.style.display = 'none';
             }
@@ -693,8 +697,25 @@
             heroCityEl?.addEventListener('change', async () => {
                 const c = heroCityEl.value;
                 await DeseoLocationSearch.fillZoneSelect(heroZoneEl, c, '');
+                document.querySelectorAll('.hero-city-chip').forEach((btn) => {
+                    btn.classList.toggle('active', btn.dataset.city === c);
+                });
             });
         }
+        document.querySelectorAll('.hero-city-chip').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+                const city = btn.dataset.city || '';
+                if (heroCityEl) {
+                    heroCityEl.value = city;
+                }
+                document.querySelectorAll('.hero-city-chip').forEach((b) => {
+                    b.classList.toggle('active', b === btn);
+                });
+                if (typeof DeseoLocationSearch !== 'undefined' && heroZoneEl) {
+                    await DeseoLocationSearch.fillZoneSelect(heroZoneEl, city, '');
+                }
+            });
+        });
         document.getElementById('heroSearchMujeres')?.addEventListener('click', function(e) {
             e.preventDefault();
             heroGoToFeed('feed-acompañantes-mujeres.html');
