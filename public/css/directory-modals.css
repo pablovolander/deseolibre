@@ -107,6 +107,25 @@
     opacity: 0.85;
 }
 
+.header-actions .btn-link.btn-reels {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    opacity: 1;
+    padding: 0.55rem 1.15rem;
+    border-radius: 999px;
+    background: linear-gradient(135deg, rgba(255, 107, 157, 0.4), rgba(139, 124, 248, 0.35));
+    border: 1px solid rgba(255, 107, 157, 0.55);
+    box-shadow: 0 4px 16px rgba(255, 107, 157, 0.2);
+}
+
+.header-actions .btn-link.btn-reels:hover {
+    color: #fff;
+    filter: brightness(1.08);
+}
+
 .header-actions .btn-primary-sm {
     background: linear-gradient(135deg, #ff6b9d, #8b7cf8);
     color: #fff;
@@ -142,10 +161,23 @@
 }
 
 .category-nav a.category-nav-reels {
-    border: 1px solid rgba(255, 107, 157, 0.35);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    border: 1px solid rgba(255, 107, 157, 0.5);
     border-radius: 999px;
-    padding: 0.2rem 0.65rem;
-    margin-left: 0.25rem;
+    padding: 0.5rem 1.1rem;
+    margin-left: 0.35rem;
+    background: linear-gradient(135deg, rgba(255, 107, 157, 0.3), rgba(139, 124, 248, 0.25));
+    color: #fff !important;
+    text-decoration: none !important;
+}
+
+.category-nav a.category-nav-reels:hover {
+    filter: brightness(1.1);
+    color: #fff !important;
 }
 
 #messageBox.success {

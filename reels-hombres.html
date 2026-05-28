@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>Reels Hombres — Deseo Libre</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <link href="/css/directory.css" rel="stylesheet">
+    <link href="/css/directory-modals.css" rel="stylesheet">
+    <link href="/css/reels.css" rel="stylesheet">
+    <script src="/js/api-config.js"></script>
+    <script src="/js/auth-session.js"></script>
+</head>
+<body class="directory-page reels-page" data-reels-category="acompañantes-hombres">
+    <header class="directory-header">
+        <div class="directory-header-inner">
+            <a href="index.html" class="directory-logo">❤️‍🔥 Deseo Libre</a>
+            <div class="header-actions">
+                <a href="index.html" class="btn-link">Inicio</a>
+                <a href="feed-acompañantes-hombres.html" class="btn-link">Directorio</a>
+                <a href="reels-hombres.html" class="btn-link btn-reels active"><i class="fas fa-film"></i> Reels</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="reels-main">
+        <section class="reels-hero">
+            <h1>🎬 Reels — Hombres</h1>
+            <p>Videos cortos de acompañantes. Sube el tuyo y destaca en el directorio.</p>
+            <nav class="reels-category-nav" id="reels-category-nav" aria-label="Categorías de reels"></nav>
+        </section>
+
+        <div class="reels-login-gate" id="reels-login-gate">
+            <p><strong>Inicia sesión</strong> para ver y subir reels en esta categoría.</p>
+            <p><a href="index.html">Ir a iniciar sesión o registrarse</a></p>
+        </div>
+
+        <details class="reels-upload-panel" id="reels-upload-panel">
+            <summary><i class="fas fa-cloud-upload-alt"></i> Subir reel</summary>
+            <p class="reels-upload-hint">Video vertical corto (recomendado &lt; 60 s). Formatos: MP4, WEBM, MOV.</p>
+            <form class="reels-upload-form" id="reel-upload-form">
+                <input type="hidden" name="category" id="reel-category-fixed" value="acompañantes-hombres">
+                <label>Título
+                    <input type="text" name="title" maxlength="120" placeholder="Ej: Disponible en GDL" required>
+                </label>
+                <label>Descripción (opcional)
+                    <textarea name="description" maxlength="500" placeholder="Breve descripción"></textarea>
+                </label>
+                <label>Video *
+                    <input type="file" name="video" accept="video/mp4,video/webm,video/quicktime,video/*" required>
+                </label>
+                <label>Miniatura (opcional)
+                    <input type="file" name="thumbnail" accept="image/*">
+                </label>
+                <label>Duración en segundos (opcional)
+                    <input type="number" name="duration_seconds" min="1" max="180" placeholder="45">
+                </label>
+                <label class="checkbox-row">
+                    <input type="checkbox" name="is_public" id="reel-public" value="true" checked>
+                    <span>Público (visible para otros usuarios)</span>
+                </label>
+                <button type="submit" class="btn-publish-reel"><i class="fas fa-upload"></i> Publicar reel</button>
+                <p class="reels-status" id="reel-upload-status"></p>
+            </form>
+        </details>
+
+        <p class="reels-feed-title">Reels recientes</p>
+        <p class="reels-status" id="reels-feed-status"></p>
+        <div class="reels-feed" id="reels-feed"></div>
+    </main>
+
+    <script src="/js/reels-page.js"></script>
+</body>
+</html>

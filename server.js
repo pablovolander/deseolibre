@@ -4677,31 +4677,51 @@ app.get('/policies.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'policies.html'));
 });
 
+function sendRootHtml(res, filename) {
+    const safeName = path.basename(decodeURIComponent(filename || ''));
+    const filePath = path.join(__dirname, safeName);
+    if (fs.existsSync(filePath)) {
+        return res.sendFile(filePath);
+    }
+    return res.status(404).send('Página no encontrada');
+}
+
+const REELS_PAGE_BY_SLUG = {
+    mujeres: 'reels-mujeres.html',
+    hombres: 'reels-hombres.html',
+    trans: 'reels-trans.html',
+    'acompañantes-mujeres': 'reels-mujeres.html',
+    'acompanantes-mujeres': 'reels-mujeres.html',
+    'acompañantes-hombres': 'reels-hombres.html',
+    'acompanantes-hombres': 'reels-hombres.html',
+    'acompañantes-trans': 'reels-trans.html',
+    'acompanantes-trans': 'reels-trans.html'
+};
+
 // Rutas para feeds de categorías
 app.get('/feed-:category.html', (req, res) => {
-    const category = req.params.category;
-    const filename = `feed-${category}.html`;
-    const filePath = path.join(__dirname, filename);
-    
-    // Verificar que el archivo existe
-    if (fs.existsSync(filePath)) {
-        res.sendFile(filePath);
-    } else {
-        res.status(404).send('Página no encontrada');
-    }
+    const category = decodeURIComponent(req.params.category || '');
+    sendRootHtml(res, `feed-${category}.html`);
 });
 
-// Ruta catch-all para otros archivos HTML (debe ir al final)
-app.get('*.html', (req, res) => {
-    const filename = req.path.substring(1); // Remover el / inicial
-    const filePath = path.join(__dirname, filename);
-    
-    // Verificar que el archivo existe
-    if (fs.existsSync(filePath)) {
-        res.sendFile(filePath);
-    } else {
-        res.status(404).send('Página no encontrada');
+// Reels por categoría (URLs cortas sin caracteres especiales)
+app.get('/reels-mujeres.html', (req, res) => sendRootHtml(res, 'reels-mujeres.html'));
+app.get('/reels-hombres.html', (req, res) => sendRootHtml(res, 'reels-hombres.html'));
+app.get('/reels-trans.html', (req, res) => sendRootHtml(res, 'reels-trans.html'));
+app.get('/reels.html', (req, res) => sendRootHtml(res, 'reels.html'));
+
+app.get('/reels-:slug.html', (req, res) => {
+    const slug = decodeURIComponent(req.params.slug || '');
+    const mapped = REELS_PAGE_BY_SLUG[slug];
+    if (mapped) {
+        return sendRootHtml(res, mapped);
     }
+    sendRootHtml(res, `reels-${slug}.html`);
+});
+
+// Otros HTML en la raíz del proyecto
+app.get(/^\/[^/]+\.html$/i, (req, res) => {
+    sendRootHtml(res, req.path.slice(1));
 });
 
 // ============================================

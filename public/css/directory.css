@@ -148,6 +148,22 @@
     color: #d4cfff;
 }
 
+.directory-cta-row a.cta-reels {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 1.05rem;
+    padding: 0.85rem 1.5rem;
+    background: linear-gradient(135deg, rgba(255, 107, 157, 0.35), rgba(139, 124, 248, 0.3));
+    border: 1px solid rgba(255, 107, 157, 0.5);
+    color: #fff;
+    box-shadow: 0 6px 20px rgba(255, 107, 157, 0.15);
+}
+
+.directory-cta-row a.cta-reels:hover {
+    filter: brightness(1.08);
+}
+
 .directory-trust {
     display: flex;
     flex-wrap: wrap;
