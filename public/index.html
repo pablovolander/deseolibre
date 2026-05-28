@@ -43,7 +43,7 @@
                 <nav class="nav" id="nav">
                     <ul class="nav-menu">
                         <li><a href="index.html">Inicio</a></li>
-                        <li><a href="feed-mujeres.html">Directorio</a></li>
+                        <li><a href="feed-acompañantes-mujeres.html">Directorio</a></li>
                         <li><a href="profile.html">Mi Perfil</a></li>
                     </ul>
                 </nav>
@@ -62,7 +62,7 @@
                     </div>
                 </div>
                 
-                <a href="#" class="btn btn-secondary" id="logoutBtn" style="display:none; margin-left: 0.8rem;">Salir</a>
+                <a href="#" class="btn btn-secondary" id="logoutBtn" style="display:none; margin-left: 0.8rem;" onclick="event.preventDefault(); logout();">Salir</a>
             </div>
         </div>
     </header>
@@ -97,15 +97,15 @@
                     <div class="hero-field-group">
                         <span class="hero-field-label">Categoría</span>
                         <div class="hero-category-grid">
-                            <a href="feed-mujeres.html" class="hero-cat-btn" id="heroSearchMujeres">
+                            <a href="feed-acompañantes-mujeres.html" class="hero-cat-btn" id="heroSearchMujeres">
                                 <i class="fas fa-female"></i>
                                 <span>Mujeres</span>
                             </a>
-                            <a href="feed-hombres.html" class="hero-cat-btn" id="heroSearchHombres">
+                            <a href="feed-acompañantes-hombres.html" class="hero-cat-btn" id="heroSearchHombres">
                                 <i class="fas fa-male"></i>
                                 <span>Hombres</span>
                             </a>
-                            <a href="feed-trans.html" class="hero-cat-btn" id="heroSearchTrans">
+                            <a href="feed-acompañantes-trans.html" class="hero-cat-btn" id="heroSearchTrans">
                                 <i class="fas fa-transgender"></i>
                                 <span>Trans</span>
                             </a>
@@ -116,11 +116,6 @@
                 <div class="home-hero-cta">
                     <a href="profile.html" class="btn btn-secondary btn-block-sm"><i class="fas fa-user-tie"></i> Soy profesional</a>
                     <a href="verificar-identidad.html" class="btn btn-secondary btn-block-sm"><i class="fas fa-shield-alt"></i> Verificar identidad</a>
-                </div>
-                <div class="home-reels-links">
-                    <a href="reels-mujeres.html" class="home-reels-link"><i class="fas fa-film"></i> Reels Mujeres</a>
-                    <a href="reels-hombres.html" class="home-reels-link"><i class="fas fa-film"></i> Reels Hombres</a>
-                    <a href="reels-trans.html" class="home-reels-link"><i class="fas fa-film"></i> Reels Trans</a>
                 </div>
                 <div class="home-trust">
                     <span class="trust-pill"><i class="fas fa-shield-alt"></i> Verificación</span>
@@ -148,9 +143,9 @@
                 <div class="footer-section">
                     <h3>Servicios</h3>
                     <ul>
-                        <li><a href="feed-mujeres.html">Acompañantes Mujeres</a></li>
-                        <li><a href="feed-hombres.html">Acompañantes Hombres</a></li>
-                        <li><a href="feed-trans.html">Acompañantes Trans</a></li>
+                        <li><a href="feed-acompañantes-mujeres.html">Acompañantes Mujeres</a></li>
+                        <li><a href="feed-acompañantes-hombres.html">Acompañantes Hombres</a></li>
+                        <li><a href="feed-acompañantes-trans.html">Acompañantes Trans</a></li>
                     </ul>
                 </div>
                 <div class="footer-section">
@@ -299,6 +294,10 @@
                 verifyToken();
             }
             setupMobileMenu();
+            document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
+                e.preventDefault();
+                logout();
+            });
         });
 
         // Mobile menu functionality
@@ -405,8 +404,10 @@
                 closeModal('loginModal');
                 showSuccess('¡Bienvenido de nuevo!');
                 
-                // Check if age verification is needed
-                if (!currentUser.age_verified) {
+                if (localStorage.getItem('ageVerified') === 'true' && !currentUser.age_verified) {
+                    await DeseoAuth.syncAgeVerificationFromLocal();
+                    currentUser = DeseoAuth.getCachedUser() || currentUser;
+                } else if (!currentUser.age_verified) {
                     setTimeout(() => showAgeVerificationModal(), 1000);
                 }
                 
@@ -469,6 +470,10 @@
                 const response = await apiCall('/api/auth/verify');
                 currentUser = response.user;
                 DeseoAuth.setSession(authToken, currentUser);
+                if (currentUser && !currentUser.age_verified && localStorage.getItem('ageVerified') === 'true') {
+                    await DeseoAuth.syncAgeVerificationFromLocal();
+                    currentUser = DeseoAuth.getCachedUser() || currentUser;
+                }
                 updateUI();
             } catch (error) {
                 if (typeof DeseoAuth !== 'undefined' && DeseoAuth.isAuthError(error)) {
@@ -666,31 +671,17 @@
             }
         });
 
-        async function heroGoToFeed(feedPath) {
+        function heroGoToFeed(feedPath) {
             const raw = (document.getElementById('heroSearchCity')?.value || '').trim();
             const zone = (document.getElementById('heroSearchZone')?.value || '').trim();
-            const chipCity = (document.querySelector('.hero-city-chip.active')?.dataset?.city || '').trim();
-            const cityCandidate = raw || chipCity;
-            let cityName = cityCandidate;
-
-            if (cityCandidate) {
-                if (typeof DeseoLocationSearch !== 'undefined') {
-                    await DeseoLocationSearch.getCities('MX');
-                } else if (typeof DeseoCitySearch !== 'undefined' && DeseoCitySearch.ensureLoaded) {
-                    await DeseoCitySearch.ensureLoaded('MX');
-                } else if (typeof DeseoCitySearch !== 'undefined') {
-                    await DeseoCitySearch.getCities('MX');
+            let cityName = raw;
+            if (raw && typeof DeseoCitySearch !== 'undefined') {
+                const resolved = DeseoCitySearch.resolveLocal(raw);
+                if (!resolved.ok) {
+                    alert(resolved.error);
+                    return;
                 }
-
-                let resolved = null;
-                if (typeof DeseoLocationSearch !== 'undefined' && typeof DeseoLocationSearch.resolveLocal === 'function') {
-                    resolved = DeseoLocationSearch.resolveLocal(cityCandidate);
-                } else if (typeof DeseoCitySearch !== 'undefined') {
-                    resolved = DeseoCitySearch.resolveLocal(cityCandidate);
-                }
-                if (resolved?.ok && resolved.city) {
-                    cityName = resolved.city;
-                }
+                cityName = resolved.city;
             }
             const params = new URLSearchParams();
             if (cityName) {
@@ -707,14 +698,9 @@
         const heroCityEl = document.getElementById('heroSearchCity');
         const heroZoneEl = document.getElementById('heroSearchZone');
         if (typeof DeseoLocationSearch !== 'undefined') {
-            Promise.all([
-                DeseoLocationSearch.getCities('MX'),
-                typeof DeseoCitySearch !== 'undefined' && DeseoCitySearch.getCities
-                    ? DeseoCitySearch.getCities('MX')
-                    : Promise.resolve()
-            ]).then(([cities]) => {
+            DeseoLocationSearch.getCities('MX').then((cities) => {
                 const dl = document.getElementById('heroCitiesDatalist');
-                if (dl && cities) {
+                if (dl) {
                     dl.innerHTML = cities.map((c) => `<option value="${c.name}"></option>`).join('');
                 }
             }).catch(() => {});
@@ -742,15 +728,15 @@
         });
         document.getElementById('heroSearchMujeres')?.addEventListener('click', function(e) {
             e.preventDefault();
-            heroGoToFeed('feed-mujeres.html');
+            heroGoToFeed('feed-acompañantes-mujeres.html');
         });
         document.getElementById('heroSearchHombres')?.addEventListener('click', function(e) {
             e.preventDefault();
-            heroGoToFeed('feed-hombres.html');
+            heroGoToFeed('feed-acompañantes-hombres.html');
         });
         document.getElementById('heroSearchTrans')?.addEventListener('click', function(e) {
             e.preventDefault();
-            heroGoToFeed('feed-trans.html');
+            heroGoToFeed('feed-acompañantes-trans.html');
         });
     </script>
 </body>

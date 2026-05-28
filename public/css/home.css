@@ -709,6 +709,13 @@
     }
 }
 
+@media (min-width: 769px) {
+    /* En escritorio se usa el desplegable "Cerrar Sesión" */
+    .home-page #logoutBtn {
+        display: none !important;
+    }
+}
+
 @media (max-width: 768px) {
     .home-page .header-content {
         flex-wrap: wrap;
@@ -720,13 +727,9 @@
         font-size: 1.25rem;
     }
 
+    /* En móvil solo "Salir": el menú de usuario vacío tapaba los clics */
     .home-page .user-menu.show {
-        order: 3;
-        margin-left: auto;
-    }
-
-    .home-page .user-menu.show #userGreeting {
-        display: none;
+        display: none !important;
     }
 
     .home-page #logoutBtn {
@@ -734,6 +737,9 @@
         margin-left: auto !important;
         padding: 0.45rem 0.85rem;
         font-size: 0.85rem;
+        position: relative;
+        z-index: 1001;
+        cursor: pointer;
     }
 
     .home-hero {
