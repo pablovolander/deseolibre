@@ -35,6 +35,9 @@ window.DeseoLocationSearch = (function () {
     async function getCities(country) {
         if (!citiesCache) {
             citiesCache = await fetchCities();
+            if (typeof DeseoCitySearch !== 'undefined' && DeseoCitySearch.primeCache) {
+                DeseoCitySearch.primeCache(citiesCache);
+            }
         }
         if (!country) {
             return citiesCache;

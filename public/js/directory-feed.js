@@ -73,7 +73,15 @@
             loadDirectory();
             return;
         }
+        if (typeof DeseoLocationSearch !== 'undefined') {
+            await DeseoLocationSearch.getCities('MX');
+        }
         if (typeof DeseoCitySearch !== 'undefined') {
+            if (DeseoCitySearch.ensureLoaded) {
+                await DeseoCitySearch.ensureLoaded('MX');
+            } else {
+                await DeseoCitySearch.getCities('MX');
+            }
             const resolved = DeseoCitySearch.resolveLocal(raw);
             if (!resolved.ok) {
                 showMessage(resolved.error, 'error');

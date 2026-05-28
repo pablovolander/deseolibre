@@ -661,17 +661,31 @@
             }
         });
 
-        function heroGoToFeed(feedPath) {
+        async function heroGoToFeed(feedPath) {
             const raw = (document.getElementById('heroSearchCity')?.value || '').trim();
             const zone = (document.getElementById('heroSearchZone')?.value || '').trim();
-            let cityName = raw;
-            if (raw && typeof DeseoCitySearch !== 'undefined') {
-                const resolved = DeseoCitySearch.resolveLocal(raw);
-                if (!resolved.ok) {
-                    alert(resolved.error);
-                    return;
+            const chipCity = (document.querySelector('.hero-city-chip.active')?.dataset?.city || '').trim();
+            const cityCandidate = raw || chipCity;
+            let cityName = cityCandidate;
+
+            if (cityCandidate) {
+                if (typeof DeseoLocationSearch !== 'undefined') {
+                    await DeseoLocationSearch.getCities('MX');
+                } else if (typeof DeseoCitySearch !== 'undefined' && DeseoCitySearch.ensureLoaded) {
+                    await DeseoCitySearch.ensureLoaded('MX');
+                } else if (typeof DeseoCitySearch !== 'undefined') {
+                    await DeseoCitySearch.getCities('MX');
                 }
-                cityName = resolved.city;
+
+                let resolved = null;
+                if (typeof DeseoLocationSearch !== 'undefined' && typeof DeseoLocationSearch.resolveLocal === 'function') {
+                    resolved = DeseoLocationSearch.resolveLocal(cityCandidate);
+                } else if (typeof DeseoCitySearch !== 'undefined') {
+                    resolved = DeseoCitySearch.resolveLocal(cityCandidate);
+                }
+                if (resolved?.ok && resolved.city) {
+                    cityName = resolved.city;
+                }
             }
             const params = new URLSearchParams();
             if (cityName) {
@@ -688,9 +702,14 @@
         const heroCityEl = document.getElementById('heroSearchCity');
         const heroZoneEl = document.getElementById('heroSearchZone');
         if (typeof DeseoLocationSearch !== 'undefined') {
-            DeseoLocationSearch.getCities('MX').then((cities) => {
+            Promise.all([
+                DeseoLocationSearch.getCities('MX'),
+                typeof DeseoCitySearch !== 'undefined' && DeseoCitySearch.getCities
+                    ? DeseoCitySearch.getCities('MX')
+                    : Promise.resolve()
+            ]).then(([cities]) => {
                 const dl = document.getElementById('heroCitiesDatalist');
-                if (dl) {
+                if (dl && cities) {
                     dl.innerHTML = cities.map((c) => `<option value="${c.name}"></option>`).join('');
                 }
             }).catch(() => {});

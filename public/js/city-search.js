@@ -4,6 +4,23 @@
 window.DeseoCitySearch = (function () {
     let citiesCache = null;
 
+    /** Respaldo si aún no cargó /api/cities (p. ej. inicio con chips CDMX/GDL/MTY). */
+    const FALLBACK_CITIES = [
+        { name: 'Ciudad de México', country: 'MX', aliases: ['cdmx', 'mexico df', 'méxico df', 'df', 'cd mx', 'ciudad de mexico'] },
+        { name: 'Guadalajara', country: 'MX', aliases: ['gdl', 'guadalajara metro'] },
+        { name: 'Monterrey', country: 'MX', aliases: ['mty', 'monterrey metro'] }
+    ];
+
+    function citiesList() {
+        return citiesCache && citiesCache.length ? citiesCache : FALLBACK_CITIES;
+    }
+
+    function primeCache(cities) {
+        if (Array.isArray(cities) && cities.length) {
+            citiesCache = cities;
+        }
+    }
+
     async function fetchCities(country) {
         const params = country ? `?country=${encodeURIComponent(country)}` : '';
         const res = await fetch(`${API_URL}/api/cities${params}`, { cache: 'no-store' });
@@ -24,9 +41,15 @@ window.DeseoCitySearch = (function () {
         return citiesCache.filter((c) => c.country === country);
     }
 
+    async function ensureLoaded(country) {
+        if (!citiesCache) {
+            await getCities(country || 'MX');
+        }
+    }
+
     function resolveLocal(raw) {
         const query = String(raw || '').trim();
-        if (!query || !citiesCache) {
+        if (!query) {
             return { ok: false, error: 'Selecciona una ciudad de la lista' };
         }
         const normalized = query
@@ -35,7 +58,7 @@ window.DeseoCitySearch = (function () {
             .toLowerCase()
             .trim();
 
-        for (const city of citiesCache) {
+        for (const city of citiesList()) {
             const names = [city.name, ...(city.aliases || [])].map((n) =>
                 String(n)
                     .normalize('NFD')
@@ -112,6 +135,8 @@ window.DeseoCitySearch = (function () {
     return {
         fetchCities,
         getCities,
+        ensureLoaded,
+        primeCache,
         resolveLocal,
         bindInput,
         renderPopular
