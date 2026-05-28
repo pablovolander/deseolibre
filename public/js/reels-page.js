@@ -7,19 +7,19 @@
             id: 'acompañantes-mujeres',
             label: 'Mujeres',
             page: 'reels-mujeres.html',
-            feed: 'feed-acompañantes-mujeres.html'
+            feed: 'feed-mujeres.html'
         },
         {
             id: 'acompañantes-hombres',
             label: 'Hombres',
             page: 'reels-hombres.html',
-            feed: 'feed-acompañantes-hombres.html'
+            feed: 'feed-hombres.html'
         },
         {
             id: 'acompañantes-trans',
             label: 'Trans',
             page: 'reels-trans.html',
-            feed: 'feed-acompañantes-trans.html'
+            feed: 'feed-trans.html'
         }
     ];
 

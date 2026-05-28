@@ -43,7 +43,7 @@
                 <nav class="nav" id="nav">
                     <ul class="nav-menu">
                         <li><a href="index.html">Inicio</a></li>
-                        <li><a href="feed-acompañantes-mujeres.html">Directorio</a></li>
+                        <li><a href="feed-mujeres.html">Directorio</a></li>
                         <li><a href="profile.html">Mi Perfil</a></li>
                     </ul>
                 </nav>
@@ -97,15 +97,15 @@
                     <div class="hero-field-group">
                         <span class="hero-field-label">Categoría</span>
                         <div class="hero-category-grid">
-                            <a href="feed-acompañantes-mujeres.html" class="hero-cat-btn" id="heroSearchMujeres">
+                            <a href="feed-mujeres.html" class="hero-cat-btn" id="heroSearchMujeres">
                                 <i class="fas fa-female"></i>
                                 <span>Mujeres</span>
                             </a>
-                            <a href="feed-acompañantes-hombres.html" class="hero-cat-btn" id="heroSearchHombres">
+                            <a href="feed-hombres.html" class="hero-cat-btn" id="heroSearchHombres">
                                 <i class="fas fa-male"></i>
                                 <span>Hombres</span>
                             </a>
-                            <a href="feed-acompañantes-trans.html" class="hero-cat-btn" id="heroSearchTrans">
+                            <a href="feed-trans.html" class="hero-cat-btn" id="heroSearchTrans">
                                 <i class="fas fa-transgender"></i>
                                 <span>Trans</span>
                             </a>
@@ -148,9 +148,9 @@
                 <div class="footer-section">
                     <h3>Servicios</h3>
                     <ul>
-                        <li><a href="feed-acompañantes-mujeres.html">Acompañantes Mujeres</a></li>
-                        <li><a href="feed-acompañantes-hombres.html">Acompañantes Hombres</a></li>
-                        <li><a href="feed-acompañantes-trans.html">Acompañantes Trans</a></li>
+                        <li><a href="feed-mujeres.html">Acompañantes Mujeres</a></li>
+                        <li><a href="feed-hombres.html">Acompañantes Hombres</a></li>
+                        <li><a href="feed-trans.html">Acompañantes Trans</a></li>
                     </ul>
                 </div>
                 <div class="footer-section">
@@ -742,15 +742,15 @@
         });
         document.getElementById('heroSearchMujeres')?.addEventListener('click', function(e) {
             e.preventDefault();
-            heroGoToFeed('feed-acompañantes-mujeres.html');
+            heroGoToFeed('feed-mujeres.html');
         });
         document.getElementById('heroSearchHombres')?.addEventListener('click', function(e) {
             e.preventDefault();
-            heroGoToFeed('feed-acompañantes-hombres.html');
+            heroGoToFeed('feed-hombres.html');
         });
         document.getElementById('heroSearchTrans')?.addEventListener('click', function(e) {
             e.preventDefault();
-            heroGoToFeed('feed-acompañantes-trans.html');
+            heroGoToFeed('feed-trans.html');
         });
     </script>
 </body>

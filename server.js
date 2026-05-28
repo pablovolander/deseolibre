@@ -4679,12 +4679,30 @@ app.get('/policies.html', (req, res) => {
 
 function sendRootHtml(res, filename) {
     const safeName = path.basename(decodeURIComponent(filename || ''));
-    const filePath = path.join(__dirname, safeName);
-    if (fs.existsSync(filePath)) {
-        return res.sendFile(filePath);
+    const candidates = [
+        path.join(__dirname, safeName),
+        path.join(publicDir, safeName)
+    ];
+    for (const filePath of candidates) {
+        if (fs.existsSync(filePath)) {
+            return res.sendFile(filePath);
+        }
     }
+    console.error('HTML no encontrado:', safeName, 'cwd:', __dirname);
     return res.status(404).send('Página no encontrada');
 }
+
+const FEED_PAGE_BY_SLUG = {
+    mujeres: 'feed-mujeres.html',
+    hombres: 'feed-hombres.html',
+    trans: 'feed-trans.html',
+    'acompañantes-mujeres': 'feed-mujeres.html',
+    'acompanantes-mujeres': 'feed-mujeres.html',
+    'acompañantes-hombres': 'feed-hombres.html',
+    'acompanantes-hombres': 'feed-hombres.html',
+    'acompañantes-trans': 'feed-trans.html',
+    'acompanantes-trans': 'feed-trans.html'
+};
 
 const REELS_PAGE_BY_SLUG = {
     mujeres: 'reels-mujeres.html',
@@ -4698,13 +4716,21 @@ const REELS_PAGE_BY_SLUG = {
     'acompanantes-trans': 'reels-trans.html'
 };
 
-// Rutas para feeds de categorías
-app.get('/feed-:category.html', (req, res) => {
-    const category = decodeURIComponent(req.params.category || '');
-    sendRootHtml(res, `feed-${category}.html`);
+// Feeds por categoría (URLs cortas ASCII)
+app.get('/feed-mujeres.html', (req, res) => sendRootHtml(res, 'feed-mujeres.html'));
+app.get('/feed-hombres.html', (req, res) => sendRootHtml(res, 'feed-hombres.html'));
+app.get('/feed-trans.html', (req, res) => sendRootHtml(res, 'feed-trans.html'));
+
+app.get('/feed-:slug.html', (req, res) => {
+    const slug = decodeURIComponent(req.params.slug || '');
+    const mapped = FEED_PAGE_BY_SLUG[slug];
+    if (mapped) {
+        return sendRootHtml(res, mapped);
+    }
+    sendRootHtml(res, `feed-${slug}.html`);
 });
 
-// Reels por categoría (URLs cortas sin caracteres especiales)
+// Reels por categoría
 app.get('/reels-mujeres.html', (req, res) => sendRootHtml(res, 'reels-mujeres.html'));
 app.get('/reels-hombres.html', (req, res) => sendRootHtml(res, 'reels-hombres.html'));
 app.get('/reels-trans.html', (req, res) => sendRootHtml(res, 'reels-trans.html'));
@@ -4721,7 +4747,7 @@ app.get('/reels-:slug.html', (req, res) => {
 
 // Otros HTML en la raíz del proyecto
 app.get(/^\/[^/]+\.html$/i, (req, res) => {
-    sendRootHtml(res, req.path.slice(1));
+    sendRootHtml(res, decodeURIComponent(req.path.slice(1)));
 });
 
 // ============================================

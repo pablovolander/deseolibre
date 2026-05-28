@@ -1,0 +1,127 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>Acompañantes Trans - Deseo Libre</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <link href="/css/directory.css" rel="stylesheet">
+    <link href="/css/directory-modals.css" rel="stylesheet">
+</head>
+<body class="directory-page" data-category="acompañantes-trans">
+    <header class="directory-header">
+        <div class="directory-header-inner">
+            <a href="index.html" class="directory-logo">❤️‍🔥 Deseo Libre</a>
+            <div class="header-actions">
+                <a href="index.html" class="btn-link">Inicio</a>
+                <a href="feed-mujeres.html" class="btn-link">Mujeres</a>
+                <a href="feed-hombres.html" class="btn-link">Hombres</a>
+                <a href="reels-trans.html" class="btn-link btn-reels"><i class="fas fa-film"></i> Reels</a>
+                <button type="button" class="btn-primary-sm" onclick="showLogin()">Entrar</button>
+                <button type="button" class="btn-primary-sm" onclick="showRegister()">Registro</button>
+                <button type="button" class="btn-primary-sm" id="createBtn" style="display:none;" onclick="showCreatePost()">+ Publicar</button>
+            </div>
+        </div>
+    </header>
+
+    <section class="directory-hero">
+        <h1>🏳️‍⚧️ Acompañantes Trans</h1>
+        <p>CDMX, Guadalajara y Monterrey — busca por zona. Verificación, 0% comisión y contacto directo.</p>
+        <div class="directory-search">
+            <input type="hidden" id="searchCountry" value="MX">
+            <input type="text" id="searchCity" list="citiesDatalist" placeholder="Ciudad..." autocomplete="off">
+            <datalist id="citiesDatalist"></datalist>
+            <select id="searchZone" class="directory-zone-select" title="Zona">
+                <option value="">Toda la ciudad</option>
+            </select>
+            <button type="button" id="searchBtn"><i class="fas fa-search"></i> Buscar</button>
+        </div>
+        <div id="popularCities" class="city-chips-row"></div>
+        <div id="popularZones" class="city-chips-row"></div>
+        <div class="directory-cta-row">
+            <a href="#" class="cta-pro" onclick="publishFromCategory(event)"><i class="fas fa-user-tie"></i> Soy profesional — Publicar gratis</a>
+            <a href="reels-trans.html" class="cta-client cta-reels"><i class="fas fa-film"></i> Ver y subir Reels</a>
+        </div>
+        <div class="directory-trust">
+            <span class="trust-pill trust-pill-verified"><i class="fas fa-shield-alt"></i> Verificación automática</span>
+            <span class="trust-pill"><i class="fas fa-percent"></i> 0% comisión</span>
+            <span class="trust-pill"><i class="fas fa-user-secret"></i> Pixelado opcional</span>
+            <a href="verificar-identidad.html" class="trust-pill trust-pill-cta"><i class="fas fa-id-card"></i> Verificar mi cuenta</a>
+        </div>
+    </section>
+
+    <nav class="category-nav" aria-label="Categorías">
+        <a href="feed-mujeres.html">Mujeres</a>
+        <a href="feed-hombres.html">Hombres</a>
+        <a href="feed-trans.html" class="active">Trans</a>
+        <a href="reels-trans.html" class="category-nav-reels"><i class="fas fa-film"></i> Reels</a>
+    </nav>
+
+    <div id="messageBox"></div>
+    <section class="directory-results">
+        <p id="resultsCount" class="results-count"></p>
+        <div id="profileGrid" class="profile-grid"><div class="directory-empty">Cargando...</div></div>
+    </section>
+
+    <div id="loginModal" class="dl-modal">
+        <div class="dl-modal-content">
+            <h2>Iniciar sesión</h2>
+            <form onsubmit="login(event)">
+                <div class="dl-form-group"><label>Email</label><input type="email" id="loginEmail" required></div>
+                <div class="dl-form-group"><label>Contraseña</label><input type="password" id="loginPassword" required></div>
+                <button type="submit" class="dl-btn dl-btn-submit">Entrar</button>
+                <button type="button" class="dl-btn dl-btn-cancel" onclick="closeModal('loginModal')">Cancelar</button>
+            </form>
+        </div>
+    </div>
+    <div id="registerModal" class="dl-modal">
+        <div class="dl-modal-content">
+            <h2>Crear cuenta</h2>
+            <form onsubmit="register(event)">
+                <div class="dl-form-group"><label>Usuario</label><input type="text" id="regUsername" required></div>
+                <div class="dl-form-group"><label>Email</label><input type="email" id="regEmail" required></div>
+                <div class="dl-form-group"><label>Contraseña</label><input type="password" id="regPassword" required minlength="6"></div>
+                <input type="hidden" id="regCountry" value="MX">
+                <div class="dl-form-group"><label>Nombre profesional *</label><input type="text" id="regFullName" required minlength="2"></div>
+                <div class="dl-form-group"><label>Ciudad *</label><select id="regCity" required><option value="">Ciudad</option></select></div>
+                <div class="dl-form-group"><label>Zona *</label><select id="regZone" required disabled><option value="">Primero ciudad</option></select></div>
+                <div class="dl-form-group"><label>Detalle ubicación</label><input type="text" id="regZoneDetail" maxlength="120" placeholder="Colonia o referencia (oblig. si Otra zona)"></div>
+                <div class="dl-form-group"><label>Teléfono * (WhatsApp)</label><input type="tel" id="regPhone" required placeholder="10 dígitos"></div>
+                <div class="dl-form-group"><label>Usuario Telegram *</label><input type="text" id="regTelegram" required placeholder="mi_usuario" minlength="5" maxlength="32"><small>Sin @</small></div>
+                <div class="dl-form-group"><label>Tarifa *</label><input type="number" id="regPrice" step="0.01" min="0.01" required placeholder="1500"></div>
+                <div class="dl-form-group"><label>Cobro por *</label><select id="regPriceUnit" required><option value="">Selecciona</option><option value="hour">Por hora</option><option value="half_hour">Por media hora</option></select></div>
+                <button type="submit" class="dl-btn dl-btn-submit">Registrarme</button>
+                <button type="button" class="dl-btn dl-btn-cancel" onclick="closeModal('registerModal')">Cancelar</button>
+            </form>
+        </div>
+    </div>
+    <div id="createPostModal" class="dl-modal">
+        <div class="dl-modal-content">
+            <h2>Publicar anuncio (Trans)</h2>
+            <form id="createPostForm" onsubmit="createPost(event)">
+                <div class="dl-form-group"><label>Título</label><input type="text" id="postTitle" required></div>
+                <div class="dl-form-group"><label>Descripción</label><textarea id="postDesc" rows="3" required></textarea></div>
+                <div class="dl-form-group"><label>Tipo</label><select id="postType"><option value="photo">Foto</option><option value="video">Video</option></select></div>
+                <p class="form-hint">Tu nombre, ciudad, tarifa y contacto salen de tu perfil.</p>
+                <div class="dl-form-group"><label>Foto o video</label><input type="file" id="postFile" accept="image/*,video/*" required></div>
+                <button type="submit" class="dl-btn dl-btn-submit">Publicar</button>
+                <button type="button" class="dl-btn dl-btn-cancel" onclick="closeModal('createPostModal')">Cancelar</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/api-config.js"></script>
+    <script src="/js/auth-session.js"></script>
+    <script src="/js/api-errors.js"></script>
+    <script src="/js/city-search.js"></script>
+    <script src="/js/location-search.js"></script>
+    <script src="/js/profile-fields.js"></script>
+    <script src="/js/contact-links.js"></script>
+    <script src="/js/listing-card.js"></script>
+    <script src="/js/verification-gate.js"></script>
+    <script src="/js/service-pricing.js"></script>
+    <script src="/js/directory-feed.js"></script>
+    <script>initDirectoryFeed({ category: 'acompañantes-trans' });</script>
+</body>
+</html>
