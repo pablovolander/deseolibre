@@ -62,7 +62,7 @@
                     </div>
                 </div>
                 
-                <a href="#" class="btn btn-secondary" id="logoutBtn" style="display:none; margin-left: 0.8rem;">Salir</a>
+                <a href="#" class="btn btn-secondary" id="logoutBtn" style="display:none; margin-left: 0.8rem;" onclick="event.preventDefault(); logout();">Salir</a>
             </div>
         </div>
     </header>
@@ -299,6 +299,10 @@
                 verifyToken();
             }
             setupMobileMenu();
+            document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
+                e.preventDefault();
+                logout();
+            });
         });
 
         // Mobile menu functionality

@@ -1253,42 +1253,42 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 });
 
 // Age verification endpoint
-app.post('/api/auth/verify-age', authenticateToken, (req, res) => {
-    const { confirmed } = req.body;
-    const userId = req.user.userId;
+app.post('/api/auth/verify-age', authenticateToken, async (req, res) => {
+    try {
+        const { confirmed } = req.body;
+        const userId = req.user.userId;
 
-    if (!confirmed) {
-        return res.status(400).json({ error: 'Debe confirmar su mayoría de edad' });
-    }
-
-    const currentDate = new Date().toISOString();
-
-    db.run(
-        'UPDATE users SET age_verified = TRUE, age_verification_date = ? WHERE id = ?',
-        [currentDate, userId],
-        function(err) {
-            if (err) {
-                return res.status(500).json({ error: 'Error al verificar la edad' });
-            }
-
-            // Log the verification
-            db.run(
-                'INSERT INTO age_verifications (user_id, ip_address, user_agent) VALUES (?, ?, ?)',
-                [userId, req.ip, req.get('User-Agent')],
-                (err) => {
-                    if (err) {
-                        console.error('Error logging age verification:', err);
-                    }
-                }
-            );
-
-            res.json({
-                message: 'Edad verificada exitosamente',
-                age_verified: true,
-                verification_date: currentDate
-            });
+        if (!confirmed) {
+            return res.status(400).json({ error: 'Debe confirmar su mayoría de edad' });
         }
-    );
+
+        const currentDate = new Date().toISOString();
+
+        await runDb(
+            'UPDATE users SET age_verified = TRUE, age_verification_date = ? WHERE id = ?',
+            [currentDate, userId]
+        );
+
+        try {
+            await runDb(
+                'INSERT INTO age_verifications (user_id, ip_address, user_agent) VALUES (?, ?, ?)',
+                [userId, req.ip, req.get('User-Agent')]
+            );
+        } catch (logErr) {
+            console.error('Error logging age verification:', logErr);
+        }
+
+        await saveDatabaseAsync();
+
+        res.json({
+            message: 'Edad verificada exitosamente',
+            age_verified: true,
+            verification_date: currentDate
+        });
+    } catch (error) {
+        console.error('Error al verificar edad:', error);
+        res.status(500).json({ error: 'Error al verificar la edad' });
+    }
 });
 
 // User verification endpoints
@@ -3495,7 +3495,7 @@ app.post('/api/reels', authenticateToken, handleReelUpload, checkUserBan, async 
             return 1;
         })();
 
-        db.run(
+        const insertResult = await runDb(
             `INSERT INTO reels (user_id, title, description, video_url, thumbnail_url, category, is_public, duration_seconds)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [
@@ -3507,29 +3507,34 @@ app.post('/api/reels', authenticateToken, handleReelUpload, checkUserBan, async 
                 normalizedCategory,
                 isPublicFlag,
                 duration
-            ],
-            function(err) {
-                if (err) {
-                    console.error('❌ Error al crear reel:', err);
-                    return res.status(500).json({ error: 'Error al crear reel' });
-                }
-
-                res.json({
-                    message: 'Reel publicado exitosamente',
-                    reel_id: this.lastID,
-                    video_url: videoUrl,
-                    thumbnail_url: thumbnailUrl,
-                    category: normalizedCategory
-                });
-            }
+            ]
         );
+
+        await saveDatabaseAsync();
+
+        res.json({
+            message: 'Reel publicado exitosamente',
+            reel_id: insertResult.lastID,
+            video_url: videoUrl,
+            thumbnail_url: thumbnailUrl,
+            category: normalizedCategory
+        });
     } catch (error) {
         console.error('❌ Error al publicar reel:', error);
         res.status(500).json({ error: error.message || 'Error al publicar reel' });
     }
 });
 
-app.get('/api/reels/category/:category', authenticateToken, requireAgeVerification, checkUserBan, (req, res) => {
+app.get('/api/reels/category/:category', authenticateToken, requireAgeVerification, checkUserBan, async (req, res) => {
+    try {
+        await dbReady;
+        if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
+            await refreshDatabaseFromBlob();
+        }
+    } catch (refreshErr) {
+        console.error('Error al refrescar BD antes de listar reels:', refreshErr.message);
+    }
+
     const userId = req.user.userId;
     const categoryParam = req.params.category;
 
@@ -3896,7 +3901,7 @@ app.delete('/api/reels/:reelId', authenticateToken, checkUserBan, (req, res) => 
                             return res.status(500).json({ error: 'Error al eliminar los comentarios del reel' });
                         }
 
-                        db.run('DELETE FROM reels WHERE id = ?', [reelId], function(deleteErr) {
+                        db.run('DELETE FROM reels WHERE id = ?', [reelId], async function(deleteErr) {
                             if (deleteErr) {
                                 console.error('❌ Error al eliminar el reel:', deleteErr);
                                 return res.status(500).json({ error: 'Error al eliminar el reel' });
@@ -3904,6 +3909,12 @@ app.delete('/api/reels/:reelId', authenticateToken, checkUserBan, (req, res) => 
 
                             deleteFileIfExists(reel.video_url);
                             deleteFileIfExists(reel.thumbnail_url);
+
+                            try {
+                                await saveDatabaseAsync();
+                            } catch (persistErr) {
+                                console.error('Error al persistir BD tras eliminar reel:', persistErr.message);
+                            }
 
                             res.json({ message: 'Reel eliminado correctamente' });
                         });
