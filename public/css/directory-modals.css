@@ -141,6 +141,13 @@
     color: #ffb3cc;
 }
 
+.category-nav a.category-nav-reels {
+    border: 1px solid rgba(255, 107, 157, 0.35);
+    border-radius: 999px;
+    padding: 0.2rem 0.65rem;
+    margin-left: 0.25rem;
+}
+
 #messageBox.success {
     color: #7dffa8;
     text-align: center;

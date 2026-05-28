@@ -431,6 +431,30 @@
     min-height: 44px;
 }
 
+.home-reels-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.home-reels-link {
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.4rem 0.7rem;
+    border-radius: 999px;
+    text-decoration: none;
+    color: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.home-reels-link:hover {
+    border-color: rgba(255, 107, 157, 0.45);
+    color: #ff9ec8;
+}
+
 .home-trust {
     display: flex;
     flex-wrap: wrap;

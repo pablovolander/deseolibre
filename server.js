@@ -3434,83 +3434,98 @@ app.get('/api/users/:userId/following', (req, res) => {
 // REELS ENDPOINTS
 // ============================================
 
-app.post('/api/reels', authenticateToken, handleReelUpload, checkUserBan, (req, res) => {
-    const userId = req.user.userId;
-    const { title, description, category, is_public, duration_seconds } = req.body;
+app.post('/api/reels', authenticateToken, handleReelUpload, checkUserBan, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const { title, description, category, is_public, duration_seconds } = req.body;
 
-    if (!title || !title.trim()) {
-        return res.status(400).json({ error: 'Título es requerido' });
-    }
-
-    if (!category || !isValidCategory(category)) {
-        return res.status(400).json({ error: 'Categoría inválida' });
-    }
-
-    const videoFile = req.files && Array.isArray(req.files.video) ? req.files.video[0] : null;
-    if (!videoFile) {
-        return res.status(400).json({ error: 'Archivo de video es requerido' });
-    }
-
-    const thumbnailFile = req.files && Array.isArray(req.files.thumbnail) ? req.files.thumbnail[0] : null;
-
-    const videoUrl = `/uploads/reels/${videoFile.filename}`;
-    const thumbnailUrl = thumbnailFile ? `/uploads/reels/${thumbnailFile.filename}` : null;
-
-    let duration = null;
-    if (duration_seconds !== undefined && duration_seconds !== null && duration_seconds !== '') {
-        const parsed = parseInt(duration_seconds, 10);
-        if (!Number.isNaN(parsed) && parsed >= 0) {
-            duration = parsed;
+        if (!title || !title.trim()) {
+            return res.status(400).json({ error: 'Título es requerido' });
         }
-    }
 
-    const isPublicFlag = (() => {
-        if (typeof is_public === 'string') {
-            const normalized = is_public.toLowerCase();
-            return normalized === 'false' || normalized === '0' || normalized === 'off' ? 0 : 1;
+        if (!category || !isValidCategory(category)) {
+            return res.status(400).json({ error: 'Categoría inválida' });
         }
-        if (typeof is_public === 'boolean') {
-            return is_public ? 1 : 0;
-        }
-        return 1;
-    })();
 
-    db.run(
-        `INSERT INTO reels (user_id, title, description, video_url, thumbnail_url, category, is_public, duration_seconds)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-            userId,
-            title.trim(),
-            description ? description.trim() : null,
-            videoUrl,
-            thumbnailUrl,
-            category,
-            isPublicFlag,
-            duration
-        ],
-        function(err) {
-            if (err) {
-                console.error('❌ Error al crear reel:', err);
-                return res.status(500).json({ error: 'Error al crear reel' });
+        const { category: normalizedCategory } = resolveCategoryAndAudience(category, null);
+
+        const videoFile = req.files && Array.isArray(req.files.video) ? req.files.video[0] : null;
+        if (!videoFile) {
+            return res.status(400).json({ error: 'Archivo de video es requerido' });
+        }
+
+        const thumbnailFile = req.files && Array.isArray(req.files.thumbnail) ? req.files.thumbnail[0] : null;
+        const reelsUploadDir = path.join(localUploadsDir, 'reels');
+
+        const videoUrl = await persistUploadedFile(videoFile, isVercel, reelsUploadDir);
+        const thumbnailUrl = thumbnailFile
+            ? await persistUploadedFile(thumbnailFile, isVercel, reelsUploadDir)
+            : null;
+
+        let duration = null;
+        if (duration_seconds !== undefined && duration_seconds !== null && duration_seconds !== '') {
+            const parsed = parseInt(duration_seconds, 10);
+            if (!Number.isNaN(parsed) && parsed >= 0) {
+                duration = parsed;
             }
-
-            res.json({
-                message: 'Reel publicado exitosamente',
-                reel_id: this.lastID,
-                video_url: videoUrl,
-                thumbnail_url: thumbnailUrl
-            });
         }
-    );
+
+        const isPublicFlag = (() => {
+            if (typeof is_public === 'string') {
+                const normalized = is_public.toLowerCase();
+                return normalized === 'false' || normalized === '0' || normalized === 'off' ? 0 : 1;
+            }
+            if (typeof is_public === 'boolean') {
+                return is_public ? 1 : 0;
+            }
+            return 1;
+        })();
+
+        db.run(
+            `INSERT INTO reels (user_id, title, description, video_url, thumbnail_url, category, is_public, duration_seconds)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                userId,
+                title.trim(),
+                description ? description.trim() : null,
+                videoUrl,
+                thumbnailUrl,
+                normalizedCategory,
+                isPublicFlag,
+                duration
+            ],
+            function(err) {
+                if (err) {
+                    console.error('❌ Error al crear reel:', err);
+                    return res.status(500).json({ error: 'Error al crear reel' });
+                }
+
+                res.json({
+                    message: 'Reel publicado exitosamente',
+                    reel_id: this.lastID,
+                    video_url: videoUrl,
+                    thumbnail_url: thumbnailUrl,
+                    category: normalizedCategory
+                });
+            }
+        );
+    } catch (error) {
+        console.error('❌ Error al publicar reel:', error);
+        res.status(500).json({ error: error.message || 'Error al publicar reel' });
+    }
 });
 
 app.get('/api/reels/category/:category', authenticateToken, requireAgeVerification, checkUserBan, (req, res) => {
     const userId = req.user.userId;
-    const category = req.params.category;
+    const categoryParam = req.params.category;
 
-    if (!isValidCategory(category)) {
+    if (!isValidCategory(categoryParam)) {
         return res.status(400).json({ error: 'Categoría inválida' });
     }
+
+    const { category: canonicalCategory } = resolveCategoryAndAudience(categoryParam, null);
+    const categoryVariants = getCategorySearchVariants(canonicalCategory);
+    const categoryPlaceholders = categoryVariants.map(() => '?').join(', ');
 
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
@@ -3526,12 +3541,14 @@ app.get('/api/reels/category/:category', authenticateToken, requireAgeVerificati
         FROM reels r
         JOIN users u ON r.user_id = u.id
         LEFT JOIN reel_likes rl ON rl.reel_id = r.id AND rl.user_id = ?
-        WHERE r.category = ? AND (r.is_public = 1 OR r.user_id = ?)
+        WHERE r.category IN (${categoryPlaceholders}) AND (r.is_public = 1 OR r.user_id = ?)
         ORDER BY r.created_at DESC
         LIMIT ? OFFSET ?
     `;
 
-    db.all(query, [userId, category, userId, limit, offset], (err, reels) => {
+    const queryParams = [userId, ...categoryVariants, userId, limit, offset];
+
+    db.all(query, queryParams, (err, reels) => {
         if (err) {
             console.error('❌ Error al obtener reels:', err);
             return res.status(500).json({ error: 'Error al cargar reels' });
@@ -3540,10 +3557,10 @@ app.get('/api/reels/category/:category', authenticateToken, requireAgeVerificati
         const countQuery = `
             SELECT COUNT(*) as total
             FROM reels r
-            WHERE r.category = ? AND (r.is_public = 1 OR r.user_id = ?)
+            WHERE r.category IN (${categoryPlaceholders}) AND (r.is_public = 1 OR r.user_id = ?)
         `;
 
-        db.get(countQuery, [category, userId], (countErr, countResult) => {
+        db.get(countQuery, [...categoryVariants, userId], (countErr, countResult) => {
             if (countErr) {
                 console.error('❌ Error al contar reels:', countErr);
                 return res.status(500).json({ error: 'Error al contar reels' });
