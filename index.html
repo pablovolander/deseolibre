@@ -405,8 +405,10 @@
                 closeModal('loginModal');
                 showSuccess('¡Bienvenido de nuevo!');
                 
-                // Check if age verification is needed
-                if (!currentUser.age_verified) {
+                if (localStorage.getItem('ageVerified') === 'true' && !currentUser.age_verified) {
+                    await DeseoAuth.syncAgeVerificationFromLocal();
+                    currentUser = DeseoAuth.getCachedUser() || currentUser;
+                } else if (!currentUser.age_verified) {
                     setTimeout(() => showAgeVerificationModal(), 1000);
                 }
                 
@@ -469,6 +471,10 @@
                 const response = await apiCall('/api/auth/verify');
                 currentUser = response.user;
                 DeseoAuth.setSession(authToken, currentUser);
+                if (currentUser && !currentUser.age_verified && localStorage.getItem('ageVerified') === 'true') {
+                    await DeseoAuth.syncAgeVerificationFromLocal();
+                    currentUser = DeseoAuth.getCachedUser() || currentUser;
+                }
                 updateUI();
             } catch (error) {
                 if (typeof DeseoAuth !== 'undefined' && DeseoAuth.isAuthError(error)) {

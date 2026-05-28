@@ -36,6 +36,7 @@
 
     let authToken = typeof DeseoAuth !== 'undefined' ? DeseoAuth.getToken() : localStorage.getItem('authToken');
     let currentUser = null;
+    let loadReelsRetried = false;
 
     function setStatus(el, message, type) {
         if (!el) return;
@@ -45,6 +46,9 @@
 
     function mediaUrl(path) {
         if (!path) return '';
+        if (typeof resolveMediaUrl === 'function') {
+            return resolveMediaUrl(path);
+        }
         if (path.startsWith('http')) return path;
         return `${API_URL}${path}`;
     }
@@ -70,25 +74,135 @@
         if (uploadPanel) uploadPanel.style.display = loggedIn ? 'block' : 'none';
     }
 
-    async function fetchCurrentUser() {
-        if (!getToken()) return null;
+    async function parseJsonResponse(res) {
+        try {
+            return await res.json();
+        } catch {
+            return {};
+        }
+    }
+
+    function handleInvalidSession() {
+        if (typeof DeseoAuth !== 'undefined') {
+            DeseoAuth.clearSession();
+        } else {
+            localStorage.removeItem('authToken');
+        }
+        authToken = null;
+        currentUser = null;
+        updateAuthUi();
+    }
+
+    async function ensureSessionUser() {
+        if (!getToken()) {
+            return null;
+        }
+
+        if (typeof DeseoAuth !== 'undefined') {
+            try {
+                currentUser = await DeseoAuth.verifySession(API_URL);
+                return currentUser;
+            } catch {
+                updateAuthUi();
+                return null;
+            }
+        }
+
         try {
             const res = await fetch(`${API_URL}/api/auth/verify`, {
                 headers: { Authorization: `Bearer ${authToken}` }
             });
-            if (res.status === 401 || res.status === 403) {
-                if (typeof DeseoAuth !== 'undefined') DeseoAuth.clearSession();
-                else localStorage.removeItem('authToken');
-                authToken = null;
+            const data = await parseJsonResponse(res);
+            if (!res.ok) {
+                if (
+                    res.status === 401 ||
+                    (typeof DeseoAuth !== 'undefined' &&
+                        DeseoAuth.isInvalidTokenResponse(res.status, data))
+                ) {
+                    handleInvalidSession();
+                }
                 return null;
             }
-            if (!res.ok) return null;
-            const data = await res.json();
             currentUser = data.user || null;
+            if (currentUser && !currentUser.age_verified && localStorage.getItem('ageVerified') === 'true') {
+                await syncAgeOnServer();
+            }
             return currentUser;
         } catch {
             return null;
         }
+    }
+
+    async function syncAgeOnServer() {
+        if (typeof DeseoAuth !== 'undefined') {
+            return DeseoAuth.syncAgeVerificationFromLocal(API_URL);
+        }
+        if (!getToken() || localStorage.getItem('ageVerified') !== 'true') {
+            return false;
+        }
+        try {
+            const res = await fetch(`${API_URL}/api/auth/verify-age`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ confirmed: true })
+            });
+            if (res.ok && currentUser) {
+                currentUser.age_verified = true;
+            }
+            return res.ok;
+        } catch {
+            return false;
+        }
+    }
+
+    async function handleReelsApiError(res, data) {
+        if (res.status === 401) {
+            handleInvalidSession();
+            setStatus(feedStatus, 'Tu sesión expiró. Vuelve a iniciar sesión.', 'error');
+            return true;
+        }
+
+        if (res.status === 403 && data.requires_age_verification) {
+            if (!loadReelsRetried) {
+                const synced = await syncAgeOnServer();
+                if (synced) {
+                    loadReelsRetried = true;
+                    await loadReels();
+                    return true;
+                }
+            }
+            setStatus(
+                feedStatus,
+                'Debes confirmar que eres mayor de edad. Ve al inicio, inicia sesión y acepta el aviso de edad.',
+                'warning'
+            );
+            return true;
+        }
+
+        if (res.status === 403 && data.ban_reason) {
+            setStatus(feedStatus, data.error || 'Tu cuenta está suspendida.', 'error');
+            return true;
+        }
+
+        if (
+            res.status === 403 &&
+            typeof DeseoAuth !== 'undefined' &&
+            DeseoAuth.isInvalidTokenResponse(res.status, data)
+        ) {
+            handleInvalidSession();
+            setStatus(feedStatus, 'Tu sesión expiró. Vuelve a iniciar sesión.', 'error');
+            return true;
+        }
+
+        if (res.status === 403) {
+            setStatus(feedStatus, data.error || 'No tienes permiso para ver estos reels.', 'error');
+            return true;
+        }
+
+        return false;
     }
 
     function renderCategoryNav() {
@@ -118,16 +232,15 @@
                 { headers: { Authorization: `Bearer ${authToken}` } }
             );
 
-            if (res.status === 401 || res.status === 403) {
-                setStatus(feedStatus, 'Tu sesión expiró. Vuelve a iniciar sesión.', 'error');
-                return;
-            }
+            const data = await parseJsonResponse(res);
 
             if (!res.ok) {
-                throw new Error('No se pudieron cargar los reels');
+                if (await handleReelsApiError(res, data)) {
+                    return;
+                }
+                throw new Error(data.error || 'No se pudieron cargar los reels');
             }
 
-            const data = await res.json();
             const reels = data.reels || [];
 
             if (!reels.length) {
@@ -145,7 +258,7 @@
             setStatus(feedStatus, `${reels.length} reel${reels.length === 1 ? '' : 's'}`, null);
         } catch (err) {
             console.error(err);
-            setStatus(feedStatus, 'Error al cargar reels. Intenta de nuevo.', 'error');
+            setStatus(feedStatus, err.message || 'Error al cargar reels. Intenta de nuevo.', 'error');
         }
     }
 
@@ -351,12 +464,17 @@
                     headers: { Authorization: `Bearer ${authToken}` },
                     body: formData
                 });
-                const data = await res.json().catch(() => ({}));
+                const data = await parseJsonResponse(res);
+                if (res.status === 401 || (res.status === 403 && typeof DeseoAuth !== 'undefined' && DeseoAuth.isInvalidTokenResponse(res.status, data))) {
+                    handleInvalidSession();
+                    throw new Error('Tu sesión expiró. Vuelve a iniciar sesión.');
+                }
                 if (!res.ok) throw new Error(data.error || 'No se pudo subir el reel');
                 setStatus(uploadStatus, 'Reel publicado correctamente', 'success');
                 uploadForm.reset();
                 const pub = document.getElementById('reel-public');
                 if (pub) pub.checked = true;
+                loadReelsRetried = false;
                 loadReels();
             } catch (err) {
                 setStatus(uploadStatus, err.message || 'Error al subir', 'error');
@@ -370,8 +488,9 @@
         renderCategoryNav();
         updateAuthUi();
         if (isLoggedIn()) {
-            await fetchCurrentUser();
+            await ensureSessionUser();
         }
+        updateAuthUi();
         await loadReels();
     }
 

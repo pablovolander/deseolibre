@@ -71,6 +71,29 @@
         return data;
     }
 
+    async function syncAgeVerificationFromLocal(apiBase) {
+        const token = getToken();
+        if (!token || global.localStorage.getItem('ageVerified') !== 'true') {
+            return false;
+        }
+
+        const base = apiBase || (typeof getApiBaseUrl === 'function' ? getApiBaseUrl() : global.location.origin);
+        try {
+            await authFetch(`${base}/api/auth/verify-age`, {
+                method: 'POST',
+                body: JSON.stringify({ confirmed: true })
+            });
+            const user = getCachedUser();
+            if (user) {
+                user.age_verified = true;
+                setSession(token, user);
+            }
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
     async function verifySession(apiBase) {
         const token = getToken();
         if (!token) {
@@ -78,15 +101,42 @@
         }
 
         const base = apiBase || (typeof getApiBaseUrl === 'function' ? getApiBaseUrl() : global.location.origin);
-        const data = await authFetch(`${base}/api/auth/verify`);
-        if (data.user) {
-            setSession(token, data.user);
+        try {
+            const data = await authFetch(`${base}/api/auth/verify`);
+            if (data.user) {
+                setSession(token, data.user);
+                if (!data.user.age_verified) {
+                    await syncAgeVerificationFromLocal(base);
+                    if (getCachedUser()?.age_verified) {
+                        return getCachedUser();
+                    }
+                }
+            }
+            return data.user || null;
+        } catch (error) {
+            if (error.status === 401 || error.status === 403) {
+                clearSession();
+            }
+            throw error;
         }
-        return data.user || null;
     }
 
     function isAuthError(error) {
         return error && (error.status === 401 || error.status === 403);
+    }
+
+    function isInvalidTokenResponse(status, data) {
+        if (status === 401) {
+            return true;
+        }
+        if (status !== 403 || !data) {
+            return false;
+        }
+        if (data.requires_age_verification || data.ban_reason) {
+            return false;
+        }
+        const msg = String(data.error || '').toLowerCase();
+        return msg.includes('token') || msg.includes('acceso requerido');
     }
 
     global.DeseoAuth = {
@@ -97,6 +147,8 @@
         authHeaders,
         authFetch,
         verifySession,
-        isAuthError
+        syncAgeVerificationFromLocal,
+        isAuthError,
+        isInvalidTokenResponse
     };
 })(window);

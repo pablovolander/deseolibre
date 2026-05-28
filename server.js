@@ -187,6 +187,20 @@ function enrichPostsWithMediaUrls(posts, req) {
     });
 }
 
+function enrichReelsWithMediaUrls(reels, req) {
+    const origin = getRequestOrigin(req);
+    return (reels || []).map((reel) => ({
+        ...reel,
+        video_url: resolveMediaUrl(reel.video_url || '', origin),
+        thumbnail_url: reel.thumbnail_url
+            ? resolveMediaUrl(reel.thumbnail_url, origin)
+            : reel.thumbnail_url,
+        profile_picture: reel.profile_picture
+            ? resolveMediaUrl(reel.profile_picture, origin)
+            : reel.profile_picture
+    }));
+}
+
 function runDb(sql, params = []) {
     return new Promise((resolve, reject) => {
         db.run(sql, params, function onRun(err) {
@@ -3567,7 +3581,7 @@ app.get('/api/reels/category/:category', authenticateToken, requireAgeVerificati
             }
 
             res.json({
-                reels: reels || [],
+                reels: enrichReelsWithMediaUrls(reels, req),
                 pagination: {
                     page,
                     limit,
@@ -3614,7 +3628,8 @@ app.get('/api/reels/:reelId', authenticateToken, requireAgeVerification, checkUs
             return res.status(403).json({ error: 'No tienes acceso a este reel' });
         }
 
-        res.json({ reel });
+        const [enriched] = enrichReelsWithMediaUrls([reel], req);
+        res.json({ reel: enriched });
     });
 });
 
