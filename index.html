@@ -293,8 +293,9 @@
             const ageVerified = (typeof DeseoAgeGate !== 'undefined' && DeseoAgeGate.isVerified())
                 || localStorage.getItem('ageVerified');
             if (!ageVerified) {
-                // Show age verification modal after a short delay
                 setTimeout(() => showAgeVerificationModal(), 500);
+            } else if (typeof DeseoAgeGate !== 'undefined') {
+                DeseoAgeGate.resumeAfterHomeVerification();
             }
             
             if (authToken) {
@@ -527,6 +528,9 @@
 
             closeAgeModal();
             showSuccess('¡Bienvenido a Deseo Libre! Edad verificada correctamente.');
+            if (typeof DeseoAgeGate !== 'undefined') {
+                DeseoAgeGate.resumeAfterHomeVerification();
+            }
         }
 
         function logout() {

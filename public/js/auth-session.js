@@ -38,9 +38,6 @@
         if (token) {
             headers.Authorization = `Bearer ${token}`;
         }
-        if (global.DeseoAgeGate && global.DeseoAgeGate.isVerified()) {
-            headers['X-Age-Verified'] = 'true';
-        }
         return headers;
     }
 
@@ -50,9 +47,6 @@
 
         if (token) {
             headers.Authorization = `Bearer ${token}`;
-        }
-        if (global.DeseoAgeGate && global.DeseoAgeGate.isVerified()) {
-            headers['X-Age-Verified'] = 'true';
         }
 
         if (!(options.body instanceof FormData) && !headers['Content-Type'] && !headers['content-type']) {

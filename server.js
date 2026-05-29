@@ -1534,7 +1534,7 @@ app.get('/api/user/profile', authenticateToken, (req, res) => {
 });
 
 // Get public profile of any user
-app.get('/api/user/public/:userId', requireAgeAccess, (req, res) => {
+app.get('/api/user/public/:userId', (req, res) => {
     const userId = req.params.userId;
 
     db.get(
@@ -1560,7 +1560,7 @@ app.get('/api/user/public/:userId', requireAgeAccess, (req, res) => {
 });
 
 // Get public posts of a specific user
-app.get('/api/user/:userId/posts', requireAgeAccess, (req, res) => {
+app.get('/api/user/:userId/posts', (req, res) => {
     const userId = req.params.userId;
 
     const query = `
@@ -2313,7 +2313,7 @@ app.get('/api/zones', (req, res) => {
     res.json({ city: cityResolved.city.name, zones });
 });
 
-app.get('/api/content/category/:category', requireAgeAccess, async (req, res) => {
+app.get('/api/content/category/:category', async (req, res) => {
     const { category } = resolveCategoryAndAudience(req.params.category, null);
 
     if (!isValidCategory(category)) {
@@ -2493,8 +2493,8 @@ app.get('/api/feed', (req, res) => {
     });
 });
 
-// Get feed by category (no login; age gate required)
-app.get('/api/feed/:category', requireAgeAccess, async (req, res) => {
+// Get feed by category (no login required)
+app.get('/api/feed/:category', async (req, res) => {
     await refreshDatabaseFromBlob();
 
     const category = normalizeCategorySlug(req.params.category);
@@ -3587,7 +3587,7 @@ app.post('/api/reels', authenticateToken, handleReelUpload, checkUserBan, async 
     }
 });
 
-app.get('/api/reels/category/:category', optionalAuthenticateToken, requireAgeAccess, async (req, res) => {
+app.get('/api/reels/category/:category', optionalAuthenticateToken, async (req, res) => {
     try {
         await dbReady;
         if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
@@ -3660,7 +3660,7 @@ app.get('/api/reels/category/:category', optionalAuthenticateToken, requireAgeAc
     });
 });
 
-app.get('/api/reels/:reelId', optionalAuthenticateToken, requireAgeAccess, (req, res) => {
+app.get('/api/reels/:reelId', optionalAuthenticateToken, (req, res) => {
     const viewerId = getViewerUserId(req);
     const reelId = parseInt(req.params.reelId, 10);
 
@@ -3700,7 +3700,7 @@ app.get('/api/reels/:reelId', optionalAuthenticateToken, requireAgeAccess, (req,
     });
 });
 
-app.post('/api/reels/:reelId/like', authenticateToken, requireAgeAccess, checkUserBan, (req, res) => {
+app.post('/api/reels/:reelId/like', authenticateToken, requireAgeVerification, checkUserBan, (req, res) => {
     const userId = req.user.userId;
     const reelId = parseInt(req.params.reelId, 10);
 
@@ -3749,7 +3749,7 @@ app.post('/api/reels/:reelId/like', authenticateToken, requireAgeAccess, checkUs
     });
 });
 
-app.delete('/api/reels/:reelId/like', authenticateToken, requireAgeAccess, checkUserBan, (req, res) => {
+app.delete('/api/reels/:reelId/like', authenticateToken, requireAgeVerification, checkUserBan, (req, res) => {
     const userId = req.user.userId;
     const reelId = parseInt(req.params.reelId, 10);
 
@@ -3788,7 +3788,7 @@ app.delete('/api/reels/:reelId/like', authenticateToken, requireAgeAccess, check
     );
 });
 
-app.post('/api/reels/:reelId/comment', authenticateToken, requireAgeAccess, checkUserBan, (req, res) => {
+app.post('/api/reels/:reelId/comment', authenticateToken, requireAgeVerification, checkUserBan, (req, res) => {
     const userId = req.user.userId;
     const reelId = parseInt(req.params.reelId, 10);
     const { comment } = req.body;
@@ -3859,7 +3859,7 @@ app.post('/api/reels/:reelId/comment', authenticateToken, requireAgeAccess, chec
     });
 });
 
-app.get('/api/reels/:reelId/comments', optionalAuthenticateToken, requireAgeAccess, (req, res) => {
+app.get('/api/reels/:reelId/comments', optionalAuthenticateToken, (req, res) => {
     const viewerId = getViewerUserId(req);
     const reelId = parseInt(req.params.reelId, 10);
 
@@ -3900,7 +3900,7 @@ app.get('/api/reels/:reelId/comments', optionalAuthenticateToken, requireAgeAcce
     });
 });
 
-app.post('/api/reels/:reelId/view', optionalAuthenticateToken, requireAgeAccess, (req, res) => {
+app.post('/api/reels/:reelId/view', optionalAuthenticateToken, (req, res) => {
     const reelId = parseInt(req.params.reelId, 10);
 
     if (Number.isNaN(reelId)) {

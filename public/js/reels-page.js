@@ -188,22 +188,6 @@
             return true;
         }
 
-        if (res.status === 403 && data.requires_age_verification) {
-            if (typeof DeseoAgeGate !== 'undefined' && !loadReelsRetried) {
-                DeseoAgeGate.ensure(() => {
-                    loadReelsRetried = true;
-                    loadReels();
-                });
-            } else {
-                setStatus(
-                    feedStatus,
-                    'Debes confirmar que eres mayor de edad para ver los reels.',
-                    'warning'
-                );
-            }
-            return true;
-        }
-
         if (res.status === 403 && data.ban_reason) {
             setStatus(feedStatus, data.error || 'Tu cuenta está suspendida.', 'error');
             return true;
@@ -497,22 +481,17 @@
     }
 
     async function init() {
+        if (typeof DeseoAgeGate !== 'undefined' && DeseoAgeGate.redirectToHomeIfNeeded()) {
+            return;
+        }
+
         renderCategoryNav();
         updateAuthUi();
-
-        const boot = async () => {
-            if (isLoggedIn()) {
-                await ensureSessionUser();
-            }
-            updateAuthUi();
-            await loadReels();
-        };
-
-        if (typeof DeseoAgeGate !== 'undefined') {
-            DeseoAgeGate.ensure(boot);
-        } else {
-            await boot();
+        if (isLoggedIn()) {
+            await ensureSessionUser();
         }
+        updateAuthUi();
+        await loadReels();
     }
 
     document.addEventListener('DOMContentLoaded', init);

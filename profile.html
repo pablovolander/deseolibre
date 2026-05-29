@@ -2259,12 +2259,10 @@
                 return;
             }
 
-            const boot = () => initProfile();
-            if (typeof DeseoAgeGate !== 'undefined') {
-                DeseoAgeGate.ensure(boot);
-            } else {
-                boot();
+            if (typeof DeseoAgeGate !== 'undefined' && DeseoAgeGate.redirectToHomeIfNeeded()) {
+                return;
             }
+            initProfile();
         });
 
         // Initialize profile
