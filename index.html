@@ -16,6 +16,8 @@
     <script src="/js/service-pricing.js"></script>
     <script src="/js/auth-session.js"></script>
     <script src="/js/age-gate.js"></script>
+    <script src="/js/face-match.js"></script>
+    <script src="/js/register-wizard.js"></script>
 </head>
 <body class="home-page">
     <script>
@@ -199,71 +201,132 @@
         </div>
     </div>
 
-    <!-- Register Form Modal -->
+    <!-- Register wizard: cuenta + perfil + documento + video -->
     <div id="registerModal" class="modal">
-        <div class="modal-content">
-            <h2>Registrarse</h2>
+        <div class="modal-content register-wizard-modal">
+            <h2>Registro profesional</h2>
+            <p class="reg-wizard-hint">Un solo proceso: datos, documento, selfie y video. Sin verificación no podrás publicar anuncios ni reels.</p>
+            <div class="reg-wizard-progress" aria-hidden="true">
+                <span class="reg-wizard-progress-item active" data-step="1">1. Cuenta</span>
+                <span class="reg-wizard-progress-item" data-step="2">2. Perfil</span>
+                <span class="reg-wizard-progress-item" data-step="3">3. Documento</span>
+                <span class="reg-wizard-progress-item" data-step="4">4. Video</span>
+            </div>
+            <p class="reg-wizard-status" id="regWizardStatus"></p>
             <form id="registerForm" class="register-form">
-                <div class="form-group">
-                    <label for="registerUsername">Nombre de usuario:</label>
-                    <input type="text" id="registerUsername" required>
+                <div class="reg-wizard-step-panel active" data-step="1">
+                    <div class="form-group">
+                        <label for="registerUsername">Nombre de usuario</label>
+                        <input type="text" id="registerUsername" required minlength="3">
+                    </div>
+                    <div class="form-group">
+                        <label for="registerEmail">Email</label>
+                        <input type="email" id="registerEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerPassword">Contraseña</label>
+                        <input type="password" id="registerPassword" required minlength="6">
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="registerEmail">Email:</label>
-                    <input type="email" id="registerEmail" required>
+                <div class="reg-wizard-step-panel" data-step="2">
+                    <div class="form-group">
+                        <label for="regFullName">Nombre profesional *</label>
+                        <input type="text" id="regFullName" required minlength="2">
+                    </div>
+                    <input type="hidden" id="regCountry" value="MX">
+                    <div class="form-group">
+                        <label for="regCity">Ciudad *</label>
+                        <select id="regCity" required>
+                            <option value="">CDMX, Guadalajara o Monterrey</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="regZone">Zona *</label>
+                        <select id="regZone" required disabled>
+                            <option value="">Primero elige ciudad</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="regZoneDetail">Detalle de ubicación</label>
+                        <input type="text" id="regZoneDetail" maxlength="120" placeholder="Colonia o referencia (oblig. si Otra zona)">
+                    </div>
+                    <div class="form-group">
+                        <label for="regPhone">Teléfono * (WhatsApp)</label>
+                        <input type="tel" id="regPhone" required placeholder="10 dígitos">
+                    </div>
+                    <div class="form-group">
+                        <label for="regTelegram">Telegram *</label>
+                        <input type="text" id="regTelegram" required placeholder="mi_usuario" minlength="5" maxlength="32">
+                    </div>
+                    <div class="form-group">
+                        <label for="regPrice">Tarifa *</label>
+                        <input type="number" id="regPrice" step="0.01" min="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="regPriceUnit">Cobro por *</label>
+                        <select id="regPriceUnit" required>
+                            <option value="">Selecciona</option>
+                            <option value="hour">Por hora</option>
+                            <option value="half_hour">Por media hora</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="registerPassword">Contraseña:</label>
-                    <input type="password" id="registerPassword" required minlength="6">
+                <div class="reg-wizard-step-panel" data-step="3">
+                    <div class="form-group">
+                        <label for="regVerifyCountry">País *</label>
+                        <select id="regVerifyCountry" required>
+                            <option value="">Selecciona</option>
+                            <option value="MX">México</option>
+                            <option value="CO">Colombia</option>
+                            <option value="AR">Argentina</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="regVerificationType">Tipo de documento *</label>
+                        <select id="regVerificationType" required>
+                            <option value="">Selecciona</option>
+                            <option value="id_card">INE / Cédula / DNI</option>
+                            <option value="passport">Pasaporte</option>
+                            <option value="driver_license">Licencia</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="regIdFront">Frente del documento *</label>
+                        <input type="file" id="regIdFront" accept="image/*" required>
+                    </div>
+                    <div class="form-group" id="regIdBackRow">
+                        <label for="regIdBack">Reverso del documento *</label>
+                        <input type="file" id="regIdBack" accept="image/*">
+                    </div>
+                    <div class="form-group">
+                        <label for="regSelfie">Selfie sosteniendo el documento *</label>
+                        <input type="file" id="regSelfie" accept="image/*" required>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="regFullName">Nombre profesional *</label>
-                    <input type="text" id="regFullName" required minlength="2">
+                <div class="reg-wizard-step-panel" data-step="4">
+                    <p class="reg-wizard-hint">Video de <span id="regMinDurLabel">8</span> a <span id="regMaxDurLabel">60</span> s mostrando tu cuerpo. No se publica.</p>
+                    <div class="form-group">
+                        <label for="regBodyVideo">Video corporal *</label>
+                        <input type="file" id="regBodyVideo" accept="video/mp4,video/webm,video/quicktime" required>
+                        <p class="reg-wizard-video-meta" id="regVideoSizeHint"></p>
+                        <p class="reg-wizard-video-meta" id="regVideoDurationLabel"></p>
+                        <p class="reg-wizard-video-meta" id="regFaceMatchLabel"></p>
+                        <button type="button" class="modal-btn modal-btn-secondary" id="regFaceMatchBtn" style="margin-top:0.5rem;">
+                            Comparar rostro (selfie vs video)
+                        </button>
+                    </div>
+                    <div class="form-group">
+                        <label for="regVerifyNotes">Notas (opcional)</label>
+                        <input type="text" id="regVerifyNotes" maxlength="200" placeholder="Nombre legal si difiere del usuario">
+                    </div>
                 </div>
-                <input type="hidden" id="regCountry" value="MX">
-                <div class="form-group">
-                    <label for="regCity">Ciudad *</label>
-                    <select id="regCity" required>
-                        <option value="">CDMX, Guadalajara o Monterrey</option>
-                    </select>
+                <div class="reg-wizard-actions">
+                    <button type="button" class="modal-btn modal-btn-secondary" id="regWizardPrev" style="display:none;">Anterior</button>
+                    <button type="button" class="modal-btn modal-btn-primary" id="regWizardNext">Siguiente</button>
+                    <button type="button" class="modal-btn modal-btn-primary" id="regWizardSubmit" style="display:none;">Completar registro</button>
                 </div>
-                <div class="form-group">
-                    <label for="regZone">Zona *</label>
-                    <select id="regZone" required disabled>
-                        <option value="">Primero elige ciudad</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="regZoneDetail">Detalle de ubicación</label>
-                    <input type="text" id="regZoneDetail" maxlength="120" placeholder="Opcional: colonia, referencia (obligatorio si Otra zona)">
-                </div>
-                <div class="form-group">
-                    <label for="regPhone">Teléfono * (WhatsApp)</label>
-                    <input type="tel" id="regPhone" required placeholder="10 dígitos, ej: 55 1234 5678">
-                </div>
-                <div class="form-group">
-                    <label for="regTelegram">Usuario de Telegram *</label>
-                    <input type="text" id="regTelegram" required placeholder="ej: mi_usuario" minlength="5" maxlength="32">
-                    <small style="opacity:0.8;">Sin @</small>
-                </div>
-                <div class="form-group">
-                    <label for="regPrice">Tarifa *</label>
-                    <input type="number" id="regPrice" step="0.01" min="0.01" required>
-                </div>
-                <div class="form-group">
-                    <label for="regPriceUnit">Cobro por *</label>
-                    <select id="regPriceUnit" required>
-                        <option value="">Selecciona</option>
-                        <option value="hour">Por hora</option>
-                        <option value="half_hour">Por media hora (30 min)</option>
-                    </select>
-                </div>
-                <p style="font-size:0.88rem;opacity:0.85;margin:0.75rem 0;line-height:1.45;">
-                    Tras registrarte deberás verificar tu identidad: documento oficial, selfie con el documento y video corporal (obligatorio para publicar).
-                </p>
-                <button type="submit" class="btn btn-primary">Registrarse</button>
-                <div class="form-toggle">
-                    <p>¿Ya tienes cuenta? <a href="#" onclick="showLoginForm()">Inicia sesión aquí</a></p>
+                <div class="form-toggle" style="margin-top:1rem;">
+                    <p>¿Ya tienes cuenta? <a href="#" onclick="showLoginForm()">Inicia sesión</a></p>
                 </div>
             </form>
         </div>
@@ -303,6 +366,11 @@
             
             if (authToken) {
                 verifyToken();
+            } else if (new URLSearchParams(window.location.search).get('register') === '1') {
+                setTimeout(() => showRegisterForm(), 400);
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
             }
             setupMobileMenu();
             document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
@@ -427,63 +495,16 @@
             }
         }
 
-        function goToIdentityVerification(message) {
-            sessionStorage.setItem(
-                'deseo_verify_message',
-                message || 'Sube tu documento oficial, una selfie con el documento y el video corporal para activar tu perfil en el directorio.'
-            );
-            window.location.href = 'verificar-identidad.html';
-        }
-
-        async function register(username, email, password) {
-            const profilePayload = typeof DeseoProfileFields !== 'undefined'
-                ? DeseoProfileFields.readProfilePayload('reg')
-                : { ok: false, error: 'Completa todos los campos del perfil' };
-            if (!profilePayload.ok) {
-                showError(profilePayload.error);
-                return;
-            }
-            try {
-                const response = await apiCall('/api/auth/register', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        username,
-                        email,
-                        password,
-                        full_name: profilePayload.full_name,
-                        country: profilePayload.country,
-                        city: profilePayload.city,
-                        zone: profilePayload.zone,
-                        zone_detail: profilePayload.zone_detail,
-                        phone: profilePayload.phone,
-                        telegram_username: profilePayload.telegram_username,
-                        service_price: profilePayload.service_price,
-                        service_price_unit: profilePayload.service_price_unit
-                    })
-                });
-
-                authToken = response.token;
-                DeseoAuth.setSession(authToken, response.user);
-                currentUser = response.user;
-                
-                updateUI();
-                closeModal('registerModal');
-                showSuccess('¡Registro exitoso! Sigue con la verificación de identidad.');
-
-                if (typeof DeseoAgeGate !== 'undefined') {
-                    DeseoAgeGate.markVerified();
-                } else {
-                    localStorage.setItem('ageVerified', 'true');
-                }
-
-                setTimeout(() => {
-                    goToIdentityVerification(
-                        'Paso siguiente: sube fotos de tu documento, una selfie sosteniéndolo y un video corporal corto (como en Fatal Model).'
-                    );
-                }, 1200);
-                
-            } catch (error) {
-                console.error('Register error:', error);
+        function handleRegisterWizardSuccess(data) {
+            authToken = data.token;
+            DeseoAuth.setSession(authToken, data.user);
+            currentUser = data.user;
+            updateUI();
+            closeModal('registerModal');
+            if (data.verificationFailed) {
+                showError('Cuenta creada, pero falló la verificación. Usa «Verificar identidad» para completarla.');
+            } else {
+                showSuccess('¡Registro completo! Ya puedes publicar anuncios y reels.');
             }
         }
 
@@ -599,11 +620,15 @@
             modal.style.display = 'block';
             modal.classList.add('show');
             document.body.classList.add('modal-open');
+            if (typeof DeseoRegisterWizard !== 'undefined') {
+                DeseoRegisterWizard.open();
+            }
             if (typeof DeseoProfileFields !== 'undefined') {
                 DeseoProfileFields.initLocationPicker('reg');
             }
             setTimeout(() => {
-                const firstInput = modal.querySelector('input');
+                const panel = modal.querySelector('.reg-wizard-step-panel.active input');
+                const firstInput = panel || modal.querySelector('input');
                 if (firstInput) firstInput.focus();
             }, 100);
         }
@@ -683,12 +708,12 @@
             login(email, password);
         });
 
-        document.getElementById('registerForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const username = document.getElementById('registerUsername').value;
-            const email = document.getElementById('registerEmail').value;
-            const password = document.getElementById('registerPassword').value;
-            register(username, email, password);
+        document.getElementById('regWizardSubmit')?.addEventListener('click', function() {
+            if (typeof DeseoRegisterWizard === 'undefined') return;
+            DeseoRegisterWizard.submitComplete(
+                handleRegisterWizardSuccess,
+                function(err) { showError(err); }
+            );
         });
 
         // Close modals when clicking outside

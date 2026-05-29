@@ -335,10 +335,7 @@
     };
 
     window.showRegister = function () {
-        document.getElementById('registerModal')?.classList.add('show');
-        if (typeof DeseoProfileFields !== 'undefined') {
-            DeseoProfileFields.initLocationPicker('reg');
-        }
+        window.location.href = 'index.html?register=1';
     };
 
     window.showCreatePost = async function () {
@@ -393,53 +390,9 @@
         }
     };
 
-    window.register = async function (e) {
+    window.register = function (e) {
         e.preventDefault();
-        const profilePayload = typeof DeseoProfileFields !== 'undefined'
-            ? DeseoProfileFields.readProfilePayload('reg')
-            : { ok: false, error: 'Campos de perfil no disponibles' };
-        if (!profilePayload.ok) {
-            showMessage(profilePayload.error, 'error');
-            return;
-        }
-        try {
-            const data = await DeseoAuth.authFetch(`${API_URL}/api/auth/register`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    username: document.getElementById('regUsername').value,
-                    email: document.getElementById('regEmail').value,
-                    password: document.getElementById('regPassword').value,
-                    full_name: profilePayload.full_name,
-                    country: profilePayload.country,
-                    city: profilePayload.city,
-                    zone: profilePayload.zone,
-                    zone_detail: profilePayload.zone_detail,
-                    phone: profilePayload.phone,
-                    telegram_username: profilePayload.telegram_username,
-                    service_price: profilePayload.service_price,
-                    service_price_unit: profilePayload.service_price_unit
-                })
-            });
-            authToken = data.token;
-            DeseoAuth.setSession(data.token, data.user);
-            if (typeof DeseoAgeGate !== 'undefined') {
-                DeseoAgeGate.markVerified();
-            } else {
-                localStorage.setItem('ageVerified', 'true');
-            }
-            closeModal('registerModal');
-            showMessage('Cuenta creada. Redirigiendo a verificación de identidad…', 'success');
-            updateUI();
-            sessionStorage.setItem(
-                'deseo_verify_message',
-                'Sube tu documento, selfie con documento y video corporal para publicar en el directorio.'
-            );
-            setTimeout(() => {
-                window.location.href = 'verificar-identidad.html';
-            }, 1200);
-        } catch (error) {
-            showMessage(error.message || 'Error', 'error');
-        }
+        window.location.href = 'index.html?register=1';
     };
 
     window.createPost = async function (e) {

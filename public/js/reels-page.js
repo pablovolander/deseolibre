@@ -181,6 +181,26 @@
         }
     }
 
+    async function ensureVerifiedForReelUpload() {
+        if (!authToken) return false;
+        try {
+            const res = await fetch(`${API_URL}/api/verification/status`, {
+                headers: { Authorization: `Bearer ${authToken}` },
+                cache: 'no-store'
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.is_verified) return true;
+            sessionStorage.setItem(
+                'deseo_verify_message',
+                'Subir reel: debes verificar tu identidad primero (documento, selfie y video).'
+            );
+            window.location.href = 'verificar-identidad.html';
+            return false;
+        } catch {
+            return true;
+        }
+    }
+
     async function handleReelsApiError(res, data) {
         if (res.status === 401) {
             handleInvalidSession();
@@ -190,6 +210,15 @@
 
         if (res.status === 403 && data.ban_reason) {
             setStatus(feedStatus, data.error || 'Tu cuenta está suspendida.', 'error');
+            return true;
+        }
+
+        if (res.status === 403 && data.requiresVerification) {
+            sessionStorage.setItem(
+                'deseo_verify_message',
+                data.message || 'Verifica tu identidad para subir reels.'
+            );
+            window.location.href = 'verificar-identidad.html';
             return true;
         }
 
@@ -442,7 +471,10 @@
         uploadForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!isLoggedIn()) {
-                window.location.href = 'index.html';
+                window.location.href = 'index.html?register=1';
+                return;
+            }
+            if (!(await ensureVerifiedForReelUpload())) {
                 return;
             }
 
@@ -464,6 +496,14 @@
                 if (res.status === 401 || (res.status === 403 && typeof DeseoAuth !== 'undefined' && DeseoAuth.isInvalidTokenResponse(res.status, data))) {
                     handleInvalidSession();
                     throw new Error('Tu sesión expiró. Vuelve a iniciar sesión.');
+                }
+                if (res.status === 403 && data.requiresVerification) {
+                    sessionStorage.setItem(
+                        'deseo_verify_message',
+                        data.message || 'Verifica tu identidad para subir reels.'
+                    );
+                    window.location.href = 'verificar-identidad.html';
+                    return;
                 }
                 if (!res.ok) throw new Error(data.error || 'No se pudo subir el reel');
                 setStatus(uploadStatus, 'Reel publicado correctamente', 'success');

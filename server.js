@@ -3510,7 +3510,7 @@ app.get('/api/users/:userId/following', (req, res) => {
 // REELS ENDPOINTS
 // ============================================
 
-app.post('/api/reels', authenticateToken, handleReelUpload, checkUserBan, async (req, res) => {
+app.post('/api/reels', authenticateToken, requireUserVerification, handleReelUpload, checkUserBan, async (req, res) => {
     try {
         const userId = req.user.userId;
         const { title, description, category, is_public, duration_seconds } = req.body;

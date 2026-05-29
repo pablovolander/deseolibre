@@ -660,6 +660,84 @@
     color: #fff;
 }
 
+/* Registro wizard (cuenta + verificación) */
+.home-page .modal-content.register-wizard-modal {
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.reg-wizard-progress {
+    display: flex;
+    gap: 0.35rem;
+    margin: 0 0 1rem;
+    flex-wrap: wrap;
+}
+
+.reg-wizard-progress-item {
+    flex: 1;
+    min-width: 4.5rem;
+    text-align: center;
+    font-size: 0.68rem;
+    padding: 0.4rem 0.25rem;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.reg-wizard-progress-item.active {
+    background: linear-gradient(135deg, rgba(255, 107, 157, 0.35), rgba(139, 124, 248, 0.3));
+    color: #fff;
+    font-weight: 600;
+}
+
+.reg-wizard-progress-item.done {
+    color: rgba(125, 255, 168, 0.9);
+}
+
+.reg-wizard-step-panel {
+    display: none;
+}
+
+.reg-wizard-step-panel.active {
+    display: block;
+}
+
+.reg-wizard-status {
+    min-height: 1.25rem;
+    font-size: 0.88rem;
+    margin: 0.5rem 0;
+}
+
+.reg-wizard-status.error {
+    color: #ff8a9b;
+}
+
+.reg-wizard-status.info {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.reg-wizard-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    justify-content: flex-end;
+}
+
+.reg-wizard-hint {
+    font-size: 0.82rem;
+    opacity: 0.8;
+    line-height: 1.45;
+    margin: 0.35rem 0 0.75rem;
+}
+
+.reg-wizard-video-meta {
+    font-size: 0.85rem;
+    margin-top: 0.35rem;
+    min-height: 1.2rem;
+}
+
 @media (max-width: 900px) {
     .home-page .mobile-menu-btn {
         display: flex;
