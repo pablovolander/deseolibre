@@ -258,6 +258,9 @@
                         <option value="half_hour">Por media hora (30 min)</option>
                     </select>
                 </div>
+                <p style="font-size:0.88rem;opacity:0.85;margin:0.75rem 0;line-height:1.45;">
+                    Tras registrarte deberás verificar tu identidad: documento oficial, selfie con el documento y video corporal (obligatorio para publicar).
+                </p>
                 <button type="submit" class="btn btn-primary">Registrarse</button>
                 <div class="form-toggle">
                     <p>¿Ya tienes cuenta? <a href="#" onclick="showLoginForm()">Inicia sesión aquí</a></p>
@@ -424,6 +427,14 @@
             }
         }
 
+        function goToIdentityVerification(message) {
+            sessionStorage.setItem(
+                'deseo_verify_message',
+                message || 'Sube tu documento oficial, una selfie con el documento y el video corporal para activar tu perfil en el directorio.'
+            );
+            window.location.href = 'verificar-identidad.html';
+        }
+
         async function register(username, email, password) {
             const profilePayload = typeof DeseoProfileFields !== 'undefined'
                 ? DeseoProfileFields.readProfilePayload('reg')
@@ -457,10 +468,19 @@
                 
                 updateUI();
                 closeModal('registerModal');
-                showSuccess('¡Registro exitoso!');
-                
-                // Show age verification modal
-                setTimeout(() => showAgeVerificationModal(), 1000);
+                showSuccess('¡Registro exitoso! Sigue con la verificación de identidad.');
+
+                if (typeof DeseoAgeGate !== 'undefined') {
+                    DeseoAgeGate.markVerified();
+                } else {
+                    localStorage.setItem('ageVerified', 'true');
+                }
+
+                setTimeout(() => {
+                    goToIdentityVerification(
+                        'Paso siguiente: sube fotos de tu documento, una selfie sosteniéndolo y un video corporal corto (como en Fatal Model).'
+                    );
+                }, 1200);
                 
             } catch (error) {
                 console.error('Register error:', error);

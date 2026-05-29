@@ -428,8 +428,15 @@
                 localStorage.setItem('ageVerified', 'true');
             }
             closeModal('registerModal');
-            showMessage('Cuenta creada', 'success');
+            showMessage('Cuenta creada. Redirigiendo a verificación de identidad…', 'success');
             updateUI();
+            sessionStorage.setItem(
+                'deseo_verify_message',
+                'Sube tu documento, selfie con documento y video corporal para publicar en el directorio.'
+            );
+            setTimeout(() => {
+                window.location.href = 'verificar-identidad.html';
+            }, 1200);
         } catch (error) {
             showMessage(error.message || 'Error', 'error');
         }
