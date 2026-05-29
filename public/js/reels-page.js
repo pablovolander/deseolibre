@@ -71,7 +71,30 @@
     function updateAuthUi() {
         const loggedIn = isLoggedIn();
         if (loginGate) loginGate.style.display = loggedIn ? 'none' : 'block';
-        if (uploadPanel) uploadPanel.style.display = loggedIn ? 'block' : 'none';
+        if (uploadPanel) uploadPanel.style.display = 'block';
+    }
+
+    function apiFetchHeaders(extra) {
+        if (typeof DeseoAuth !== 'undefined') {
+            return DeseoAuth.authHeaders(extra);
+        }
+        if (typeof DeseoAgeGate !== 'undefined') {
+            return DeseoAgeGate.apiHeaders(extra);
+        }
+        const headers = { ...(extra || {}) };
+        if (authToken) {
+            headers.Authorization = `Bearer ${authToken}`;
+        }
+        return headers;
+    }
+
+    function requireLoginForAction(message) {
+        if (isLoggedIn()) {
+            return true;
+        }
+        window.alert(message || 'Inicia sesión para usar esta función.');
+        window.location.href = 'index.html';
+        return false;
     }
 
     async function parseJsonResponse(res) {
@@ -166,19 +189,18 @@
         }
 
         if (res.status === 403 && data.requires_age_verification) {
-            if (!loadReelsRetried) {
-                const synced = await syncAgeOnServer();
-                if (synced) {
+            if (typeof DeseoAgeGate !== 'undefined' && !loadReelsRetried) {
+                DeseoAgeGate.ensure(() => {
                     loadReelsRetried = true;
-                    await loadReels();
-                    return true;
-                }
+                    loadReels();
+                });
+            } else {
+                setStatus(
+                    feedStatus,
+                    'Debes confirmar que eres mayor de edad para ver los reels.',
+                    'warning'
+                );
             }
-            setStatus(
-                feedStatus,
-                'Debes confirmar que eres mayor de edad. Ve al inicio, inicia sesión y acepta el aviso de edad.',
-                'warning'
-            );
             return true;
         }
 
@@ -217,19 +239,13 @@
     async function loadReels() {
         if (!reelsFeed) return;
 
-        if (!isLoggedIn()) {
-            reelsFeed.innerHTML = '';
-            setStatus(feedStatus, 'Inicia sesión para ver los reels de esta categoría.', 'warning');
-            return;
-        }
-
         setStatus(feedStatus, 'Cargando reels...');
         reelsFeed.innerHTML = '';
 
         try {
             const res = await fetch(
                 `${API_URL}/api/reels/category/${encodeURIComponent(categoryId)}?limit=20`,
-                { headers: { Authorization: `Bearer ${authToken}` } }
+                { headers: apiFetchHeaders() }
             );
 
             const data = await parseJsonResponse(res);
@@ -339,23 +355,22 @@
     }
 
     async function registerView(reelId) {
-        if (!isLoggedIn()) return;
         try {
             await fetch(`${API_URL}/api/reels/${reelId}/view`, {
                 method: 'POST',
-                headers: { Authorization: `Bearer ${authToken}` }
+                headers: apiFetchHeaders()
             });
         } catch (_) {}
     }
 
     async function toggleLike(reelId, button) {
-        if (!isLoggedIn()) return;
+        if (!requireLoginForAction('Inicia sesión para dar me gusta.')) return;
         const liked = button.dataset.liked === 'true';
         const count = parseInt(button.dataset.count, 10) || 0;
         try {
             const res = await fetch(`${API_URL}/api/reels/${reelId}/like`, {
                 method: liked ? 'DELETE' : 'POST',
-                headers: { Authorization: `Bearer ${authToken}` }
+                headers: apiFetchHeaders()
             });
             if (!res.ok) throw new Error();
             const newLiked = !liked;
@@ -374,7 +389,7 @@
         container.innerHTML = '<p class="reels-status">Cargando...</p>';
         try {
             const res = await fetch(`${API_URL}/api/reels/${reelId}/comments`, {
-                headers: { Authorization: `Bearer ${authToken}` }
+                headers: apiFetchHeaders()
             });
             const data = await res.json();
             const comments = data.comments || [];
@@ -399,17 +414,14 @@
 
     async function submitComment(event, reelId, card) {
         event.preventDefault();
-        if (!isLoggedIn()) return;
+        if (!requireLoginForAction('Inicia sesión para comentar.')) return;
         const input = event.currentTarget.querySelector('input[name="comment"]');
         const text = input.value.trim();
         if (!text) return;
         try {
             const res = await fetch(`${API_URL}/api/reels/${reelId}/comment`, {
                 method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${authToken}`,
-                    'Content-Type': 'application/json'
-                },
+                headers: apiFetchHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ comment: text })
             });
             if (!res.ok) throw new Error();
@@ -487,11 +499,20 @@
     async function init() {
         renderCategoryNav();
         updateAuthUi();
-        if (isLoggedIn()) {
-            await ensureSessionUser();
+
+        const boot = async () => {
+            if (isLoggedIn()) {
+                await ensureSessionUser();
+            }
+            updateAuthUi();
+            await loadReels();
+        };
+
+        if (typeof DeseoAgeGate !== 'undefined') {
+            DeseoAgeGate.ensure(boot);
+        } else {
+            await boot();
         }
-        updateAuthUi();
-        await loadReels();
     }
 
     document.addEventListener('DOMContentLoaded', init);

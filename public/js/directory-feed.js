@@ -193,10 +193,17 @@
 
         try {
             const url = `${API_URL}/api/content/category/${encodeURIComponent(CATEGORY)}?${params}`;
-            const response = await fetch(url, { cache: 'no-store' });
+            const headers = typeof DeseoAgeGate !== 'undefined'
+                ? DeseoAgeGate.apiHeaders()
+                : (typeof DeseoAuth !== 'undefined' ? DeseoAuth.authHeaders() : {});
+            const response = await fetch(url, { cache: 'no-store', headers });
             const data = await response.json().catch(() => ({}));
 
             if (!response.ok) {
+                if (response.status === 403 && data.requires_age_verification && typeof DeseoAgeGate !== 'undefined') {
+                    DeseoAgeGate.ensure(() => loadDirectory());
+                    return;
+                }
                 const errInfo = typeof DeseoErrors !== 'undefined'
                     ? DeseoErrors.formatApiError({ status: response.status, message: data.error, data })
                     : { message: data.error || 'Error al cargar' };
@@ -318,10 +325,18 @@
             }
         });
 
-        updateUI();
-        loadDirectory();
-        if (typeof DeseoAuth !== 'undefined' && authToken) {
-            DeseoAuth.verifySession(API_URL).catch(() => {});
+        const startFeed = () => {
+            updateUI();
+            loadDirectory();
+            if (typeof DeseoAuth !== 'undefined' && authToken) {
+                DeseoAuth.verifySession(API_URL).catch(() => {});
+            }
+        };
+
+        if (typeof DeseoAgeGate !== 'undefined') {
+            DeseoAgeGate.ensure(startFeed);
+        } else {
+            startFeed();
         }
     };
 
@@ -374,7 +389,11 @@
             });
             authToken = data.token;
             DeseoAuth.setSession(data.token, data.user);
-            localStorage.setItem('ageVerified', 'true');
+            if (typeof DeseoAgeGate !== 'undefined') {
+                DeseoAgeGate.markVerified();
+            } else {
+                localStorage.setItem('ageVerified', 'true');
+            }
             closeModal('loginModal');
             showMessage('Sesión iniciada', 'success');
             updateUI();
@@ -413,7 +432,11 @@
             });
             authToken = data.token;
             DeseoAuth.setSession(data.token, data.user);
-            localStorage.setItem('ageVerified', 'true');
+            if (typeof DeseoAgeGate !== 'undefined') {
+                DeseoAgeGate.markVerified();
+            } else {
+                localStorage.setItem('ageVerified', 'true');
+            }
             closeModal('registerModal');
             showMessage('Cuenta creada', 'success');
             updateUI();

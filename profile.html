@@ -2219,6 +2219,7 @@
 
     <script src="/js/api-config.js"></script>
     <script src="/js/auth-session.js"></script>
+    <script src="/js/age-gate.js"></script>
     <script src="/js/api-errors.js"></script>
     <script src="/js/verification-gate.js"></script>
     <script src="/js/city-search.js"></script>
@@ -2237,19 +2238,33 @@
         let viewingUserId = null; // ID del usuario cuyo perfil estamos viendo
         let isOwnProfile = true; // Si es el perfil del usuario logueado
 
+        function profileFetchHeaders(extra) {
+            const headers = { ...(extra || {}) };
+            if (typeof DeseoAgeGate !== 'undefined' && DeseoAgeGate.isVerified()) {
+                headers['X-Age-Verified'] = 'true';
+            }
+            if (authToken) {
+                headers.Authorization = `Bearer ${authToken}`;
+            }
+            return headers;
+        }
+
         // Check authentication on page load
         document.addEventListener('DOMContentLoaded', function() {
-            // Leer parámetro ?user= de la URL
             const urlParams = new URLSearchParams(window.location.search);
             viewingUserId = urlParams.get('user');
-            
-            // Si no hay token pero hay viewingUserId, permitir ver perfil público
+
             if (!authToken && !viewingUserId) {
                 window.location.href = 'index.html';
                 return;
             }
-            
-            initProfile();
+
+            const boot = () => initProfile();
+            if (typeof DeseoAgeGate !== 'undefined') {
+                DeseoAgeGate.ensure(boot);
+            } else {
+                boot();
+            }
         });
 
         // Initialize profile
@@ -2452,7 +2467,9 @@
         // Load public profile of another user
         async function loadPublicProfile(userId) {
             try {
-                const response = await fetch(`${API_URL}/api/user/public/${userId}`);
+                const response = await fetch(`${API_URL}/api/user/public/${userId}`, {
+                    headers: profileFetchHeaders()
+                });
                 const data = await response.json();
                 
                 if (!response.ok) throw new Error(data.error);
@@ -2518,7 +2535,7 @@
                 console.log('📡 URL de carga:', url);
                 
                 const response = await fetch(url, {
-                    headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
+                    headers: profileFetchHeaders()
                 });
                 
                 if (!response.ok) {
@@ -3440,7 +3457,9 @@
 
         async function loadUserStats(userId) {
             try {
-                const response = await fetch(`${API_URL}/api/user/public/${userId}`);
+                const response = await fetch(`${API_URL}/api/user/public/${userId}`, {
+                    headers: profileFetchHeaders()
+                });
                 if (response.ok) {
                     const data = await response.json();
                     const user = data.user;

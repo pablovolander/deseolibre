@@ -15,6 +15,7 @@
     <script src="/js/contact-links.js"></script>
     <script src="/js/service-pricing.js"></script>
     <script src="/js/auth-session.js"></script>
+    <script src="/js/age-gate.js"></script>
 </head>
 <body class="home-page">
     <script>
@@ -289,7 +290,8 @@
         // Check if user is logged in on page load
         document.addEventListener('DOMContentLoaded', function() {
             // Check age verification first
-            const ageVerified = localStorage.getItem('ageVerified');
+            const ageVerified = (typeof DeseoAgeGate !== 'undefined' && DeseoAgeGate.isVerified())
+                || localStorage.getItem('ageVerified');
             if (!ageVerified) {
                 // Show age verification modal after a short delay
                 setTimeout(() => showAgeVerificationModal(), 500);
@@ -500,9 +502,12 @@
                 return;
             }
 
-            // Save age verification in localStorage for non-authenticated users
-            localStorage.setItem('ageVerified', 'true');
-            localStorage.setItem('ageVerifiedDate', new Date().toISOString());
+            if (typeof DeseoAgeGate !== 'undefined') {
+                DeseoAgeGate.markVerified();
+            } else {
+                localStorage.setItem('ageVerified', 'true');
+                localStorage.setItem('ageVerifiedDate', new Date().toISOString());
+            }
 
             // If user is authenticated, also verify on the backend
             if (authToken) {

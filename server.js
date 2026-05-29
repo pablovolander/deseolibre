@@ -975,6 +975,34 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
+const optionalAuthenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        req.user = null;
+        return next();
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        req.user = err ? null : user;
+        next();
+    });
+};
+
+function parseRequestCookie(req, name) {
+    const header = req.headers.cookie || '';
+    const match = header.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
+    return match ? decodeURIComponent(match[1]) : null;
+}
+
+function hasGuestAgeAccess(req) {
+    if (parseRequestCookie(req, 'deseo_age_verified') === '1') {
+        return true;
+    }
+    return String(req.headers['x-age-verified'] || '').toLowerCase() === 'true';
+}
+
 function getAuthUserId(req) {
     const raw = req.user?.userId ?? req.user?.id;
     const id = Number.parseInt(String(raw), 10);
@@ -1035,7 +1063,7 @@ async function resolveAuthUser(req) {
     return user;
 }
 
-// Age verification middleware
+// Age verification middleware (logged-in users, DB flag)
 const requireAgeVerification = (req, res, next) => {
     const userId = req.user.userId;
     
@@ -1054,6 +1082,40 @@ const requireAgeVerification = (req, res, next) => {
         next();
     });
 };
+
+// Age gate for viewing content (guests via cookie/header, or logged-in users)
+const requireAgeAccess = (req, res, next) => {
+    if (hasGuestAgeAccess(req)) {
+        return next();
+    }
+
+    const userId = getAuthUserId(req);
+    if (!userId) {
+        return res.status(403).json({
+            error: 'Debes confirmar que eres mayor de edad para acceder a este contenido',
+            requires_age_verification: true
+        });
+    }
+
+    db.get('SELECT age_verified FROM users WHERE id = ?', [userId], (err, user) => {
+        if (err) {
+            return res.status(500).json({ error: 'Error interno del servidor' });
+        }
+
+        if (!user || !user.age_verified) {
+            return res.status(403).json({
+                error: 'Debes verificar tu edad para acceder a este contenido',
+                requires_age_verification: true
+            });
+        }
+
+        next();
+    });
+};
+
+function getViewerUserId(req) {
+    return getAuthUserId(req) || 0;
+}
 
 // Check if user is banned
 const checkUserBan = (req, res, next) => {
@@ -1472,7 +1534,7 @@ app.get('/api/user/profile', authenticateToken, (req, res) => {
 });
 
 // Get public profile of any user
-app.get('/api/user/public/:userId', (req, res) => {
+app.get('/api/user/public/:userId', requireAgeAccess, (req, res) => {
     const userId = req.params.userId;
 
     db.get(
@@ -1498,7 +1560,7 @@ app.get('/api/user/public/:userId', (req, res) => {
 });
 
 // Get public posts of a specific user
-app.get('/api/user/:userId/posts', (req, res) => {
+app.get('/api/user/:userId/posts', requireAgeAccess, (req, res) => {
     const userId = req.params.userId;
 
     const query = `
@@ -2251,7 +2313,7 @@ app.get('/api/zones', (req, res) => {
     res.json({ city: cityResolved.city.name, zones });
 });
 
-app.get('/api/content/category/:category', async (req, res) => {
+app.get('/api/content/category/:category', requireAgeAccess, async (req, res) => {
     const { category } = resolveCategoryAndAudience(req.params.category, null);
 
     if (!isValidCategory(category)) {
@@ -2431,8 +2493,8 @@ app.get('/api/feed', (req, res) => {
     });
 });
 
-// Get feed by category (no authentication required, only age verification)
-app.get('/api/feed/:category', async (req, res) => {
+// Get feed by category (no login; age gate required)
+app.get('/api/feed/:category', requireAgeAccess, async (req, res) => {
     await refreshDatabaseFromBlob();
 
     const category = normalizeCategorySlug(req.params.category);
@@ -3525,7 +3587,7 @@ app.post('/api/reels', authenticateToken, handleReelUpload, checkUserBan, async 
     }
 });
 
-app.get('/api/reels/category/:category', authenticateToken, requireAgeVerification, checkUserBan, async (req, res) => {
+app.get('/api/reels/category/:category', optionalAuthenticateToken, requireAgeAccess, async (req, res) => {
     try {
         await dbReady;
         if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
@@ -3535,7 +3597,7 @@ app.get('/api/reels/category/:category', authenticateToken, requireAgeVerificati
         console.error('Error al refrescar BD antes de listar reels:', refreshErr.message);
     }
 
-    const userId = req.user.userId;
+    const viewerId = getViewerUserId(req);
     const categoryParam = req.params.category;
 
     if (!isValidCategory(categoryParam)) {
@@ -3565,7 +3627,7 @@ app.get('/api/reels/category/:category', authenticateToken, requireAgeVerificati
         LIMIT ? OFFSET ?
     `;
 
-    const queryParams = [userId, ...categoryVariants, userId, limit, offset];
+    const queryParams = [viewerId, ...categoryVariants, viewerId, limit, offset];
 
     db.all(query, queryParams, (err, reels) => {
         if (err) {
@@ -3579,7 +3641,7 @@ app.get('/api/reels/category/:category', authenticateToken, requireAgeVerificati
             WHERE r.category IN (${categoryPlaceholders}) AND (r.is_public = 1 OR r.user_id = ?)
         `;
 
-        db.get(countQuery, [...categoryVariants, userId], (countErr, countResult) => {
+        db.get(countQuery, [...categoryVariants, viewerId], (countErr, countResult) => {
             if (countErr) {
                 console.error('❌ Error al contar reels:', countErr);
                 return res.status(500).json({ error: 'Error al contar reels' });
@@ -3598,8 +3660,8 @@ app.get('/api/reels/category/:category', authenticateToken, requireAgeVerificati
     });
 });
 
-app.get('/api/reels/:reelId', authenticateToken, requireAgeVerification, checkUserBan, (req, res) => {
-    const userId = req.user.userId;
+app.get('/api/reels/:reelId', optionalAuthenticateToken, requireAgeAccess, (req, res) => {
+    const viewerId = getViewerUserId(req);
     const reelId = parseInt(req.params.reelId, 10);
 
     if (Number.isNaN(reelId)) {
@@ -3619,7 +3681,7 @@ app.get('/api/reels/:reelId', authenticateToken, requireAgeVerification, checkUs
         WHERE r.id = ?
     `;
 
-    db.get(query, [userId, reelId], (err, reel) => {
+    db.get(query, [viewerId, reelId], (err, reel) => {
         if (err) {
             console.error('❌ Error al obtener reel:', err);
             return res.status(500).json({ error: 'Error al obtener reel' });
@@ -3629,7 +3691,7 @@ app.get('/api/reels/:reelId', authenticateToken, requireAgeVerification, checkUs
             return res.status(404).json({ error: 'Reel no encontrado' });
         }
 
-        if (!reel.is_public && reel.user_id !== userId) {
+        if (!reel.is_public && reel.user_id !== viewerId) {
             return res.status(403).json({ error: 'No tienes acceso a este reel' });
         }
 
@@ -3638,7 +3700,7 @@ app.get('/api/reels/:reelId', authenticateToken, requireAgeVerification, checkUs
     });
 });
 
-app.post('/api/reels/:reelId/like', authenticateToken, requireAgeVerification, checkUserBan, (req, res) => {
+app.post('/api/reels/:reelId/like', authenticateToken, requireAgeAccess, checkUserBan, (req, res) => {
     const userId = req.user.userId;
     const reelId = parseInt(req.params.reelId, 10);
 
@@ -3687,7 +3749,7 @@ app.post('/api/reels/:reelId/like', authenticateToken, requireAgeVerification, c
     });
 });
 
-app.delete('/api/reels/:reelId/like', authenticateToken, requireAgeVerification, checkUserBan, (req, res) => {
+app.delete('/api/reels/:reelId/like', authenticateToken, requireAgeAccess, checkUserBan, (req, res) => {
     const userId = req.user.userId;
     const reelId = parseInt(req.params.reelId, 10);
 
@@ -3726,7 +3788,7 @@ app.delete('/api/reels/:reelId/like', authenticateToken, requireAgeVerification,
     );
 });
 
-app.post('/api/reels/:reelId/comment', authenticateToken, requireAgeVerification, checkUserBan, (req, res) => {
+app.post('/api/reels/:reelId/comment', authenticateToken, requireAgeAccess, checkUserBan, (req, res) => {
     const userId = req.user.userId;
     const reelId = parseInt(req.params.reelId, 10);
     const { comment } = req.body;
@@ -3797,8 +3859,8 @@ app.post('/api/reels/:reelId/comment', authenticateToken, requireAgeVerification
     });
 });
 
-app.get('/api/reels/:reelId/comments', authenticateToken, requireAgeVerification, checkUserBan, (req, res) => {
-    const userId = req.user.userId;
+app.get('/api/reels/:reelId/comments', optionalAuthenticateToken, requireAgeAccess, (req, res) => {
+    const viewerId = getViewerUserId(req);
     const reelId = parseInt(req.params.reelId, 10);
 
     if (Number.isNaN(reelId)) {
@@ -3814,7 +3876,7 @@ app.get('/api/reels/:reelId/comments', authenticateToken, requireAgeVerification
             return res.status(404).json({ error: 'Reel no encontrado' });
         }
 
-        if (!reel.is_public && reel.user_id !== userId) {
+        if (!reel.is_public && reel.user_id !== viewerId) {
             return res.status(403).json({ error: 'No tienes acceso a este reel' });
         }
 
@@ -3838,7 +3900,7 @@ app.get('/api/reels/:reelId/comments', authenticateToken, requireAgeVerification
     });
 });
 
-app.post('/api/reels/:reelId/view', authenticateToken, requireAgeVerification, checkUserBan, (req, res) => {
+app.post('/api/reels/:reelId/view', optionalAuthenticateToken, requireAgeAccess, (req, res) => {
     const reelId = parseInt(req.params.reelId, 10);
 
     if (Number.isNaN(reelId)) {
