@@ -335,6 +335,7 @@
     };
 
     window.showRegister = function () {
+        sessionStorage.setItem('deseo_open_register', '1');
         window.location.href = 'index.html?register=1';
     };
 
@@ -392,6 +393,7 @@
 
     window.register = function (e) {
         e.preventDefault();
+        sessionStorage.setItem('deseo_open_register', '1');
         window.location.href = 'index.html?register=1';
     };
 

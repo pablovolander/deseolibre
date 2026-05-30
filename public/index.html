@@ -15,6 +15,9 @@
     <script src="/js/contact-links.js"></script>
     <script src="/js/service-pricing.js"></script>
     <script src="/js/auth-session.js"></script>
+    <script src="/js/age-gate.js"></script>
+    <script src="/js/face-match.js"></script>
+    <script src="/js/register-wizard.js"></script>
 </head>
 <body class="home-page">
     <script>
@@ -43,7 +46,7 @@
                 <nav class="nav" id="nav">
                     <ul class="nav-menu">
                         <li><a href="index.html">Inicio</a></li>
-                        <li><a href="feed-acompañantes-mujeres.html">Directorio</a></li>
+                        <li><a href="feed-mujeres.html">Directorio</a></li>
                         <li><a href="profile.html">Mi Perfil</a></li>
                     </ul>
                 </nav>
@@ -97,15 +100,15 @@
                     <div class="hero-field-group">
                         <span class="hero-field-label">Categoría</span>
                         <div class="hero-category-grid">
-                            <a href="feed-acompañantes-mujeres.html" class="hero-cat-btn" id="heroSearchMujeres">
+                            <a href="feed-mujeres.html" class="hero-cat-btn" id="heroSearchMujeres">
                                 <i class="fas fa-female"></i>
                                 <span>Mujeres</span>
                             </a>
-                            <a href="feed-acompañantes-hombres.html" class="hero-cat-btn" id="heroSearchHombres">
+                            <a href="feed-hombres.html" class="hero-cat-btn" id="heroSearchHombres">
                                 <i class="fas fa-male"></i>
                                 <span>Hombres</span>
                             </a>
-                            <a href="feed-acompañantes-trans.html" class="hero-cat-btn" id="heroSearchTrans">
+                            <a href="feed-trans.html" class="hero-cat-btn" id="heroSearchTrans">
                                 <i class="fas fa-transgender"></i>
                                 <span>Trans</span>
                             </a>
@@ -116,6 +119,11 @@
                 <div class="home-hero-cta">
                     <a href="profile.html" class="btn btn-secondary btn-block-sm"><i class="fas fa-user-tie"></i> Soy profesional</a>
                     <a href="verificar-identidad.html" class="btn btn-secondary btn-block-sm"><i class="fas fa-shield-alt"></i> Verificar identidad</a>
+                </div>
+                <div class="home-reels-links">
+                    <a href="reels-mujeres.html" class="home-reels-link"><i class="fas fa-film"></i> Reels Mujeres</a>
+                    <a href="reels-hombres.html" class="home-reels-link"><i class="fas fa-film"></i> Reels Hombres</a>
+                    <a href="reels-trans.html" class="home-reels-link"><i class="fas fa-film"></i> Reels Trans</a>
                 </div>
                 <div class="home-trust">
                     <span class="trust-pill"><i class="fas fa-shield-alt"></i> Verificación</span>
@@ -143,9 +151,9 @@
                 <div class="footer-section">
                     <h3>Servicios</h3>
                     <ul>
-                        <li><a href="feed-acompañantes-mujeres.html">Acompañantes Mujeres</a></li>
-                        <li><a href="feed-acompañantes-hombres.html">Acompañantes Hombres</a></li>
-                        <li><a href="feed-acompañantes-trans.html">Acompañantes Trans</a></li>
+                        <li><a href="feed-mujeres.html">Acompañantes Mujeres</a></li>
+                        <li><a href="feed-hombres.html">Acompañantes Hombres</a></li>
+                        <li><a href="feed-trans.html">Acompañantes Trans</a></li>
                     </ul>
                 </div>
                 <div class="footer-section">
@@ -193,68 +201,132 @@
         </div>
     </div>
 
-    <!-- Register Form Modal -->
+    <!-- Register wizard: cuenta + perfil + documento + video -->
     <div id="registerModal" class="modal">
-        <div class="modal-content">
-            <h2>Registrarse</h2>
+        <div class="modal-content register-wizard-modal">
+            <h2>Registro profesional</h2>
+            <p class="reg-wizard-hint">Un solo proceso: datos, documento, selfie y video. Sin verificación no podrás publicar anuncios ni reels.</p>
+            <div class="reg-wizard-progress" aria-hidden="true">
+                <span class="reg-wizard-progress-item active" data-step="1">1. Cuenta</span>
+                <span class="reg-wizard-progress-item" data-step="2">2. Perfil</span>
+                <span class="reg-wizard-progress-item" data-step="3">3. Documento</span>
+                <span class="reg-wizard-progress-item" data-step="4">4. Video</span>
+            </div>
+            <p class="reg-wizard-status" id="regWizardStatus"></p>
             <form id="registerForm" class="register-form">
-                <div class="form-group">
-                    <label for="registerUsername">Nombre de usuario:</label>
-                    <input type="text" id="registerUsername" required>
+                <div class="reg-wizard-step-panel active" data-step="1">
+                    <div class="form-group">
+                        <label for="registerUsername">Nombre de usuario</label>
+                        <input type="text" id="registerUsername" required minlength="3">
+                    </div>
+                    <div class="form-group">
+                        <label for="registerEmail">Email</label>
+                        <input type="email" id="registerEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerPassword">Contraseña</label>
+                        <input type="password" id="registerPassword" required minlength="6">
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="registerEmail">Email:</label>
-                    <input type="email" id="registerEmail" required>
+                <div class="reg-wizard-step-panel" data-step="2">
+                    <div class="form-group">
+                        <label for="regFullName">Nombre profesional *</label>
+                        <input type="text" id="regFullName" required minlength="2">
+                    </div>
+                    <input type="hidden" id="regCountry" value="MX">
+                    <div class="form-group">
+                        <label for="regCity">Ciudad *</label>
+                        <select id="regCity" required>
+                            <option value="">CDMX, Guadalajara o Monterrey</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="regZone">Zona *</label>
+                        <select id="regZone" required disabled>
+                            <option value="">Primero elige ciudad</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="regZoneDetail">Detalle de ubicación</label>
+                        <input type="text" id="regZoneDetail" maxlength="120" placeholder="Colonia o referencia (oblig. si Otra zona)">
+                    </div>
+                    <div class="form-group">
+                        <label for="regPhone">Teléfono * (WhatsApp)</label>
+                        <input type="tel" id="regPhone" required placeholder="10 dígitos">
+                    </div>
+                    <div class="form-group">
+                        <label for="regTelegram">Telegram *</label>
+                        <input type="text" id="regTelegram" required placeholder="mi_usuario" minlength="5" maxlength="32">
+                    </div>
+                    <div class="form-group">
+                        <label for="regPrice">Tarifa *</label>
+                        <input type="number" id="regPrice" step="0.01" min="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="regPriceUnit">Cobro por *</label>
+                        <select id="regPriceUnit" required>
+                            <option value="">Selecciona</option>
+                            <option value="hour">Por hora</option>
+                            <option value="half_hour">Por media hora</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="registerPassword">Contraseña:</label>
-                    <input type="password" id="registerPassword" required minlength="6">
+                <div class="reg-wizard-step-panel" data-step="3">
+                    <div class="form-group">
+                        <label for="regVerifyCountry">País *</label>
+                        <select id="regVerifyCountry" required>
+                            <option value="">Selecciona</option>
+                            <option value="MX">México</option>
+                            <option value="CO">Colombia</option>
+                            <option value="AR">Argentina</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="regVerificationType">Tipo de documento *</label>
+                        <select id="regVerificationType" required>
+                            <option value="">Selecciona</option>
+                            <option value="id_card">INE / Cédula / DNI</option>
+                            <option value="passport">Pasaporte</option>
+                            <option value="driver_license">Licencia</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="regIdFront">Frente del documento *</label>
+                        <input type="file" id="regIdFront" accept="image/*" required>
+                    </div>
+                    <div class="form-group" id="regIdBackRow">
+                        <label for="regIdBack">Reverso del documento *</label>
+                        <input type="file" id="regIdBack" accept="image/*">
+                    </div>
+                    <div class="form-group">
+                        <label for="regSelfie">Selfie sosteniendo el documento *</label>
+                        <input type="file" id="regSelfie" accept="image/*" required>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="regFullName">Nombre profesional *</label>
-                    <input type="text" id="regFullName" required minlength="2">
+                <div class="reg-wizard-step-panel" data-step="4">
+                    <p class="reg-wizard-hint">Video de <span id="regMinDurLabel">8</span> a <span id="regMaxDurLabel">60</span> s mostrando tu cuerpo. No se publica.</p>
+                    <div class="form-group">
+                        <label for="regBodyVideo">Video corporal *</label>
+                        <input type="file" id="regBodyVideo" accept="video/mp4,video/webm,video/quicktime" required>
+                        <p class="reg-wizard-video-meta" id="regVideoSizeHint"></p>
+                        <p class="reg-wizard-video-meta" id="regVideoDurationLabel"></p>
+                        <p class="reg-wizard-video-meta" id="regFaceMatchLabel"></p>
+                        <button type="button" class="modal-btn modal-btn-secondary" id="regFaceMatchBtn" style="margin-top:0.5rem;">
+                            Comparar rostro (selfie vs video)
+                        </button>
+                    </div>
+                    <div class="form-group">
+                        <label for="regVerifyNotes">Notas (opcional)</label>
+                        <input type="text" id="regVerifyNotes" maxlength="200" placeholder="Nombre legal si difiere del usuario">
+                    </div>
                 </div>
-                <input type="hidden" id="regCountry" value="MX">
-                <div class="form-group">
-                    <label for="regCity">Ciudad *</label>
-                    <select id="regCity" required>
-                        <option value="">CDMX, Guadalajara o Monterrey</option>
-                    </select>
+                <div class="reg-wizard-actions">
+                    <button type="button" class="modal-btn modal-btn-secondary" id="regWizardPrev" style="display:none;">Anterior</button>
+                    <button type="button" class="modal-btn modal-btn-primary" id="regWizardNext">Siguiente</button>
+                    <button type="button" class="modal-btn modal-btn-primary" id="regWizardSubmit" style="display:none;">Completar registro</button>
                 </div>
-                <div class="form-group">
-                    <label for="regZone">Zona *</label>
-                    <select id="regZone" required disabled>
-                        <option value="">Primero elige ciudad</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="regZoneDetail">Detalle de ubicación</label>
-                    <input type="text" id="regZoneDetail" maxlength="120" placeholder="Opcional: colonia, referencia (obligatorio si Otra zona)">
-                </div>
-                <div class="form-group">
-                    <label for="regPhone">Teléfono * (WhatsApp)</label>
-                    <input type="tel" id="regPhone" required placeholder="10 dígitos, ej: 55 1234 5678">
-                </div>
-                <div class="form-group">
-                    <label for="regTelegram">Usuario de Telegram *</label>
-                    <input type="text" id="regTelegram" required placeholder="ej: mi_usuario" minlength="5" maxlength="32">
-                    <small style="opacity:0.8;">Sin @</small>
-                </div>
-                <div class="form-group">
-                    <label for="regPrice">Tarifa *</label>
-                    <input type="number" id="regPrice" step="0.01" min="0.01" required>
-                </div>
-                <div class="form-group">
-                    <label for="regPriceUnit">Cobro por *</label>
-                    <select id="regPriceUnit" required>
-                        <option value="">Selecciona</option>
-                        <option value="hour">Por hora</option>
-                        <option value="half_hour">Por media hora (30 min)</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-primary">Registrarse</button>
-                <div class="form-toggle">
-                    <p>¿Ya tienes cuenta? <a href="#" onclick="showLoginForm()">Inicia sesión aquí</a></p>
+                <div class="form-toggle" style="margin-top:1rem;">
+                    <p>¿Ya tienes cuenta? <a href="#" onclick="showLoginForm()">Inicia sesión</a></p>
                 </div>
             </form>
         </div>
@@ -280,18 +352,43 @@
         // Global variables
         let currentUser = null;
         let authToken = localStorage.getItem('authToken');
+        const REGISTER_PENDING_KEY = 'deseo_open_register';
+
+        function shouldOpenRegisterWizard() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('register') === '1' || sessionStorage.getItem(REGISTER_PENDING_KEY) === '1';
+        }
+
+        function clearRegisterPending() {
+            sessionStorage.removeItem(REGISTER_PENDING_KEY);
+        }
+
+        function openRegisterWizardIfPending() {
+            if (authToken || !shouldOpenRegisterWizard()) return;
+            clearRegisterPending();
+            showRegisterForm();
+        }
 
         // Check if user is logged in on page load
         document.addEventListener('DOMContentLoaded', function() {
             // Check age verification first
-            const ageVerified = localStorage.getItem('ageVerified');
+            const ageVerified = (typeof DeseoAgeGate !== 'undefined' && DeseoAgeGate.isVerified())
+                || localStorage.getItem('ageVerified');
             if (!ageVerified) {
-                // Show age verification modal after a short delay
                 setTimeout(() => showAgeVerificationModal(), 500);
+            } else if (typeof DeseoAgeGate !== 'undefined') {
+                DeseoAgeGate.resumeAfterHomeVerification();
             }
             
             if (authToken) {
                 verifyToken();
+            } else if (shouldOpenRegisterWizard()) {
+                if (ageVerified) {
+                    setTimeout(() => openRegisterWizardIfPending(), 400);
+                }
+                if (window.history && window.history.replaceState && new URLSearchParams(window.location.search).get('register') === '1') {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
             }
             setupMobileMenu();
             document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
@@ -416,46 +513,16 @@
             }
         }
 
-        async function register(username, email, password) {
-            const profilePayload = typeof DeseoProfileFields !== 'undefined'
-                ? DeseoProfileFields.readProfilePayload('reg')
-                : { ok: false, error: 'Completa todos los campos del perfil' };
-            if (!profilePayload.ok) {
-                showError(profilePayload.error);
-                return;
-            }
-            try {
-                const response = await apiCall('/api/auth/register', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        username,
-                        email,
-                        password,
-                        full_name: profilePayload.full_name,
-                        country: profilePayload.country,
-                        city: profilePayload.city,
-                        zone: profilePayload.zone,
-                        zone_detail: profilePayload.zone_detail,
-                        phone: profilePayload.phone,
-                        telegram_username: profilePayload.telegram_username,
-                        service_price: profilePayload.service_price,
-                        service_price_unit: profilePayload.service_price_unit
-                    })
-                });
-
-                authToken = response.token;
-                DeseoAuth.setSession(authToken, response.user);
-                currentUser = response.user;
-                
-                updateUI();
-                closeModal('registerModal');
-                showSuccess('¡Registro exitoso!');
-                
-                // Show age verification modal
-                setTimeout(() => showAgeVerificationModal(), 1000);
-                
-            } catch (error) {
-                console.error('Register error:', error);
+        function handleRegisterWizardSuccess(data) {
+            authToken = data.token;
+            DeseoAuth.setSession(authToken, data.user);
+            currentUser = data.user;
+            updateUI();
+            closeModal('registerModal');
+            if (data.verificationFailed) {
+                showError('Cuenta creada, pero falló la verificación. Usa «Verificar identidad» para completarla.');
+            } else {
+                showSuccess('¡Registro completo! Ya puedes publicar anuncios y reels.');
             }
         }
 
@@ -495,9 +562,12 @@
                 return;
             }
 
-            // Save age verification in localStorage for non-authenticated users
-            localStorage.setItem('ageVerified', 'true');
-            localStorage.setItem('ageVerifiedDate', new Date().toISOString());
+            if (typeof DeseoAgeGate !== 'undefined') {
+                DeseoAgeGate.markVerified();
+            } else {
+                localStorage.setItem('ageVerified', 'true');
+                localStorage.setItem('ageVerifiedDate', new Date().toISOString());
+            }
 
             // If user is authenticated, also verify on the backend
             if (authToken) {
@@ -517,6 +587,11 @@
 
             closeAgeModal();
             showSuccess('¡Bienvenido a Deseo Libre! Edad verificada correctamente.');
+            if (shouldOpenRegisterWizard()) {
+                setTimeout(() => openRegisterWizardIfPending(), 300);
+            } else if (typeof DeseoAgeGate !== 'undefined') {
+                DeseoAgeGate.resumeAfterHomeVerification();
+            }
         }
 
         function logout() {
@@ -565,11 +640,15 @@
             modal.style.display = 'block';
             modal.classList.add('show');
             document.body.classList.add('modal-open');
+            if (typeof DeseoRegisterWizard !== 'undefined') {
+                DeseoRegisterWizard.open();
+            }
             if (typeof DeseoProfileFields !== 'undefined') {
                 DeseoProfileFields.initLocationPicker('reg');
             }
             setTimeout(() => {
-                const firstInput = modal.querySelector('input');
+                const panel = modal.querySelector('.reg-wizard-step-panel.active input');
+                const firstInput = panel || modal.querySelector('input');
                 if (firstInput) firstInput.focus();
             }, 100);
         }
@@ -649,12 +728,12 @@
             login(email, password);
         });
 
-        document.getElementById('registerForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const username = document.getElementById('registerUsername').value;
-            const email = document.getElementById('registerEmail').value;
-            const password = document.getElementById('registerPassword').value;
-            register(username, email, password);
+        document.getElementById('regWizardSubmit')?.addEventListener('click', function() {
+            if (typeof DeseoRegisterWizard === 'undefined') return;
+            DeseoRegisterWizard.submitComplete(
+                handleRegisterWizardSuccess,
+                function(err) { showError(err); }
+            );
         });
 
         // Close modals when clicking outside
@@ -671,17 +750,31 @@
             }
         });
 
-        function heroGoToFeed(feedPath) {
+        async function heroGoToFeed(feedPath) {
             const raw = (document.getElementById('heroSearchCity')?.value || '').trim();
             const zone = (document.getElementById('heroSearchZone')?.value || '').trim();
-            let cityName = raw;
-            if (raw && typeof DeseoCitySearch !== 'undefined') {
-                const resolved = DeseoCitySearch.resolveLocal(raw);
-                if (!resolved.ok) {
-                    alert(resolved.error);
-                    return;
+            const chipCity = (document.querySelector('.hero-city-chip.active')?.dataset?.city || '').trim();
+            const cityCandidate = raw || chipCity;
+            let cityName = cityCandidate;
+
+            if (cityCandidate) {
+                if (typeof DeseoLocationSearch !== 'undefined') {
+                    await DeseoLocationSearch.getCities('MX');
+                } else if (typeof DeseoCitySearch !== 'undefined' && DeseoCitySearch.ensureLoaded) {
+                    await DeseoCitySearch.ensureLoaded('MX');
+                } else if (typeof DeseoCitySearch !== 'undefined') {
+                    await DeseoCitySearch.getCities('MX');
                 }
-                cityName = resolved.city;
+
+                let resolved = null;
+                if (typeof DeseoLocationSearch !== 'undefined' && typeof DeseoLocationSearch.resolveLocal === 'function') {
+                    resolved = DeseoLocationSearch.resolveLocal(cityCandidate);
+                } else if (typeof DeseoCitySearch !== 'undefined') {
+                    resolved = DeseoCitySearch.resolveLocal(cityCandidate);
+                }
+                if (resolved?.ok && resolved.city) {
+                    cityName = resolved.city;
+                }
             }
             const params = new URLSearchParams();
             if (cityName) {
@@ -698,9 +791,14 @@
         const heroCityEl = document.getElementById('heroSearchCity');
         const heroZoneEl = document.getElementById('heroSearchZone');
         if (typeof DeseoLocationSearch !== 'undefined') {
-            DeseoLocationSearch.getCities('MX').then((cities) => {
+            Promise.all([
+                DeseoLocationSearch.getCities('MX'),
+                typeof DeseoCitySearch !== 'undefined' && DeseoCitySearch.getCities
+                    ? DeseoCitySearch.getCities('MX')
+                    : Promise.resolve()
+            ]).then(([cities]) => {
                 const dl = document.getElementById('heroCitiesDatalist');
-                if (dl) {
+                if (dl && cities) {
                     dl.innerHTML = cities.map((c) => `<option value="${c.name}"></option>`).join('');
                 }
             }).catch(() => {});
@@ -728,15 +826,15 @@
         });
         document.getElementById('heroSearchMujeres')?.addEventListener('click', function(e) {
             e.preventDefault();
-            heroGoToFeed('feed-acompañantes-mujeres.html');
+            heroGoToFeed('feed-mujeres.html');
         });
         document.getElementById('heroSearchHombres')?.addEventListener('click', function(e) {
             e.preventDefault();
-            heroGoToFeed('feed-acompañantes-hombres.html');
+            heroGoToFeed('feed-hombres.html');
         });
         document.getElementById('heroSearchTrans')?.addEventListener('click', function(e) {
             e.preventDefault();
-            heroGoToFeed('feed-acompañantes-trans.html');
+            heroGoToFeed('feed-trans.html');
         });
     </script>
 </body>

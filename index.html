@@ -352,6 +352,22 @@
         // Global variables
         let currentUser = null;
         let authToken = localStorage.getItem('authToken');
+        const REGISTER_PENDING_KEY = 'deseo_open_register';
+
+        function shouldOpenRegisterWizard() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('register') === '1' || sessionStorage.getItem(REGISTER_PENDING_KEY) === '1';
+        }
+
+        function clearRegisterPending() {
+            sessionStorage.removeItem(REGISTER_PENDING_KEY);
+        }
+
+        function openRegisterWizardIfPending() {
+            if (authToken || !shouldOpenRegisterWizard()) return;
+            clearRegisterPending();
+            showRegisterForm();
+        }
 
         // Check if user is logged in on page load
         document.addEventListener('DOMContentLoaded', function() {
@@ -366,9 +382,11 @@
             
             if (authToken) {
                 verifyToken();
-            } else if (new URLSearchParams(window.location.search).get('register') === '1') {
-                setTimeout(() => showRegisterForm(), 400);
-                if (window.history && window.history.replaceState) {
+            } else if (shouldOpenRegisterWizard()) {
+                if (ageVerified) {
+                    setTimeout(() => openRegisterWizardIfPending(), 400);
+                }
+                if (window.history && window.history.replaceState && new URLSearchParams(window.location.search).get('register') === '1') {
                     window.history.replaceState({}, document.title, window.location.pathname);
                 }
             }
@@ -569,7 +587,9 @@
 
             closeAgeModal();
             showSuccess('¡Bienvenido a Deseo Libre! Edad verificada correctamente.');
-            if (typeof DeseoAgeGate !== 'undefined') {
+            if (shouldOpenRegisterWizard()) {
+                setTimeout(() => openRegisterWizardIfPending(), 300);
+            } else if (typeof DeseoAgeGate !== 'undefined') {
                 DeseoAgeGate.resumeAfterHomeVerification();
             }
         }

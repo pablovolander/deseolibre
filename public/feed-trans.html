@@ -19,7 +19,7 @@
                 <a href="feed-hombres.html" class="btn-link">Hombres</a>
                 <a href="reels-trans.html" class="btn-link btn-reels"><i class="fas fa-film"></i> Reels</a>
                 <button type="button" class="btn-primary-sm" onclick="showLogin()">Entrar</button>
-                <button type="button" class="btn-primary-sm" onclick="showRegister()">Registro</button>
+                <a href="index.html?register=1" class="btn-primary-sm">Registro</a>
                 <button type="button" class="btn-primary-sm" id="createBtn" style="display:none;" onclick="showCreatePost()">+ Publicar</button>
             </div>
         </div>
@@ -91,6 +91,7 @@
                 <div class="dl-form-group"><label>Usuario Telegram *</label><input type="text" id="regTelegram" required placeholder="mi_usuario" minlength="5" maxlength="32"><small>Sin @</small></div>
                 <div class="dl-form-group"><label>Tarifa *</label><input type="number" id="regPrice" step="0.01" min="0.01" required placeholder="1500"></div>
                 <div class="dl-form-group"><label>Cobro por *</label><select id="regPriceUnit" required><option value="">Selecciona</option><option value="hour">Por hora</option><option value="half_hour">Por media hora</option></select></div>
+                <p style="font-size:0.85rem;opacity:0.85;margin:0.5rem 0;">Después del registro: documento, selfie con documento y video corporal.</p>
                 <button type="submit" class="dl-btn dl-btn-submit">Registrarme</button>
                 <button type="button" class="dl-btn dl-btn-cancel" onclick="closeModal('registerModal')">Cancelar</button>
             </form>
@@ -113,6 +114,7 @@
 
     <script src="/js/api-config.js"></script>
     <script src="/js/auth-session.js"></script>
+    <script src="/js/age-gate.js"></script>
     <script src="/js/api-errors.js"></script>
     <script src="/js/city-search.js"></script>
     <script src="/js/location-search.js"></script>

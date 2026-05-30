@@ -135,7 +135,8 @@
     };
 
     window.showRegister = function () {
-        document.getElementById('registerModal')?.classList.add('show');
+        sessionStorage.setItem('deseo_open_register', '1');
+        window.location.href = 'index.html?register=1';
     };
 
     window.showCreatePost = async function () {
@@ -181,41 +182,10 @@
         }
     };
 
-    window.register = async function (e) {
+    window.register = function (e) {
         e.preventDefault();
-        const profilePayload = typeof DeseoProfileFields !== 'undefined'
-            ? DeseoProfileFields.readProfilePayload('reg')
-            : { ok: false, error: 'Campos de perfil no disponibles' };
-        if (!profilePayload.ok) {
-            showMessage(profilePayload.error, 'error');
-            return;
-        }
-        try {
-            const data = await DeseoAuth.authFetch(`${API_URL}/api/auth/register`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    username: document.getElementById('regUsername').value,
-                    email: document.getElementById('regEmail').value,
-                    password: document.getElementById('regPassword').value,
-                    full_name: profilePayload.full_name,
-                    country: profilePayload.country,
-                    city: profilePayload.city,
-                    phone: profilePayload.phone,
-                    telegram_username: profilePayload.telegram_username,
-                    service_price: profilePayload.service_price,
-                    service_price_unit: profilePayload.service_price_unit
-                })
-            });
-            authToken = data.token;
-            DeseoAuth.setSession(data.token, data.user);
-            localStorage.setItem('ageVerified', 'true');
-
-            closeModal('registerModal');
-            showMessage('Registro exitoso', 'success');
-            updateUI();
-        } catch (error) {
-            showMessage(error.message || 'Error de conexión', 'error');
-        }
+        sessionStorage.setItem('deseo_open_register', '1');
+        window.location.href = 'index.html?register=1';
     };
 
     window.createPost = async function (e) {
