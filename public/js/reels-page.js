@@ -303,38 +303,41 @@
         const liked = !!reel.is_liked_by_me;
 
         card.innerHTML = `
-            <div class="reel-video-wrap">
-                <video controls playsinline preload="metadata" poster="${reel.thumbnail_url ? mediaUrl(reel.thumbnail_url) : ''}">
+            <div class="reel-stage">
+                <video class="reel-video" controls playsinline preload="metadata" poster="${reel.thumbnail_url ? mediaUrl(reel.thumbnail_url) : ''}">
                     <source src="${videoUrl}" type="video/mp4">
                 </video>
-            </div>
-            <div class="reel-body">
-                <div class="reel-author">
-                    <img src="${avatar}" alt="">
-                    <div>
-                        <strong>${username}${reel.is_verified ? ' <span class="verified">✓</span>' : ''}</strong>
+                <div class="reel-overlay">
+                    <div class="reel-overlay-gradient" aria-hidden="true"></div>
+                    <div class="reel-body">
+                        <div class="reel-author">
+                            <img src="${avatar}" alt="">
+                            <div>
+                                <strong>${username}${reel.is_verified ? ' <span class="verified">✓</span>' : ''}</strong>
+                            </div>
+                        </div>
+                        ${reel.title ? `<h3 class="reel-title">${escapeHtml(reel.title)}</h3>` : ''}
+                        ${reel.description ? `<p class="reel-desc">${escapeHtml(reel.description)}</p>` : ''}
+                        <div class="reel-stats">
+                            <span><i class="far fa-eye"></i> ${reel.views_count || 0}</span>
+                            <span><i class="far fa-heart"></i> ${reel.likes_count || 0}</span>
+                            <span><i class="far fa-comment"></i> ${reel.comments_count || 0}</span>
+                        </div>
+                        <div class="reel-actions">
+                            <button type="button" class="like-btn ${liked ? 'liked' : ''}" data-liked="${liked}" data-count="${reel.likes_count || 0}">
+                                <i class="fas fa-heart"></i> ${liked ? 'Te gusta' : 'Me gusta'}
+                            </button>
+                            <button type="button" class="comment-toggle-btn"><i class="fas fa-comment"></i> Comentar</button>
+                            ${isOwner ? '<button type="button" class="delete-reel-btn"><i class="fas fa-trash"></i> Eliminar</button>' : ''}
+                        </div>
                     </div>
-                </div>
-                ${reel.title ? `<h3 class="reel-title">${escapeHtml(reel.title)}</h3>` : ''}
-                ${reel.description ? `<p class="reel-desc">${escapeHtml(reel.description)}</p>` : ''}
-                <div class="reel-stats">
-                    <span><i class="far fa-eye"></i> ${reel.views_count || 0}</span>
-                    <span><i class="far fa-heart"></i> ${reel.likes_count || 0}</span>
-                    <span><i class="far fa-comment"></i> ${reel.comments_count || 0}</span>
-                </div>
-                <div class="reel-actions">
-                    <button type="button" class="like-btn ${liked ? 'liked' : ''}" data-liked="${liked}" data-count="${reel.likes_count || 0}">
-                        <i class="fas fa-heart"></i> ${liked ? 'Te gusta' : 'Me gusta'}
-                    </button>
-                    <button type="button" class="comment-toggle-btn"><i class="fas fa-comment"></i> Comentar</button>
-                    ${isOwner ? '<button type="button" class="delete-reel-btn"><i class="fas fa-trash"></i> Eliminar</button>' : ''}
-                </div>
-                <div class="reel-comments" hidden>
-                    <div class="comment-list"></div>
-                    <form class="reel-comment-form">
-                        <input type="text" name="comment" placeholder="Escribe un comentario" maxlength="240" required>
-                        <button type="submit">Enviar</button>
-                    </form>
+                    <div class="reel-comments" hidden>
+                        <div class="comment-list"></div>
+                        <form class="reel-comment-form">
+                            <input type="text" name="comment" placeholder="Escribe un comentario" maxlength="240" required>
+                            <button type="submit">Enviar</button>
+                        </form>
+                    </div>
                 </div>
             </div>`;
 
@@ -520,11 +523,20 @@
         });
     }
 
+    function setupMobileUploadFab() {
+        const panel = uploadPanel;
+        if (!panel) return;
+        panel.addEventListener('toggle', () => {
+            document.body.classList.toggle('reels-upload-open', panel.open);
+        });
+    }
+
     async function init() {
         if (typeof DeseoAgeGate !== 'undefined' && DeseoAgeGate.redirectToHomeIfNeeded()) {
             return;
         }
 
+        setupMobileUploadFab();
         renderCategoryNav();
         updateAuthUi();
         if (isLoggedIn()) {
