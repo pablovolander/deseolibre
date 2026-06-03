@@ -134,6 +134,25 @@
         }
     }
 
+    function dedupePostsByUser(posts) {
+        const map = new Map();
+        (posts || []).forEach((post) => {
+            if (!post || post.user_id == null) return;
+            const uid = String(post.user_id);
+            const existing = map.get(uid);
+            if (!existing) {
+                map.set(uid, post);
+                return;
+            }
+            const ta = new Date(existing.created_at || 0).getTime();
+            const tb = new Date(post.created_at || 0).getTime();
+            if (tb >= ta) map.set(uid, post);
+        });
+        return [...map.values()].sort((a, b) => {
+            return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+        });
+    }
+
     function renderProfileCard(post) {
         const mediaUrl = typeof resolveMediaUrl === 'function'
             ? resolveMediaUrl(post.media_url || post.file_url || '')
@@ -208,7 +227,7 @@
                 return;
             }
 
-            const posts = data.posts || [];
+            const posts = dedupePostsByUser(data.posts || []);
             if (countEl) {
                 let placeTxt = '';
                 if (activeZona) {
@@ -216,12 +235,12 @@
                 } else if (activeCiudad) {
                     placeTxt = ` en ${activeCiudad}`;
                 }
-                countEl.textContent = `${posts.length} anuncio${posts.length !== 1 ? 's' : ''}${placeTxt}`;
+                countEl.textContent = `${posts.length} perfil${posts.length !== 1 ? 'es' : ''}${placeTxt}`;
             }
 
             if (!posts.length) {
                 grid.innerHTML = `<div class="directory-empty">
-                    <p>No hay anuncios en esta búsqueda.</p>
+                    <p>No hay perfiles en esta búsqueda.</p>
                     ${authToken
                         ? '<button type="button" class="directory-search button" style="margin-top:1rem;border:none;" onclick="showCreatePost()">Publicar el primero</button>'
                         : '<button type="button" class="directory-search button" style="margin-top:1rem;border:none;" onclick="showRegister()">Registrarse y publicar</button>'}

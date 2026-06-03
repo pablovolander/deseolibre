@@ -14,7 +14,7 @@ const rateLimit = require('express-rate-limit');
 const { restoreDatabaseIfNeeded, persistDatabase, persistDatabaseNow } = require('./lib/db-persist');
 const { persistUploadedFile, resolveMediaUrl, streamPrivateMedia, getBlobAccess } = require('./lib/media-storage');
 const { evaluateAutoVerification, getMaxVideoBytes, MIN_VIDEO_DURATION_SEC, MAX_VIDEO_DURATION_SEC, MIN_FACE_MATCH_SCORE } = require('./lib/auto-verification');
-const { addPostToFeedIndex, getPostsFromFeedIndex, syncPostsToFeedIndex } = require('./lib/category-feed-index');
+const { addPostToFeedIndex, getPostsFromFeedIndex, syncPostsToFeedIndex, dedupePostsByUser } = require('./lib/category-feed-index');
 const {
     resolveCityQuery,
     resolveZoneQuery,
@@ -2370,7 +2370,7 @@ app.get('/api/content/category/:category', async (req, res) => {
         const indexPosts = await getPostsFromFeedIndex(categoryVariants);
 
         if (!ciudad && indexPosts.length) {
-            posts = filterPosts(indexPosts);
+            posts = dedupePostsByUser(filterPosts(indexPosts));
             source = 'blob_index';
         } else {
             await refreshDatabaseFromBlob();
@@ -2421,7 +2421,7 @@ app.get('/api/content/category/:category', async (req, res) => {
         ORDER BY cp.created_at DESC
             `;
 
-            posts = filterPosts(await runDbAll(query, queryParams));
+            posts = dedupePostsByUser(filterPosts(await runDbAll(query, queryParams)));
             if (posts.length) {
                 try {
                     await syncPostsToFeedIndex(posts, categoryVariants);

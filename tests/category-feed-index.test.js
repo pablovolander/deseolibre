@@ -51,3 +51,16 @@ test('dedupe posts by id keeps newest first', () => {
     assert.equal(merged[0].id, 1);
     assert.equal(merged[0].title, 'updated');
 });
+
+test('dedupe posts by user keeps one profile per user', () => {
+    const { dedupePostsByUser } = require('../lib/category-feed-index');
+
+    const merged = dedupePostsByUser([
+        { id: 1, user_id: 10, created_at: '2026-01-01T00:00:00.000Z', title: 'old' },
+        { id: 2, user_id: 20, created_at: '2026-02-01T00:00:00.000Z' },
+        { id: 3, user_id: 10, created_at: '2026-03-01T00:00:00.000Z', title: 'newest' }
+    ]);
+
+    assert.equal(merged.length, 2);
+    assert.equal(merged.find((p) => p.user_id === 10).title, 'newest');
+});
