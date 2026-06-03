@@ -14,7 +14,13 @@ const rateLimit = require('express-rate-limit');
 const { restoreDatabaseIfNeeded, persistDatabase, persistDatabaseNow } = require('./lib/db-persist');
 const { persistUploadedFile, resolveMediaUrl, streamPrivateMedia, getBlobAccess } = require('./lib/media-storage');
 const { evaluateAutoVerification, getMaxVideoBytes, MIN_VIDEO_DURATION_SEC, MAX_VIDEO_DURATION_SEC, MIN_FACE_MATCH_SCORE } = require('./lib/auto-verification');
-const { addPostToFeedIndex, getPostsFromFeedIndex, syncPostsToFeedIndex, dedupePostsByUser } = require('./lib/category-feed-index');
+const {
+    addPostToFeedIndex,
+    getPostsFromFeedIndex,
+    syncPostsToFeedIndex,
+    dedupePostsByUser,
+    refreshUserProfilePictureInFeedIndex
+} = require('./lib/category-feed-index');
 const {
     resolveCityQuery,
     resolveZoneQuery,
@@ -1895,6 +1901,12 @@ app.post('/api/user/avatar', authenticateToken, uploadLimiter, upload.single('av
 
         if (!updateResult.changes) {
             return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        try {
+            await refreshUserProfilePictureInFeedIndex(user.id, avatarPath);
+        } catch (indexErr) {
+            console.warn('No se pudo actualizar avatar en índice de feeds:', indexErr.message);
         }
 
         await saveDatabaseAsync();

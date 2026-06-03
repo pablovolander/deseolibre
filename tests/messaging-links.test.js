@@ -23,6 +23,12 @@ test('getTelegramUrl prefers username over phone', () => {
     assert.equal(getTelegramUrl('5512345678', 'mi_usuario'), 'https://t.me/mi_usuario');
 });
 
+test('normalizeTelegramUsername accepts empty username', () => {
+    const result = normalizeTelegramUsername('');
+    assert.equal(result.ok, true);
+    assert.equal(result.telegram_username, '');
+});
+
 test('normalizeTelegramUsername strips @ and validates', () => {
     const result = normalizeTelegramUsername('@Ana_MX');
     assert.equal(result.ok, true);

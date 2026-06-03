@@ -23,7 +23,7 @@ window.DeseoContact = (function () {
     function normalizeTelegramUsername(raw) {
         const username = String(raw || '').trim().replace(/^@+/, '');
         if (!username) {
-            return { ok: false, error: 'Indica tu usuario de Telegram' };
+            return { ok: true, telegram_username: '' };
         }
         if (!/^[a-zA-Z][a-zA-Z0-9_]{4,31}$/.test(username)) {
             return { ok: false, error: 'Usuario de Telegram inválido (5-32 caracteres, sin @)' };
@@ -38,7 +38,7 @@ window.DeseoContact = (function () {
 
     function telegramUrl(phone, telegramUsername) {
         const userCheck = normalizeTelegramUsername(telegramUsername);
-        if (userCheck.ok) {
+        if (userCheck.ok && userCheck.telegram_username) {
             return `https://t.me/${userCheck.telegram_username}`;
         }
         const digits = normalizeDigits(phone);

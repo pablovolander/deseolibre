@@ -32,8 +32,37 @@ test('validateUserProfileFields requires full profile', () => {
     assert.equal(result.telegram_username, 'ana_mx');
 });
 
+test('validateUserProfileFields accepts profile without telegram', () => {
+    const result = validateUserProfileFields({
+        full_name: 'Ana',
+        country: 'MX',
+        city: 'Ciudad de México',
+        zone: 'Polanco',
+        zone_detail: 'Cerca del parque',
+        phone: '+52 555 123 4567',
+        telegram_username: '',
+        service_price: 2000,
+        service_price_unit: 'hour'
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.telegram_username, '');
+});
+
 test('userHasCompleteProfile detects missing fields', () => {
     assert.equal(userHasCompleteProfile({ full_name: 'Ana', country: 'MX', city: 'CDMX' }), false);
+    assert.equal(
+        userHasCompleteProfile({
+            full_name: 'Ana',
+            country: 'MX',
+            city: 'Ciudad de México',
+            zone: 'Condesa',
+            phone: '+525551234567',
+            telegram_username: '',
+            service_price: 1000,
+            service_price_unit: 'hour'
+        }),
+        true
+    );
     assert.equal(
         userHasCompleteProfile({
             full_name: 'Ana',

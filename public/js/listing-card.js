@@ -68,6 +68,17 @@ window.DeseoListing = (function () {
         return '';
     }
 
+    /** Imagen principal en tarjeta del directorio: foto de perfil, luego fallback del anuncio. */
+    function getDirectoryCardImage(post) {
+        if (post.profile_picture) {
+            return post.profile_picture;
+        }
+        if (post.content_type === 'video' && post.thumbnail_url) {
+            return post.thumbnail_url;
+        }
+        return post.media_url || post.file_url || '';
+    }
+
     return {
         getName,
         getLocation,
@@ -75,6 +86,7 @@ window.DeseoListing = (function () {
         getPhone,
         getTelegramUsername,
         getMessagingLinksHtml,
+        getDirectoryCardImage,
         COUNTRY_LABELS,
         CITY_SHORT
     };

@@ -34,9 +34,9 @@ window.DeseoProfileFields = (function () {
                 <input type="tel" id="${p}Phone" required placeholder="10 dígitos, ej: 55 1234 5678">
             </div>
             <div class="form-group">
-                <label for="${p}Telegram">Usuario de Telegram *</label>
-                <input type="text" id="${p}Telegram" required placeholder="ej: mi_usuario" autocomplete="off" minlength="5" maxlength="32">
-                <small>Sin @ — se abrirá t.me/tu_usuario</small>
+                <label for="${p}Telegram">Usuario de Telegram (opcional)</label>
+                <input type="text" id="${p}Telegram" placeholder="ej: mi_usuario" autocomplete="off" maxlength="32">
+                <small>Opcional. Sin @ — si lo dejas vacío, el enlace usará tu teléfono.</small>
             </div>
             <div class="form-group">
                 <label for="${p}Price">Tarifa *</label>
@@ -155,10 +155,6 @@ window.DeseoProfileFields = (function () {
 
         if (payload.zone_detail && payload.zone_detail.length > 120) {
             return { ok: false, error: 'El detalle de ubicación no puede superar 120 caracteres' };
-        }
-
-        if (!payload.telegram_username && typeof DeseoContact === 'undefined') {
-            return { ok: false, error: 'Indica tu usuario de Telegram' };
         }
 
         return { ok: true, ...payload };

@@ -154,11 +154,16 @@
     }
 
     function renderProfileCard(post) {
-        const mediaUrl = typeof resolveMediaUrl === 'function'
-            ? resolveMediaUrl(post.media_url || post.file_url || '')
-            : `${API_URL}${post.media_url || post.file_url || ''}`;
         const listing = typeof DeseoListing !== 'undefined' ? DeseoListing : null;
         const name = listing ? listing.getName(post) : (post.full_name || post.username || 'Profesional');
+        const cardImagePath = listing
+            ? listing.getDirectoryCardImage(post)
+            : (post.profile_picture || post.media_url || post.file_url || '');
+        const imageUrl = cardImagePath
+            ? (typeof resolveMediaUrl === 'function'
+                ? resolveMediaUrl(cardImagePath)
+                : (cardImagePath.startsWith('http') ? cardImagePath : `${API_URL}${cardImagePath}`))
+            : 'https://via.placeholder.com/400x300?text=Sin+foto';
         const location = listing ? listing.getLocation(post) : (post.location || 'Ubicación no indicada');
         const price = listing ? listing.getPrice(post) : 'Consultar';
         const contactHtml = listing
@@ -168,12 +173,7 @@
             ? '<span class="badge-verified"><i class="fas fa-check-circle"></i> Verificado</span>'
             : '';
 
-        let mediaHtml;
-        if (post.content_type === 'video') {
-            mediaHtml = `<video src="${mediaUrl}" muted preload="metadata"></video>`;
-        } else {
-            mediaHtml = `<img src="${mediaUrl}" alt="${escapeHtml(post.title)}" onerror="this.src='https://via.placeholder.com/400x300?text=Sin+foto'">`;
-        }
+        const mediaHtml = `<img src="${imageUrl}" alt="${escapeHtml(name)}" loading="lazy" onerror="this.src='https://via.placeholder.com/400x300?text=Sin+foto'">`;
 
         return `
         <article class="profile-card" onclick="window.location.href='profile.html?user=${post.user_id}'">
