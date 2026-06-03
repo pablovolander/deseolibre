@@ -35,6 +35,18 @@ const {
     userHasCompleteProfile,
     getProfileIncompleteMessage
 } = require('./lib/user-profile');
+const {
+    generateChallengeCode,
+    generateChallengeId,
+    CHALLENGE_TTL_MS,
+    isChallengeExpired
+} = require('./lib/public-video-challenge');
+const {
+    validatePublicBodyVideoUpload,
+    resolvePublicBodyVideoUrl,
+    MIN_VIDEO_DURATION_SEC: PUBLIC_MIN_VIDEO_SEC,
+    MAX_VIDEO_DURATION_SEC: PUBLIC_MAX_VIDEO_SEC
+} = require('./lib/public-body-video');
 const { listCountries } = require('./lib/supported-cities');
 
 const app = express();
@@ -583,6 +595,8 @@ function initializeDatabaseSchema(database) {
         services TEXT,
         profile_image_url TEXT,
         body_verification_video_url TEXT,
+        public_body_video_url TEXT,
+        public_body_video_verified_at DATETIME,
         face_obscured BOOLEAN DEFAULT 0,
         is_public BOOLEAN DEFAULT TRUE,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -601,6 +615,16 @@ function initializeDatabaseSchema(database) {
             console.error('Error adding face_obscured column:', err);
         }
     });
+
+    database.run(`CREATE TABLE IF NOT EXISTS public_video_challenges (
+        id TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        code TEXT NOT NULL,
+        expires_at DATETIME NOT NULL,
+        used_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+    )`);
 
     // Content posts table
     database.run(`CREATE TABLE IF NOT EXISTS content_posts (
@@ -825,6 +849,16 @@ async function applyDatabaseMigrations(database) {
     await exec('ALTER TABLE users ADD COLUMN telegram_username TEXT');
     await exec('ALTER TABLE users ADD COLUMN zone TEXT');
     await exec('ALTER TABLE users ADD COLUMN zone_detail TEXT');
+    await exec('ALTER TABLE user_profiles ADD COLUMN public_body_video_url TEXT');
+    await exec('ALTER TABLE user_profiles ADD COLUMN public_body_video_verified_at DATETIME');
+    await exec(`CREATE TABLE IF NOT EXISTS public_video_challenges (
+        id TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        code TEXT NOT NULL,
+        expires_at DATETIME NOT NULL,
+        used_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
 }
 
 async function ensureDatabaseSchemaUpToDate() {
@@ -1050,6 +1084,7 @@ function mapUserForClient(user) {
         is_verified: user.is_verified,
         age_verified: user.age_verified,
         profile_complete: userHasCompleteProfile(user),
+        has_public_body_video: Boolean(resolvePublicBodyVideoUrl(user)),
         created_at: user.created_at
     };
 }
@@ -1064,6 +1099,21 @@ async function resolveAuthUser(req) {
     if (!user && isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
         await refreshDatabaseFromBlob();
         user = await findUserRecordById(userId);
+    }
+
+    if (user) {
+        const profile = await runDbGet(
+            `SELECT public_body_video_url, body_verification_video_url, face_obscured,
+                    public_body_video_verified_at
+             FROM user_profiles WHERE user_id = ?`,
+            [userId]
+        );
+        if (profile) {
+            user.public_body_video_url = profile.public_body_video_url;
+            user.body_verification_video_url = profile.body_verification_video_url;
+            user.face_obscured = profile.face_obscured;
+            user.public_body_video_verified_at = profile.public_body_video_verified_at;
+        }
     }
 
     return user;
@@ -1544,22 +1594,28 @@ app.get('/api/user/public/:userId', (req, res) => {
     const userId = req.params.userId;
 
     db.get(
-        `SELECT id, username, full_name, bio, location, country, city, zone, zone_detail,
-                phone, telegram_username, service_price, service_price_unit, category, 
-                profile_picture, cover_photo, is_verified, created_at,
-                followers_count, following_count, posts_count
-         FROM users WHERE id = ?`,
+        `SELECT u.id, u.username, u.full_name, u.bio, u.location, u.country, u.city, u.zone, u.zone_detail,
+                u.phone, u.telegram_username, u.service_price, u.service_price_unit, u.category,
+                u.profile_picture, u.cover_photo, u.is_verified, u.created_at,
+                u.followers_count, u.following_count, u.posts_count,
+                up.public_body_video_url, up.body_verification_video_url, up.face_obscured
+         FROM users u
+         LEFT JOIN user_profiles up ON up.user_id = u.id
+         WHERE u.id = ?`,
         [userId],
-        (err, user) => {
+        (err, row) => {
             if (err) {
                 return res.status(500).json({ error: 'Error interno del servidor' });
             }
 
-            if (!user) {
+            if (!row) {
                 return res.status(404).json({ error: 'Usuario no encontrado' });
             }
 
-            // No incluir información sensible como email
+            const user = { ...row };
+            user.public_body_video_url = resolvePublicBodyVideoUrl(user);
+            delete user.body_verification_video_url;
+
             res.json({ user });
         }
     );
@@ -1722,10 +1778,13 @@ app.get('/api/user/me', authenticateToken, async (req, res) => {
 
         const profile = await runDbGet(
             `SELECT display_name, profile_image_url, phone_number, bio,
-                    body_verification_video_url, face_obscured
+                    public_body_video_url, body_verification_video_url, face_obscured,
+                    public_body_video_verified_at
              FROM user_profiles WHERE user_id = ?`,
             [userId]
         );
+
+        const publicVideoUrl = resolvePublicBodyVideoUrl(profile);
 
         res.json({
             id: baseUser.id,
@@ -1737,8 +1796,10 @@ app.get('/api/user/me', authenticateToken, async (req, res) => {
             profile_image_url: profile?.profile_image_url || null,
             phone_number: profile?.phone_number || null,
             bio: profile?.bio || baseUser.bio || null,
-            body_verification_video_url: profile?.body_verification_video_url || null,
-            face_obscured: profile?.face_obscured || 0
+            public_body_video_url: publicVideoUrl,
+            face_obscured: profile?.face_obscured || 0,
+            public_body_video_verified_at: profile?.public_body_video_verified_at || null,
+            has_public_body_video: Boolean(publicVideoUrl)
         });
     } catch (error) {
         console.error('Error en /api/user/me:', error);
@@ -1964,60 +2025,151 @@ app.post('/api/user/cover', authenticateToken, uploadLimiter, upload.single('cov
 });
 
 // Upload body verification video
-app.post('/api/user/body-video', authenticateToken, uploadLimiter, upload.single('body_video'), (req, res) => {
-    const userId = req.user.userId;
+app.post('/api/user/body-video', authenticateToken, uploadLimiter, (req, res) => {
+    res.status(410).json({
+        error: 'Endpoint obsoleto',
+        message: 'Usa el video corporal público con código de verificación en vivo.',
+        public_video_url: '/api/user/public-body-video'
+    });
+});
 
-    if (!req.file) {
-        return res.status(400).json({ error: 'No se proporcionó ningún video' });
-    }
-
-    const allowedTypes = ['video/mp4', 'video/avi', 'video/quicktime', 'video/x-msvideo'];
-    if (!allowedTypes.includes(req.file.mimetype)) {
-        return res.status(400).json({ error: 'El archivo debe ser un video válido (mp4, avi, mov)' });
-    }
-
-    const videoPath = `/uploads/${req.file.filename}`;
-    const faceObscured = req.body.face_obscured === 'true' || req.body.face_obscured === true;
-    const faceObscuredValue = faceObscured ? 1 : 0;
-
-    db.get('SELECT id FROM user_profiles WHERE user_id = ?', [userId], (err, profile) => {
-        if (err) {
-            console.error('Error fetching profile for body video:', err);
-            return res.status(500).json({ error: 'Error interno del servidor' });
+// Código en vivo para video corporal público (opción 3)
+app.post('/api/user/public-body-video/challenge', authenticateToken, async (req, res) => {
+    try {
+        const user = await resolveAuthUser(req);
+        if (!user) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+        if (!user.is_verified) {
+            return res.status(403).json({
+                error: 'Verificación de identidad requerida',
+                message: 'Completa la verificación de identidad antes de subir tu video público.',
+                verifyUrl: '/verificar-identidad.html'
+            });
         }
 
-        const handleResponse = (dbErr) => {
-            if (dbErr) {
-                console.error('Error saving body verification video:', dbErr);
-                return res.status(500).json({ error: 'Error al guardar video de verificación' });
-            }
+        const userId = user.id;
+        const challengeId = generateChallengeId();
+        const code = generateChallengeCode();
+        const expiresAt = new Date(Date.now() + CHALLENGE_TTL_MS).toISOString();
 
-            res.json({
-                message: 'Video de verificación guardado exitosamente',
-                body_verification_video_url: videoPath,
-                face_obscured: faceObscuredValue
+        await runDb(
+            `INSERT INTO public_video_challenges (id, user_id, code, expires_at) VALUES (?, ?, ?, ?)`,
+            [challengeId, userId, code, expiresAt]
+        );
+
+        res.json({
+            challenge_id: challengeId,
+            code,
+            expires_at: expiresAt,
+            expires_in_sec: Math.floor(CHALLENGE_TTL_MS / 1000),
+            min_video_duration_sec: PUBLIC_MIN_VIDEO_SEC,
+            max_video_duration_sec: PUBLIC_MAX_VIDEO_SEC,
+            max_video_bytes: getMaxVideoBytes(isServerless),
+            instructions:
+                'Graba un video de 8 a 60 s mostrando tu cuerpo y este código en papel o pantalla. Puedes ocultar tu rostro.'
+        });
+    } catch (error) {
+        console.error('Error creating public video challenge:', error);
+        res.status(500).json({ error: 'No se pudo generar el código de verificación' });
+    }
+});
+
+app.post('/api/user/public-body-video', authenticateToken, uploadLimiter, upload.single('body_video'), async (req, res) => {
+    try {
+        const user = await resolveAuthUser(req);
+        if (!user) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+        if (!user.is_verified) {
+            return res.status(403).json({
+                error: 'Verificación de identidad requerida',
+                verifyUrl: '/verificar-identidad.html'
             });
-        };
+        }
 
+        if (!req.file) {
+            return res.status(400).json({ error: 'No se proporcionó ningún video' });
+        }
+
+        const {
+            challenge_id: challengeId,
+            detected_code: detectedCode,
+            video_duration_sec: videoDurationSec
+        } = req.body;
+
+        if (!challengeId) {
+            return res.status(400).json({ error: 'Falta el código de sesión (challenge_id). Solicita uno nuevo.' });
+        }
+
+        const challenge = await runDbGet(
+            `SELECT id, user_id, code, expires_at, used_at FROM public_video_challenges WHERE id = ? AND user_id = ?`,
+            [challengeId, user.id]
+        );
+
+        if (!challenge) {
+            return res.status(400).json({ error: 'Código de verificación inválido. Solicita uno nuevo.' });
+        }
+        if (challenge.used_at) {
+            return res.status(400).json({ error: 'Este código ya fue utilizado. Solicita uno nuevo.' });
+        }
+        if (isChallengeExpired(challenge.expires_at)) {
+            return res.status(400).json({ error: 'El código expiró. Solicita uno nuevo.' });
+        }
+
+        const validation = validatePublicBodyVideoUpload({
+            file: req.file,
+            durationSec: videoDurationSec,
+            detectedCode,
+            expectedCode: challenge.code,
+            isVercel: isServerless
+        });
+
+        if (!validation.ok) {
+            return res.status(400).json({ error: validation.error });
+        }
+
+        const videoPath = await persistUploadedFile(req.file, isVercel, localUploadsDir);
+        const faceObscured = req.body.face_obscured === 'true' || req.body.face_obscured === true;
+        const faceObscuredValue = faceObscured ? 1 : 0;
+        const now = new Date().toISOString();
+
+        const profile = await runDbGet('SELECT id FROM user_profiles WHERE user_id = ?', [user.id]);
         if (profile) {
-            db.run(
-                `UPDATE user_profiles SET 
-                    body_verification_video_url = ?, 
-                    face_obscured = ?, 
-                    updated_at = CURRENT_TIMESTAMP 
+            await runDb(
+                `UPDATE user_profiles SET
+                    public_body_video_url = ?,
+                    public_body_video_verified_at = ?,
+                    face_obscured = ?,
+                    updated_at = CURRENT_TIMESTAMP
                  WHERE user_id = ?`,
-                [videoPath, faceObscuredValue, userId],
-                handleResponse
+                [videoPath, now, faceObscuredValue, user.id]
             );
         } else {
-            db.run(
-                `INSERT INTO user_profiles (user_id, body_verification_video_url, face_obscured) 
-                 VALUES (?, ?, ?)`,
-                [userId, videoPath, faceObscuredValue],
-                handleResponse
+            await runDb(
+                `INSERT INTO user_profiles (user_id, public_body_video_url, public_body_video_verified_at, face_obscured, is_public)
+                 VALUES (?, ?, ?, ?, 1)`,
+                [user.id, videoPath, now, faceObscuredValue]
             );
         }
-    });
+
+        await runDb(
+            `UPDATE public_video_challenges SET used_at = ? WHERE id = ?`,
+            [now, challengeId]
+        );
+
+        await saveDatabaseAsync();
+
+        res.json({
+            message: 'Video corporal público verificado y publicado en tu perfil',
+            public_body_video_url: videoPath,
+            face_obscured: faceObscuredValue,
+            public_body_video_verified_at: now
+        });
+    } catch (error) {
+        console.error('Error uploading public body video:', error);
+        res.status(500).json({ error: error.message || 'Error al subir el video público' });
+    }
 });
 
 // Content Management Endpoints
@@ -2887,27 +3039,15 @@ app.post('/api/verification/upload', authenticateToken, upload.fields([
             ['verified', now, userId]
         );
 
-        const profileRow = await runDbGet('SELECT id FROM user_profiles WHERE user_id = ?', [userId]);
-        if (profileRow) {
-            await runDb(
-                `UPDATE user_profiles SET body_verification_video_url = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?`,
-                [bodyVideoUrl, userId]
-            );
-        } else {
-            await runDb(
-                `INSERT INTO user_profiles (user_id, body_verification_video_url, is_public) VALUES (?, ?, 1)`,
-                [userId, bodyVideoUrl]
-            );
-        }
-
         await saveDatabaseAsync();
 
         res.json({
-            message: 'Verificación completada automáticamente. Ya puedes publicar en el directorio.',
+            message: 'Verificación completada. Sube tu video corporal público en tu perfil para aparecer en el directorio.',
             verification_id: insertResult.lastID,
             status: 'approved',
             is_verified: true,
-            auto_verified: true
+            auto_verified: true,
+            requires_public_body_video: true
         });
     } catch (error) {
         console.error('Verification upload error:', error);

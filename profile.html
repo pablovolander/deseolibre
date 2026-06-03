@@ -1761,7 +1761,7 @@
             <!-- BODY VERIFICATION VIDEO SECTION -->
             <div class="body-verification-section" id="bodyVerificationSection" style="display:none;">
                 <div class="verification-header">
-                    <h3><i class="fas fa-video"></i> Video de Verificación de Cuerpo</h3>
+                    <h3><i class="fas fa-video"></i> Video corporal (público)</h3>
                     <button class="btn-edit-verification" onclick="openBodyVideoModal()" id="editBodyVideoBtn" style="display:none;">
                         <i class="fas fa-edit"></i> Editar
                     </button>
@@ -1773,7 +1773,7 @@
                         </video>
                         <div class="video-placeholder" id="bodyVideoPlaceholder">
                             <i class="fas fa-video-slash"></i>
-                            <p>No hay video de verificación</p>
+                            <p>No hay video corporal público</p>
                             <button class="btn-action btn-primary" onclick="openBodyVideoModal()" id="uploadBodyVideoBtn" style="display:none; margin-top: 15px;">
                                 <i class="fas fa-upload"></i> Subir Video
                             </button>
@@ -1881,28 +1881,37 @@
         </div>
     </div>
 
-    <!-- MODAL: UPLOAD BODY VERIFICATION VIDEO -->
+    <!-- MODAL: UPLOAD PUBLIC BODY VIDEO -->
     <div class="modal" id="bodyVideoModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title">Video de Verificación de Cuerpo</h2>
+                <h2 class="modal-title">Video corporal público</h2>
                 <button class="modal-close" onclick="closeBodyVideoModal()">&times;</button>
             </div>
             <form id="bodyVideoForm" onsubmit="uploadBodyVideo(event)">
                 <div class="modal-body">
                     <div class="form-group">
-                        <label>Instrucciones:</label>
-                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">
-                            Sube un video donde muestres tu cuerpo completo. Puedes pixelar u ocultar tu rostro si lo deseas.
+                        <label>Verificación en vivo</label>
+                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">
+                            Graba un video de 8 a 60 s mostrando tu cuerpo. Debes mostrar este código en papel o en pantalla.
+                            Puedes ocultar tu rostro si lo deseas.
                         </p>
+                        <div id="publicVideoChallengeBox" style="text-align:center;padding:1rem 1.25rem;border-radius:12px;background:rgba(108,92,231,0.15);border:1px dashed rgba(255,255,255,0.25);margin-bottom:12px;">
+                            <div style="font-size:0.8rem;opacity:0.8;margin-bottom:6px;">Tu código (válido ~20 min)</div>
+                            <div id="publicVideoChallengeCode" style="font-size:1.75rem;font-weight:700;letter-spacing:0.12em;">—</div>
+                            <button type="button" class="btn-action btn-secondary" id="refreshChallengeBtn" style="margin-top:10px;" onclick="refreshPublicVideoChallenge()">
+                                <i class="fas fa-sync-alt"></i> Nuevo código
+                            </button>
+                        </div>
+                        <p id="publicVideoUploadStatus" style="font-size:0.85rem;color:var(--text-muted);min-height:1.2em;"></p>
                     </div>
                     <div class="form-group">
                         <div class="file-upload-area" onclick="document.getElementById('bodyVideoFile').click()">
                             <i class="fas fa-video"></i>
-                            <p>Selecciona un video</p>
+                            <p>Selecciona el video grabado</p>
                             <small id="bodyVideoFileInfo">Ningún archivo seleccionado</small>
                         </div>
-                        <input type="file" id="bodyVideoFile" accept="video/*" style="display:none;" onchange="updateBodyVideoFileInfo(this)">
+                        <input type="file" id="bodyVideoFile" accept="video/mp4,video/webm,video/quicktime" style="display:none;" onchange="updateBodyVideoFileInfo(this)">
                     </div>
                     <div class="form-group">
                         <div class="checkbox-group">
@@ -1915,7 +1924,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn-action btn-secondary" onclick="closeBodyVideoModal()">Cancelar</button>
-                    <button type="submit" class="btn-action btn-primary">Subir Video</button>
+                    <button type="submit" class="btn-action btn-primary" id="bodyVideoSubmitBtn">Verificar y publicar</button>
                 </div>
             </form>
         </div>
@@ -2228,6 +2237,7 @@
     <script src="/js/profile-fields.js"></script>
     <script src="/js/contact-links.js"></script>
     <script src="/js/listing-card.js"></script>
+    <script src="/js/public-body-video.js"></script>
     <script src="/js/service-pricing.js"></script>
     <script src="/js/components.js"></script>
     <script>
@@ -2353,21 +2363,25 @@
                 const profileData = await apiCall(`${API_URL}/api/user/me`);
                 
                 // Update currentUser with profile data
-                if (profileData.body_verification_video_url !== undefined) {
-                    currentUser.body_verification_video_url = profileData.body_verification_video_url;
+                if (profileData.public_body_video_url !== undefined) {
+                    currentUser.public_body_video_url = profileData.public_body_video_url;
                 }
                 if (profileData.face_obscured !== undefined) {
                     currentUser.face_obscured = profileData.face_obscured;
                 }
 
-                // Display body verification video section
                 displayBodyVerificationVideo();
             } catch (error) {
                 console.error('Error loading profile data:', error);
             }
         }
 
-        // Display body verification video
+        function getPublicBodyVideoUrl(user) {
+            if (!user) return '';
+            return user.public_body_video_url || user.body_verification_video_url || '';
+        }
+
+        // Display public body video on profile
         function displayBodyVerificationVideo() {
             const section = document.getElementById('bodyVerificationSection');
             const videoElement = document.getElementById('bodyVerificationVideo');
@@ -2375,24 +2389,22 @@
             const videoInfo = document.getElementById('bodyVideoInfo');
             const editBtn = document.getElementById('editBodyVideoBtn');
             const uploadBtn = document.getElementById('uploadBodyVideoBtn');
+            const publicVideoUrl = getPublicBodyVideoUrl(currentUser);
 
-            // Show section if it's own profile
             if (isOwnProfile) {
                 section.style.display = 'block';
+            } else if (publicVideoUrl) {
+                section.style.display = 'block';
+                editBtn.style.display = 'none';
             } else {
-                // For other users, only show if video exists
-                if (currentUser && currentUser.body_verification_video_url) {
-                    section.style.display = 'block';
-                    editBtn.style.display = 'none';
-                } else {
-                    section.style.display = 'none';
-                    return;
-                }
+                section.style.display = 'none';
+                return;
             }
 
-            // Display video if exists
-            if (currentUser && currentUser.body_verification_video_url) {
-                videoElement.src = `${API_URL}${currentUser.body_verification_video_url}`;
+            if (publicVideoUrl) {
+                videoElement.src = typeof resolveMediaUrl === 'function'
+                    ? resolveMediaUrl(publicVideoUrl)
+                    : `${API_URL}${publicVideoUrl}`;
                 videoElement.style.display = 'block';
                 placeholder.style.display = 'none';
                 if (isOwnProfile) {
@@ -2502,6 +2514,12 @@
                 }
 
                 applyProfileDetailsToBio(user);
+
+                currentUser = {
+                    public_body_video_url: user.public_body_video_url,
+                    face_obscured: user.face_obscured
+                };
+                displayBodyVerificationVideo();
 
                 if (user.category) {
                     document.getElementById('categoryDetail').style.display = 'flex';
@@ -3128,9 +3146,33 @@
             }
         }
 
-        // Body verification video functions
-        function openBodyVideoModal() {
+        async function refreshPublicVideoChallenge() {
+            const codeEl = document.getElementById('publicVideoChallengeCode');
+            const statusEl = document.getElementById('publicVideoUploadStatus');
+            const refreshBtn = document.getElementById('refreshChallengeBtn');
+            if (!authToken || typeof DeseoPublicBodyVideo === 'undefined') {
+                if (statusEl) statusEl.textContent = 'Inicia sesión para obtener un código.';
+                return;
+            }
+            try {
+                if (refreshBtn) refreshBtn.disabled = true;
+                if (statusEl) statusEl.textContent = 'Generando código...';
+                const data = await DeseoPublicBodyVideo.fetchChallenge(API_URL, authToken);
+                if (codeEl) codeEl.textContent = data.code;
+                if (statusEl) {
+                    statusEl.textContent = `Código válido ${Math.floor((data.expires_in_sec || 1200) / 60)} min. Graba el video mostrando el código.`;
+                }
+            } catch (error) {
+                if (statusEl) statusEl.textContent = error.message || 'Error al obtener código';
+            } finally {
+                if (refreshBtn) refreshBtn.disabled = false;
+            }
+        }
+
+        async function openBodyVideoModal() {
             document.getElementById('bodyVideoModal').classList.add('active');
+            document.getElementById('publicVideoUploadStatus').textContent = '';
+            await refreshPublicVideoChallenge();
         }
 
         function closeBodyVideoModal() {
@@ -3138,6 +3180,7 @@
             document.getElementById('bodyVideoForm').reset();
             document.getElementById('bodyVideoFileInfo').textContent = 'Ningún archivo seleccionado';
             document.getElementById('faceObscuredCheckbox').checked = false;
+            document.getElementById('publicVideoUploadStatus').textContent = '';
         }
 
         function updateBodyVideoFileInfo(input) {
@@ -3153,41 +3196,40 @@
         async function uploadBodyVideo(event) {
             event.preventDefault();
 
-            const formData = new FormData();
             const fileInput = document.getElementById('bodyVideoFile');
             const faceObscured = document.getElementById('faceObscuredCheckbox').checked;
+            const statusEl = document.getElementById('publicVideoUploadStatus');
+            const submitBtn = document.getElementById('bodyVideoSubmitBtn');
 
-            if (fileInput.files.length === 0) {
-                showNotification('Por favor selecciona un video', 'error');
+            if (!fileInput.files.length) {
+                showNotification('Selecciona el video grabado', 'error');
+                return;
+            }
+            if (typeof DeseoPublicBodyVideo === 'undefined') {
+                showNotification('Módulo de verificación no disponible', 'error');
                 return;
             }
 
-            formData.append('body_video', fileInput.files[0]);
-            formData.append('face_obscured', faceObscured ? 'true' : 'false');
-
             try {
-                const response = await fetch(`${API_URL}/api/user/body-video`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    },
-                    body: formData
+                if (submitBtn) submitBtn.disabled = true;
+                const data = await DeseoPublicBodyVideo.uploadPublicVideo({
+                    apiUrl: API_URL,
+                    authToken,
+                    videoFile: fileInput.files[0],
+                    faceObscured,
+                    onProgress: (msg) => {
+                        if (statusEl) statusEl.textContent = msg;
+                    }
                 });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Error al subir el video');
-                }
-
-                const data = await response.json();
-                showNotification(data.message || 'Video de verificación subido exitosamente', 'success');
+                showNotification(data.message || 'Video publicado en tu perfil', 'success');
                 closeBodyVideoModal();
-                
-                // Recargar el perfil para mostrar el video
                 await loadProfileData();
             } catch (error) {
-                console.error('Error uploading body video:', error);
+                console.error('Error uploading public body video:', error);
+                if (statusEl) statusEl.textContent = error.message || 'Error al subir el video';
                 showNotification(error.message || 'Error al subir el video', 'error');
+            } finally {
+                if (submitBtn) submitBtn.disabled = false;
             }
         }
 

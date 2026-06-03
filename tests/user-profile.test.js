@@ -59,7 +59,8 @@ test('userHasCompleteProfile detects missing fields', () => {
             phone: '+525551234567',
             telegram_username: '',
             service_price: 1000,
-            service_price_unit: 'hour'
+            service_price_unit: 'hour',
+            public_body_video_url: '/uploads/public.mp4'
         }),
         true
     );
@@ -72,7 +73,8 @@ test('userHasCompleteProfile detects missing fields', () => {
             phone: '+525551234567',
             telegram_username: 'ana_mx',
             service_price: 1000,
-            service_price_unit: 'hour'
+            service_price_unit: 'hour',
+            public_body_video_url: '/uploads/public.mp4'
         }),
         true
     );
