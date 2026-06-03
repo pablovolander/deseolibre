@@ -531,11 +531,7 @@
         });
     }
 
-    async function init() {
-        if (typeof DeseoAgeGate !== 'undefined' && DeseoAgeGate.redirectToHomeIfNeeded()) {
-            return;
-        }
-
+    async function runReelsPage() {
         setupMobileUploadFab();
         renderCategoryNav();
         updateAuthUi();
@@ -544,6 +540,16 @@
         }
         updateAuthUi();
         await loadReels();
+    }
+
+    async function init() {
+        if (typeof DeseoAgeGate !== 'undefined' && DeseoAgeGate.mountBlockingGate(function () {
+            runReelsPage();
+        })) {
+            return;
+        }
+
+        await runReelsPage();
     }
 
     document.addEventListener('DOMContentLoaded', init);

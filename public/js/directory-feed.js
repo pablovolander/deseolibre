@@ -319,14 +319,20 @@
             }
         });
 
-        if (typeof DeseoAgeGate !== 'undefined' && DeseoAgeGate.redirectToHomeIfNeeded()) {
+        if (typeof DeseoAgeGate !== 'undefined' && DeseoAgeGate.mountBlockingGate(function () {
+            updateUI();
+            loadDirectory();
+            if (typeof DeseoAuth !== 'undefined' && authToken) {
+                DeseoAuth.verifySession(API_URL).catch(function () {});
+            }
+        })) {
             return;
         }
 
         updateUI();
         loadDirectory();
         if (typeof DeseoAuth !== 'undefined' && authToken) {
-            DeseoAuth.verifySession(API_URL).catch(() => {});
+            DeseoAuth.verifySession(API_URL).catch(function () {});
         }
     };
 

@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <link href="/css/directory.css" rel="stylesheet">
     <link href="/css/directory-modals.css" rel="stylesheet">
+    <link href="/css/age-gate.css" rel="stylesheet">
 </head>
 <body class="directory-page" data-category="acompañantes-trans">
     <header class="directory-header">
@@ -72,28 +73,6 @@
                 <div class="dl-form-group"><label>Contraseña</label><input type="password" id="loginPassword" required></div>
                 <button type="submit" class="dl-btn dl-btn-submit">Entrar</button>
                 <button type="button" class="dl-btn dl-btn-cancel" onclick="closeModal('loginModal')">Cancelar</button>
-            </form>
-        </div>
-    </div>
-    <div id="registerModal" class="dl-modal">
-        <div class="dl-modal-content">
-            <h2>Crear cuenta</h2>
-            <form onsubmit="register(event)">
-                <div class="dl-form-group"><label>Usuario</label><input type="text" id="regUsername" required></div>
-                <div class="dl-form-group"><label>Email</label><input type="email" id="regEmail" required></div>
-                <div class="dl-form-group"><label>Contraseña</label><input type="password" id="regPassword" required minlength="6"></div>
-                <input type="hidden" id="regCountry" value="MX">
-                <div class="dl-form-group"><label>Nombre profesional *</label><input type="text" id="regFullName" required minlength="2"></div>
-                <div class="dl-form-group"><label>Ciudad *</label><select id="regCity" required><option value="">Ciudad</option></select></div>
-                <div class="dl-form-group"><label>Zona *</label><select id="regZone" required disabled><option value="">Primero ciudad</option></select></div>
-                <div class="dl-form-group"><label>Detalle ubicación</label><input type="text" id="regZoneDetail" maxlength="120" placeholder="Colonia o referencia (oblig. si Otra zona)"></div>
-                <div class="dl-form-group"><label>Teléfono * (WhatsApp)</label><input type="tel" id="regPhone" required placeholder="10 dígitos"></div>
-                <div class="dl-form-group"><label>Usuario Telegram *</label><input type="text" id="regTelegram" required placeholder="mi_usuario" minlength="5" maxlength="32"><small>Sin @</small></div>
-                <div class="dl-form-group"><label>Tarifa *</label><input type="number" id="regPrice" step="0.01" min="0.01" required placeholder="1500"></div>
-                <div class="dl-form-group"><label>Cobro por *</label><select id="regPriceUnit" required><option value="">Selecciona</option><option value="hour">Por hora</option><option value="half_hour">Por media hora</option></select></div>
-                <p style="font-size:0.85rem;opacity:0.85;margin:0.5rem 0;">Después del registro: documento, selfie con documento y video corporal.</p>
-                <button type="submit" class="dl-btn dl-btn-submit">Registrarme</button>
-                <button type="button" class="dl-btn dl-btn-cancel" onclick="closeModal('registerModal')">Cancelar</button>
             </form>
         </div>
     </div>

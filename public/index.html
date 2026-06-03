@@ -7,6 +7,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <link href="/css/responsive.css" rel="stylesheet">
+    <link href="/css/age-gate.css" rel="stylesheet">
     <link href="/css/home.css" rel="stylesheet">
     <script src="/js/api-config.js"></script>
     <script src="/js/city-search.js"></script>
@@ -332,21 +333,8 @@
         </div>
     </div>
 
-    <!-- Age Verification Modal -->
-    <div id="ageVerificationModal" class="modal">
-        <div class="modal-content">
-            <h2>Verificación de Edad</h2>
-            <p>Para acceder a nuestros servicios, debes confirmar que eres mayor de 18 años.</p>
-            <div class="age-checkbox">
-                <input type="checkbox" id="ageConfirmation" required>
-                <label for="ageConfirmation">Confirmo que soy mayor de 18 años</label>
-            </div>
-            <div class="modal-buttons">
-                <button class="modal-btn modal-btn-primary" onclick="verifyAge()">Confirmar</button>
-                <button class="modal-btn modal-btn-secondary" onclick="closeAgeModal()">Cancelar</button>
-            </div>
-        </div>
-    </div>
+    <!-- Age Verification (bloqueante +18) -->
+    <div id="ageVerificationModal" class="deseo-age-gate" role="dialog" aria-modal="true" aria-labelledby="deseoAgeGateTitle" aria-hidden="true"></div>
 
     <script>
         // Global variables
@@ -371,24 +359,41 @@
 
         // Check if user is logged in on page load
         document.addEventListener('DOMContentLoaded', function() {
-            // Check age verification first
             const ageVerified = (typeof DeseoAgeGate !== 'undefined' && DeseoAgeGate.isVerified())
                 || localStorage.getItem('ageVerified');
-            if (!ageVerified) {
-                setTimeout(() => showAgeVerificationModal(), 500);
-            } else if (typeof DeseoAgeGate !== 'undefined') {
-                DeseoAgeGate.resumeAfterHomeVerification();
-            }
-            
-            if (authToken) {
-                verifyToken();
-            } else if (shouldOpenRegisterWizard()) {
-                if (ageVerified) {
+
+            const afterAgeReady = function() {
+                if (authToken) {
+                    verifyToken();
+                } else if (shouldOpenRegisterWizard()) {
                     setTimeout(() => openRegisterWizardIfPending(), 400);
+                    if (window.history && window.history.replaceState && new URLSearchParams(window.location.search).get('register') === '1') {
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                    }
                 }
-                if (window.history && window.history.replaceState && new URLSearchParams(window.location.search).get('register') === '1') {
-                    window.history.replaceState({}, document.title, window.location.pathname);
+            };
+
+            if (!ageVerified && typeof DeseoAgeGate !== 'undefined') {
+                DeseoAgeGate.mountBlockingGate(async function() {
+                    if (authToken) {
+                        try {
+                            await apiCall('/api/auth/verify-age', {
+                                method: 'POST',
+                                body: JSON.stringify({ confirmed: true })
+                            });
+                            if (currentUser) currentUser.age_verified = true;
+                        } catch (error) {
+                            console.error('Age verification error:', error);
+                        }
+                    }
+                    showSuccess('¡Bienvenido a Deseo Libre! Edad verificada correctamente.');
+                    afterAgeReady();
+                });
+            } else {
+                if (typeof DeseoAgeGate !== 'undefined') {
+                    DeseoAgeGate.resumeAfterHomeVerification();
                 }
+                afterAgeReady();
             }
             setupMobileMenu();
             document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
@@ -555,28 +560,20 @@
         }
 
         async function verifyAge() {
-            const confirmed = document.getElementById('ageConfirmation').checked;
-            
-            if (!confirmed) {
-                showError('Debes confirmar tu mayoría de edad para continuar');
+            const result = typeof DeseoAgeGate !== 'undefined'
+                ? DeseoAgeGate.confirmAge()
+                : { ok: false, error: 'Verificación de edad no disponible' };
+            if (!result.ok) {
+                showError(result.error);
                 return;
             }
 
-            if (typeof DeseoAgeGate !== 'undefined') {
-                DeseoAgeGate.markVerified();
-            } else {
-                localStorage.setItem('ageVerified', 'true');
-                localStorage.setItem('ageVerifiedDate', new Date().toISOString());
-            }
-
-            // If user is authenticated, also verify on the backend
             if (authToken) {
                 try {
                     await apiCall('/api/auth/verify-age', {
                         method: 'POST',
                         body: JSON.stringify({ confirmed: true })
                     });
-
                     if (currentUser) {
                         currentUser.age_verified = true;
                     }
@@ -585,13 +582,7 @@
                 }
             }
 
-            closeAgeModal();
             showSuccess('¡Bienvenido a Deseo Libre! Edad verificada correctamente.');
-            if (shouldOpenRegisterWizard()) {
-                setTimeout(() => openRegisterWizardIfPending(), 300);
-            } else if (typeof DeseoAgeGate !== 'undefined') {
-                DeseoAgeGate.resumeAfterHomeVerification();
-            }
         }
 
         function logout() {
@@ -678,6 +669,7 @@
         function closeAllModals() {
             const modals = document.querySelectorAll('.modal');
             modals.forEach(modal => {
+                if (modal.id === 'ageVerificationModal') return;
                 modal.style.display = 'none';
                 modal.classList.remove('show');
             });
@@ -736,16 +728,17 @@
             );
         });
 
-        // Close modals when clicking outside
+        // Close modals when clicking outside (no cerrar verificación de edad)
         window.addEventListener('click', function(e) {
-            if (e.target.classList.contains('modal')) {
+            if (typeof DeseoAgeGate !== 'undefined' && DeseoAgeGate.isGateActive()) return;
+            if (e.target.classList.contains('modal') && e.target.id !== 'ageVerificationModal') {
                 closeAllModals();
             }
         });
 
-        // Close modals with Escape key
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
+                if (typeof DeseoAgeGate !== 'undefined' && DeseoAgeGate.isGateActive()) return;
                 closeAllModals();
             }
         });
