@@ -96,6 +96,59 @@
     background: rgba(255, 107, 157, 0.12);
 }
 
+.service-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem;
+    margin: 0.25rem 0 0.75rem;
+}
+
+.service-filter-row label {
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.88rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.directory-service-select {
+    min-width: 220px;
+    max-width: 100%;
+    flex: 1;
+    padding: 0.65rem 0.85rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 0.88rem;
+}
+
+.directory-service-select option,
+.directory-service-select optgroup {
+    color: #111;
+}
+
+.service-filter-chips {
+    margin-top: -0.35rem;
+}
+
+.service-filter-chip {
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.88);
+    border-radius: 999px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.service-filter-chip:hover,
+.service-filter-chip.active {
+    border-color: rgba(124, 58, 237, 0.65);
+    background: rgba(124, 58, 237, 0.22);
+}
+
 .directory-search input {
     flex: 1;
     min-width: 220px;

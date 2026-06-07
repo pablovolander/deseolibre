@@ -1943,6 +1943,7 @@
                             <option value="acompañantes-hombres">👨 Acompañantes Hombres</option>
                             <option value="acompañantes-trans">🏳️‍⚧️ Acompañantes Trans</option>
                     </select>
+                    <small id="createPostCategoryHint" style="color: var(--text-muted); display:block; margin-top:6px;"></small>
                 </div>
                 <div class="form-group">
                     <label>Archivo:</label>
@@ -2797,7 +2798,11 @@
             const title = document.getElementById('createPostTitle').value;
             const description = document.getElementById('createPostDescription').value;
             const contentType = document.getElementById('createPostType').value;
-            const category = document.getElementById('createPostCategory').value;
+            let category = document.getElementById('createPostCategory').value;
+            const lockedCategory = resolveProfileCategory(currentUser?.category);
+            if (lockedCategory) {
+                category = lockedCategory;
+            }
             const isPremium = document.getElementById('isPremium').checked;
             const isPublic = document.getElementById('isPublicPost').checked;
             const fileInput = document.getElementById('postFile');
@@ -2834,6 +2839,12 @@
             if (!category) {
                 console.log('❌ Validación fallida: categoría no seleccionada');
                 showNotification('Selecciona una categoría', 'error');
+                return;
+            }
+
+            const lockedCategory = resolveProfileCategory(currentUser?.category);
+            if (lockedCategory && category !== lockedCategory) {
+                showNotification(`Solo puedes publicar en ${getCategoryName(lockedCategory)}`, 'error');
                 return;
             }
             
@@ -2898,6 +2909,10 @@
                 if (error.data?.requiresProfile) {
                     showNotification(error.data.message || 'Completa tu perfil primero', 'error');
                     openEditProfileModal();
+                    return;
+                }
+                if (error.status === 403 && (error.data?.message || error.data?.error)) {
+                    showNotification(error.data.message || error.data.error, 'error');
                     return;
                 }
                 showNotification(error.message || 'Error al crear la publicación', 'error');
@@ -3059,6 +3074,63 @@
         }
 
         // Modal functions
+        function resolveProfileCategory(category) {
+            const raw = String(category || '').trim();
+            if (!raw) {
+                return '';
+            }
+            if (raw === 'acompañantes') {
+                return 'acompañantes-mujeres';
+            }
+            return raw;
+        }
+
+        function configureCreatePostCategory() {
+            const categorySelect = document.getElementById('createPostCategory');
+            const hint = document.getElementById('createPostCategoryHint');
+            if (!categorySelect) {
+                return;
+            }
+
+            const lockedCategory = resolveProfileCategory(currentUser?.category);
+            Array.from(categorySelect.options).forEach((opt) => {
+                if (!opt.value) {
+                    return;
+                }
+                if (lockedCategory) {
+                    const allowed = opt.value === lockedCategory;
+                    opt.disabled = !allowed;
+                    opt.hidden = !allowed;
+                } else {
+                    opt.disabled = false;
+                    opt.hidden = false;
+                }
+            });
+
+            if (lockedCategory) {
+                categorySelect.value = lockedCategory;
+                categorySelect.disabled = true;
+                if (hint) {
+                    hint.textContent = `Tu perfil está en ${getCategoryName(lockedCategory)}. Solo puedes publicar ahí.`;
+                }
+            } else {
+                categorySelect.disabled = false;
+                const urlCategory = new URLSearchParams(window.location.search).get('category');
+                const preferredCategory = resolveProfileCategory(urlCategory || currentUser?.category);
+                if (preferredCategory) {
+                    const hasOption = Array.from(categorySelect.options).some(
+                        (opt) => opt.value === preferredCategory
+                    );
+                    if (hasOption) {
+                        categorySelect.value = preferredCategory;
+                    }
+                }
+                if (hint) {
+                    hint.textContent = 'La primera publicación fijará tu categoría de perfil.';
+                }
+            }
+        }
+
         async function openCreatePostModal() {
             if (typeof DeseoVerification !== 'undefined') {
                 const ok = await DeseoVerification.requireVerifiedForPublish('Crear publicación');
@@ -3066,24 +3138,8 @@
             }
             const modal = document.getElementById('createPostModal');
             modal.classList.add('active');
-            
-            // Asegurar que todos los campos sean visibles
-            const categorySelect = document.getElementById('createPostCategory');
-            const urlCategory = new URLSearchParams(window.location.search).get('category');
-            const preferredCategory = urlCategory || currentUser?.category;
-            const legacyUnified = { 'acompañantes': 'acompañantes-mujeres' };
-            let resolvedCategory = preferredCategory;
-            if (preferredCategory && legacyUnified[preferredCategory]) {
-                resolvedCategory = legacyUnified[preferredCategory];
-            }
-            if (categorySelect && resolvedCategory) {
-                const hasOption = Array.from(categorySelect.options).some(
-                    (opt) => opt.value === resolvedCategory
-                );
-                if (hasOption) {
-                    categorySelect.value = resolvedCategory;
-                }
-            }
+
+            configureCreatePostCategory();
 
             document.getElementById('isPublicPost').checked = true;
 
@@ -3106,6 +3162,14 @@
         function closeCreatePostModal() {
             document.getElementById('createPostModal').classList.remove('active');
             document.getElementById('createPostForm').reset();
+            const categorySelect = document.getElementById('createPostCategory');
+            if (categorySelect) {
+                categorySelect.disabled = false;
+            }
+            const categoryHint = document.getElementById('createPostCategoryHint');
+            if (categoryHint) {
+                categoryHint.textContent = '';
+            }
             const publicCheckbox = document.getElementById('isPublicPost');
             if (publicCheckbox) {
                 publicCheckbox.checked = true;

@@ -11,6 +11,97 @@
     let activeServicio = '';
     let citySearchApi = null;
 
+    const CATEGORY_PAGES = {
+        'acompañantes-mujeres': 'feed-mujeres.html',
+        'acompañantes-hombres': 'feed-hombres.html',
+        'acompañantes-trans': 'feed-trans.html'
+    };
+
+    const LEGACY_CATEGORY = {
+        acompañantes: 'acompañantes-mujeres'
+    };
+
+    function resolveUserCategory(category) {
+        const raw = String(category || '').trim();
+        if (!raw) {
+            return '';
+        }
+        return LEGACY_CATEGORY[raw] || raw;
+    }
+
+    function setActiveServicio(serviceId) {
+        activeServicio = serviceId || '';
+        const select = document.getElementById('searchService');
+        if (select) {
+            select.value = activeServicio;
+        }
+        document.querySelectorAll('#popularServices .service-filter-chip').forEach((chip) => {
+            chip.classList.toggle('active', chip.dataset.serviceId === activeServicio);
+        });
+        const url = new URL(window.location.href);
+        if (activeServicio) {
+            url.searchParams.set('servicio', activeServicio);
+        } else {
+            url.searchParams.delete('servicio');
+            url.searchParams.delete('service');
+        }
+        window.history.replaceState({}, '', url);
+    }
+
+    async function mountServiceFilter() {
+        const select = document.getElementById('searchService');
+        const chips = document.getElementById('popularServices');
+        if (!select || typeof DeseoServiceCatalog === 'undefined') {
+            return;
+        }
+
+        try {
+            const catalog = await DeseoServiceCatalog.fetchCatalog(CATEGORY);
+            select.innerHTML = DeseoServiceCatalog.renderFilterSelectHtml(catalog, activeServicio);
+            if (chips) {
+                chips.innerHTML = DeseoServiceCatalog.renderPopularFilterChips(
+                    catalog,
+                    'modality',
+                    activeServicio,
+                    6
+                );
+                chips.querySelectorAll('.service-filter-chip').forEach((chip) => {
+                    chip.addEventListener('click', () => {
+                        setActiveServicio(chip.dataset.serviceId || '');
+                        loadDirectory();
+                    });
+                });
+            }
+        } catch (error) {
+            console.warn('No se pudo cargar filtro de servicios:', error.message);
+        }
+    }
+
+    async function ensureCanPublishInCategory() {
+        let user = typeof DeseoAuth !== 'undefined' ? DeseoAuth.getCachedUser() : null;
+        if (!user && typeof DeseoAuth !== 'undefined' && authToken) {
+            try {
+                const data = await DeseoAuth.verifySession(API_URL);
+                user = data.user;
+            } catch {
+                user = null;
+            }
+        }
+
+        const userCat = resolveUserCategory(user?.category);
+        if (userCat && userCat !== CATEGORY) {
+            const target = CATEGORY_PAGES[userCat] || 'profile.html';
+            showMessage('Tu perfil pertenece a otra categoría. Usa el directorio correcto para publicar.', 'error');
+            if (target.endsWith('.html')) {
+                setTimeout(() => {
+                    window.location.href = target;
+                }, 1800);
+            }
+            return false;
+        }
+        return true;
+    }
+
     function setActiveCity(cityName) {
         activeCiudad = cityName || '';
         const cityInput = document.getElementById('searchCity');
@@ -339,6 +430,17 @@
             loadDirectory();
         });
 
+        document.getElementById('searchService')?.addEventListener('change', (event) => {
+            setActiveServicio(event.target.value);
+            loadDirectory();
+        });
+
+        mountServiceFilter().then(() => {
+            if (activeServicio) {
+                setActiveServicio(activeServicio);
+            }
+        }).catch(() => {});
+
         document.getElementById('searchBtn')?.addEventListener('click', () => {
             performCitySearch();
         });
@@ -386,6 +488,9 @@
         if (typeof DeseoVerification !== 'undefined') {
             const ok = await DeseoVerification.requireVerifiedForPublish('Publicar anuncio');
             if (!ok) return;
+        }
+        if (!(await ensureCanPublishInCategory())) {
+            return;
         }
         document.getElementById('createPostModal')?.classList.add('show');
         if (typeof DeseoPricing !== 'undefined') {
@@ -471,6 +576,10 @@
             loadDirectory();
         } catch (error) {
             if (typeof DeseoVerification !== 'undefined' && DeseoVerification.handlePublishError(error)) {
+                return;
+            }
+            if (error.status === 403 && (error.data?.message || error.data?.error)) {
+                showMessage(error.data.message || error.data.error, 'error');
                 return;
             }
             if (error.data?.requiresProfile) {

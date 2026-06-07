@@ -508,6 +508,10 @@
                     window.location.href = 'verificar-identidad.html';
                     return;
                 }
+                if (res.status === 403 && (data.message || data.error === 'Categoría no permitida')) {
+                    setStatus(uploadStatus, data.message || data.error, 'error');
+                    return;
+                }
                 if (!res.ok) throw new Error(data.error || 'No se pudo subir el reel');
                 setStatus(uploadStatus, 'Reel publicado correctamente', 'success');
                 uploadForm.reset();

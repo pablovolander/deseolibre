@@ -57,6 +57,7 @@ const {
     resolveServiceLabels,
     postOffersService
 } = require('./lib/service-catalog');
+const { validateUserPublishCategory, resolveUserPublishCategory } = require('./lib/content-category');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -2310,6 +2311,15 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
         return res.status(400).json({ error: 'Categoría inválida' });
     }
 
+    const categoryCheck = validateUserPublishCategory(authorCheck, normalizedCategory);
+    if (!categoryCheck.ok) {
+        return res.status(403).json({
+            error: 'Categoría no permitida',
+            message: categoryCheck.error,
+            userCategory: resolveUserPublishCategory(authorCheck.category)
+        });
+    }
+
     const isPublicValue = 1;
 
     if (!req.file) {
@@ -2350,8 +2360,12 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
         );
 
         await runDb(
-            'UPDATE users SET category = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-            [normalizedCategory, userId]
+            categoryCheck.setUserCategory
+                ? 'UPDATE users SET category = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND (category IS NULL OR category = \'\')'
+                : 'UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+            categoryCheck.setUserCategory
+                ? [normalizedCategory, userId]
+                : [userId]
         );
 
         const author = await findUserRecordById(userId);
@@ -3753,6 +3767,20 @@ app.post('/api/reels', authenticateToken, requireUserVerification, handleReelUpl
 
         const { category: normalizedCategory } = resolveCategoryAndAudience(category, null);
 
+        const authorCheck = await resolveAuthUser(req);
+        if (!authorCheck) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        const categoryCheck = validateUserPublishCategory(authorCheck, normalizedCategory);
+        if (!categoryCheck.ok) {
+            return res.status(403).json({
+                error: 'Categoría no permitida',
+                message: categoryCheck.error,
+                userCategory: resolveUserPublishCategory(authorCheck.category)
+            });
+        }
+
         const videoFile = req.files && Array.isArray(req.files.video) ? req.files.video[0] : null;
         if (!videoFile) {
             return res.status(400).json({ error: 'Archivo de video es requerido' });
@@ -3799,6 +3827,13 @@ app.post('/api/reels', authenticateToken, requireUserVerification, handleReelUpl
                 duration
             ]
         );
+
+        if (categoryCheck.setUserCategory) {
+            await runDb(
+                'UPDATE users SET category = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND (category IS NULL OR category = \'\')',
+                [normalizedCategory, userId]
+            );
+        }
 
         await saveDatabaseAsync();
 

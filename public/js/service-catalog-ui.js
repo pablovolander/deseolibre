@@ -78,6 +78,35 @@ window.DeseoServiceCatalog = (function () {
         return data.catalog;
     }
 
+    function renderFilterSelectHtml(catalog, selectedId) {
+        const selected = String(selectedId || '');
+        let html = `<option value=""${selected ? '' : ' selected'}>Todos los servicios</option>`;
+        (catalog?.groups || []).forEach((group) => {
+            html += `<optgroup label="${escapeHtml(group.title)}">`;
+            group.items.forEach((item) => {
+                const isSelected = selected === item.id ? ' selected' : '';
+                html += `<option value="${escapeHtml(item.id)}"${isSelected}>${escapeHtml(item.label)}</option>`;
+            });
+            html += '</optgroup>';
+        });
+        return html;
+    }
+
+    function renderPopularFilterChips(catalog, groupId, selectedId, maxItems) {
+        const group = (catalog?.groups || []).find((g) => g.id === groupId);
+        if (!group) {
+            return '';
+        }
+        const selected = String(selectedId || '');
+        const items = group.items.slice(0, maxItems || group.items.length);
+        const chips = items.map((item) => {
+            const active = selected === item.id ? ' active' : '';
+            return `<button type="button" class="service-filter-chip${active}" data-service-id="${escapeHtml(item.id)}">${escapeHtml(item.label)}</button>`;
+        }).join('');
+        const allActive = !selected ? ' active' : '';
+        return `<button type="button" class="service-filter-chip${allActive}" data-service-id="">Todos</button>${chips}`;
+    }
+
     async function mountEditor(options) {
         const containerId = options.containerId;
         const category = options.category || 'acompañantes-mujeres';
@@ -104,6 +133,8 @@ window.DeseoServiceCatalog = (function () {
         mountEditor,
         readSelection,
         renderServiceChipsHtml,
-        renderChipsHtml
+        renderChipsHtml,
+        renderFilterSelectHtml,
+        renderPopularFilterChips
     };
 })();
