@@ -79,6 +79,26 @@ window.DeseoListing = (function () {
         return post.media_url || post.file_url || '';
     }
 
+    /** Chips de servicios para tarjetas del directorio (máx. 3 por defecto). */
+    function getServiceChipsHtml(post, options) {
+        options = options || {};
+        const max = options.max || 3;
+        const labels = post.offered_services_labels || [];
+        if (!labels.length) {
+            return '';
+        }
+        const items = labels.slice(0, max);
+        const chips = items.map((item) => {
+            const label = typeof item === 'string' ? item : item.label;
+            const safe = String(label || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return `<span class="service-chip-display">${safe}</span>`;
+        }).join('');
+        const extra = labels.length > max
+            ? `<span class="service-chip-display service-chip-more">+${labels.length - max}</span>`
+            : '';
+        return `<div class="profile-services-row">${chips}${extra}</div>`;
+    }
+
     return {
         getName,
         getLocation,
@@ -87,6 +107,7 @@ window.DeseoListing = (function () {
         getTelegramUsername,
         getMessagingLinksHtml,
         getDirectoryCardImage,
+        getServiceChipsHtml,
         COUNTRY_LABELS,
         CITY_SHORT
     };

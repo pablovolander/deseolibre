@@ -19,7 +19,8 @@ const {
     getPostsFromFeedIndex,
     syncPostsToFeedIndex,
     dedupePostsByUser,
-    refreshUserProfilePictureInFeedIndex
+    refreshUserProfilePictureInFeedIndex,
+    refreshUserOfferedServicesInFeedIndex
 } = require('./lib/category-feed-index');
 const {
     resolveCityQuery,
@@ -48,6 +49,14 @@ const {
     MAX_VIDEO_DURATION_SEC: PUBLIC_MAX_VIDEO_SEC
 } = require('./lib/public-body-video');
 const { listCountries } = require('./lib/supported-cities');
+const {
+    normalizeCategory: normalizeServiceCategory,
+    getCatalogForCategory,
+    parseOfferedServices,
+    validateOfferedServices,
+    resolveServiceLabels,
+    postOffersService
+} = require('./lib/service-catalog');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -188,12 +197,38 @@ function getRequestOrigin(req) {
     return `${proto}://${host}`;
 }
 
+function enrichUserWithServices(user) {
+    if (!user) {
+        return user;
+    }
+    const ids = parseOfferedServices(user.offered_services);
+    const category = user.category || 'acompañantes-mujeres';
+    return {
+        ...user,
+        offered_services: ids,
+        offered_services_labels: resolveServiceLabels(category, ids)
+    };
+}
+
+function enrichPostWithServices(post) {
+    if (!post) {
+        return post;
+    }
+    const ids = parseOfferedServices(post.offered_services);
+    const category = post.category || 'acompañantes-mujeres';
+    return {
+        ...post,
+        offered_services: ids,
+        offered_services_labels: resolveServiceLabels(category, ids)
+    };
+}
+
 function enrichPostsWithMediaUrls(posts, req) {
     const origin = getRequestOrigin(req);
     return (posts || []).map((post) => {
         const media = resolveMediaUrl(post.media_url || post.file_url || '', origin);
         const thumb = resolveMediaUrl(post.thumbnail_url || media, origin);
-        return {
+        return enrichPostWithServices({
             ...post,
             media_url: media,
             file_url: media,
@@ -201,7 +236,7 @@ function enrichPostsWithMediaUrls(posts, req) {
             profile_picture: post.profile_picture
                 ? resolveMediaUrl(post.profile_picture, origin)
                 : post.profile_picture
-        };
+        });
     });
 }
 
@@ -859,6 +894,7 @@ async function applyDatabaseMigrations(database) {
         used_at DATETIME,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
+    await exec('ALTER TABLE users ADD COLUMN offered_services TEXT');
 }
 
 async function ensureDatabaseSchemaUpToDate() {
@@ -1053,7 +1089,8 @@ async function findUserRecordById(userId) {
     return runDbGet(
         `SELECT id, username, email, full_name, bio, location, country, city, zone, zone_detail,
                 phone, telegram_username, service_price, service_price_unit, category,
-                profile_picture, cover_photo, is_verified, verification_status, age_verified, created_at
+                offered_services, profile_picture, cover_photo, is_verified, verification_status,
+                age_verified, created_at
          FROM users WHERE id = ?`,
         [userId]
     );
@@ -1063,29 +1100,32 @@ function mapUserForClient(user) {
     if (!user) {
         return null;
     }
+    const enriched = enrichUserWithServices(user);
     return {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        full_name: user.full_name,
-        bio: user.bio,
-        location: user.location,
-        country: user.country,
-        city: user.city,
-        zone: user.zone,
-        zone_detail: user.zone_detail,
-        phone: user.phone,
-        telegram_username: user.telegram_username,
-        service_price: user.service_price,
-        service_price_unit: user.service_price_unit,
-        category: user.category,
-        profile_picture: user.profile_picture,
-        cover_photo: user.cover_photo,
-        is_verified: user.is_verified,
-        age_verified: user.age_verified,
-        profile_complete: userHasCompleteProfile(user),
-        has_public_body_video: Boolean(resolvePublicBodyVideoUrl(user)),
-        created_at: user.created_at
+        id: enriched.id,
+        username: enriched.username,
+        email: enriched.email,
+        full_name: enriched.full_name,
+        bio: enriched.bio,
+        location: enriched.location,
+        country: enriched.country,
+        city: enriched.city,
+        zone: enriched.zone,
+        zone_detail: enriched.zone_detail,
+        phone: enriched.phone,
+        telegram_username: enriched.telegram_username,
+        service_price: enriched.service_price,
+        service_price_unit: enriched.service_price_unit,
+        category: enriched.category,
+        offered_services: enriched.offered_services,
+        offered_services_labels: enriched.offered_services_labels,
+        profile_picture: enriched.profile_picture,
+        cover_photo: enriched.cover_photo,
+        is_verified: enriched.is_verified,
+        age_verified: enriched.age_verified,
+        profile_complete: userHasCompleteProfile(enriched),
+        has_public_body_video: Boolean(resolvePublicBodyVideoUrl(enriched)),
+        created_at: enriched.created_at
     };
 }
 
@@ -1596,7 +1636,7 @@ app.get('/api/user/public/:userId', (req, res) => {
     db.get(
         `SELECT u.id, u.username, u.full_name, u.bio, u.location, u.country, u.city, u.zone, u.zone_detail,
                 u.phone, u.telegram_username, u.service_price, u.service_price_unit, u.category,
-                u.profile_picture, u.cover_photo, u.is_verified, u.created_at,
+                u.offered_services, u.profile_picture, u.cover_photo, u.is_verified, u.created_at,
                 u.followers_count, u.following_count, u.posts_count,
                 up.public_body_video_url, up.body_verification_video_url, up.face_obscured
          FROM users u
@@ -1612,7 +1652,7 @@ app.get('/api/user/public/:userId', (req, res) => {
                 return res.status(404).json({ error: 'Usuario no encontrado' });
             }
 
-            const user = { ...row };
+            const user = enrichUserWithServices({ ...row });
             user.public_body_video_url = resolvePublicBodyVideoUrl(user);
             delete user.body_verification_video_url;
 
@@ -1822,6 +1862,14 @@ app.get('/api/upload/info', (req, res) => {
     });
 });
 
+app.get('/api/services/catalog', (req, res) => {
+    const category = normalizeServiceCategory(req.query.category);
+    res.json({
+        category,
+        catalog: getCatalogForCategory(category)
+    });
+});
+
 // Update user profile (bio, location, etc)
 app.put('/api/user/profile', authenticateToken, async (req, res) => {
     try {
@@ -1846,7 +1894,8 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
             service_price,
             service_price_unit,
             age,
-            category
+            category,
+            offered_services
         } = req.body;
 
         if (isDevelopment) {
@@ -1863,7 +1912,8 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
                 service_price,
                 service_price_unit,
                 age,
-                category
+                category,
+                offered_services
             });
         }
 
@@ -1883,7 +1933,16 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
         }
 
         const ageValue = age && age !== '' ? parseInt(age, 10) : null;
-        const categoryValue = category && category !== '' ? category : null;
+        const categoryValue = category && category !== '' ? category : (user.category || null);
+
+        let servicesJson = user.offered_services || null;
+        if (offered_services !== undefined) {
+            const servicesCheck = validateOfferedServices(categoryValue, offered_services);
+            if (!servicesCheck.ok) {
+                return res.status(400).json({ error: servicesCheck.error });
+            }
+            servicesJson = servicesCheck.offered_services_json;
+        }
 
         const updateResult = await runDb(
             `UPDATE users SET 
@@ -1900,6 +1959,7 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
                 service_price_unit = ?,
                 age = ?,
                 category = ?,
+                offered_services = ?,
                 updated_at = CURRENT_TIMESTAMP 
             WHERE id = ?`,
             [
@@ -1916,12 +1976,21 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
                 profileCheck.service_price_unit,
                 ageValue,
                 categoryValue,
+                servicesJson,
                 userId
             ]
         );
 
         if (!updateResult.changes) {
             return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        if (offered_services !== undefined) {
+            try {
+                await refreshUserOfferedServicesInFeedIndex(userId, servicesJson, categoryValue);
+            } catch (indexErr) {
+                console.warn('No se pudo actualizar servicios en índice de feeds:', indexErr.message);
+            }
         }
 
         await saveDatabaseAsync();
@@ -2309,6 +2378,7 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
             city: author?.city || null,
             phone: author?.phone || null,
             telegram_username: author?.telegram_username || null,
+            offered_services: author?.offered_services || null,
             likes_count: 0,
             comments_count: 0,
             created_at: new Date().toISOString(),
@@ -2508,6 +2578,7 @@ app.get('/api/content/category/:category', async (req, res) => {
         });
     }
     const zona = zoneResolved?.ok ? zoneResolved.zone : '';
+    const servicio = String(req.query.servicio || req.query.service || '').trim();
     const categoryVariants = getCategorySearchVariants(category);
     const categoryPlaceholders = categoryVariants.map(() => '?').join(', ');
 
@@ -2524,6 +2595,9 @@ app.get('/api/content/category/:category', async (req, res) => {
         }
         if (ciudad) {
             list = list.filter((p) => postMatchesLocation(p, ciudad, zona));
+        }
+        if (servicio) {
+            list = list.filter((p) => postOffersService(p, servicio));
         }
         return list;
     };
@@ -2578,6 +2652,7 @@ app.get('/api/content/category/:category', async (req, res) => {
                     u.telegram_username,
                     u.service_price,
                     u.service_price_unit,
+                    u.offered_services,
                     u.bio
         FROM content_posts cp
         JOIN users u ON cp.user_id = u.id
@@ -2609,7 +2684,8 @@ app.get('/api/content/category/:category', async (req, res) => {
             category,
             source,
             city: ciudad || null,
-            zone: zona || null
+            zone: zona || null,
+            servicio: servicio || null
                 });
     } catch (err) {
         console.error('Error loading category content:', err.message || err);

@@ -60,6 +60,8 @@ test('userHasCompleteProfile detects missing fields', () => {
             telegram_username: '',
             service_price: 1000,
             service_price_unit: 'hour',
+            category: 'acompañantes-mujeres',
+            offered_services: '["hotel","compania"]',
             public_body_video_url: '/uploads/public.mp4'
         }),
         true
@@ -74,8 +76,25 @@ test('userHasCompleteProfile detects missing fields', () => {
             telegram_username: 'ana_mx',
             service_price: 1000,
             service_price_unit: 'hour',
+            category: 'acompañantes-mujeres',
+            offered_services: '["hotel","compania"]',
             public_body_video_url: '/uploads/public.mp4'
         }),
         true
+    );
+    assert.equal(
+        userHasCompleteProfile({
+            full_name: 'Ana',
+            country: 'MX',
+            city: 'Ciudad de México',
+            zone: 'Condesa',
+            phone: '+525551234567',
+            service_price: 1000,
+            service_price_unit: 'hour',
+            category: 'acompañantes-mujeres',
+            offered_services: '["hotel"]',
+            public_body_video_url: '/uploads/public.mp4'
+        }),
+        false
     );
 });

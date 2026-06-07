@@ -8,6 +8,7 @@
     let authToken = localStorage.getItem('authToken');
     let activeCiudad = '';
     let activeZona = '';
+    let activeServicio = '';
     let citySearchApi = null;
 
     function setActiveCity(cityName) {
@@ -126,6 +127,11 @@
         return (params.get('zona') || '').trim();
     }
 
+    function getServicioFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        return (params.get('servicio') || params.get('service') || '').trim();
+    }
+
     function updateUI() {
         authToken = typeof DeseoAuth !== 'undefined' ? DeseoAuth.getToken() : localStorage.getItem('authToken');
         const createBtn = document.getElementById('createBtn');
@@ -169,6 +175,7 @@
         const contactHtml = listing
             ? listing.getMessagingLinksHtml(post, { stopPropagation: true })
             : '';
+        const servicesHtml = listing ? listing.getServiceChipsHtml(post, { max: 3 }) : '';
         const verified = post.is_verified
             ? '<span class="badge-verified"><i class="fas fa-check-circle"></i> Verificado</span>'
             : '';
@@ -184,6 +191,7 @@
             <div class="profile-card-body">
                 <h3>${escapeHtml(name)}</h3>
                 <div class="profile-location"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(location)}</div>
+                ${servicesHtml}
                 <div class="profile-price-block">
                     <span class="profile-price">${escapeHtml(price)}</span>
                 </div>
@@ -208,6 +216,9 @@
         }
         if (activeZona) {
             params.set('zona', activeZona);
+        }
+        if (activeServicio) {
+            params.set('servicio', activeServicio);
         }
 
         try {
@@ -284,6 +295,7 @@
             }
         }
         activeZona = getZonaFromUrl() || localStorage.getItem('deseo_search_zone') || '';
+        activeServicio = getServicioFromUrl() || '';
 
         if (typeof DeseoLocationSearch !== 'undefined') {
             DeseoLocationSearch.getCities('MX').then(() => {

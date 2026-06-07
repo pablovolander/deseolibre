@@ -525,6 +525,96 @@
             width: 20px;
         }
 
+        .bio-detail-item.bio-services {
+            align-items: flex-start;
+        }
+
+        .bio-detail-item.bio-services i {
+            margin-top: 4px;
+        }
+
+        .services-chips,
+        .profile-services-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .service-chip-display {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(124, 58, 237, 0.15);
+            color: var(--text-light);
+            font-size: 0.78rem;
+            line-height: 1.3;
+        }
+
+        .service-catalog {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-height: 320px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .service-group-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .service-group-header h4 {
+            margin: 0;
+            font-size: 0.92rem;
+            color: var(--text-light);
+        }
+
+        .service-group-min {
+            font-size: 0.75rem;
+            color: var(--medium-gray);
+        }
+
+        .service-chip-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .service-chip {
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-light);
+            border-radius: 999px;
+            padding: 7px 12px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+        }
+
+        .service-chip:hover {
+            border-color: rgba(124, 58, 237, 0.5);
+        }
+
+        .service-chip.selected {
+            background: rgba(124, 58, 237, 0.35);
+            border-color: rgba(124, 58, 237, 0.8);
+        }
+
+        .service-catalog-loading,
+        .service-catalog-error,
+        .service-catalog-empty {
+            font-size: 0.88rem;
+            color: var(--medium-gray);
+        }
+
+        .service-catalog-error {
+            color: #f87171;
+        }
+
         /* BODY VERIFICATION VIDEO SECTION */
         .body-verification-section {
             margin: 25px 20px 0;
@@ -1750,6 +1840,10 @@
                             <i class="fas fa-tag"></i>
                             <span id="priceText"></span>
                         </div>
+                        <div class="bio-detail-item bio-services" id="servicesDetail" style="display:none;">
+                            <i class="fas fa-concierge-bell"></i>
+                            <div id="servicesChips" class="services-chips"></div>
+                        </div>
                         <div class="bio-detail-item" id="categoryDetail" style="display:none;">
                             <i class="fas fa-tag"></i>
                             <span id="categoryText"></span>
@@ -1999,6 +2093,11 @@
                             <option value="acompañantes-trans">🏳️‍⚧️ Acompañantes Trans</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>Servicios que ofreces *</label>
+                        <small style="color: var(--text-muted); display:block; margin-bottom:8px;">Marca solo lo que sí ofreces. Aparecerá en tu perfil y en el directorio.</small>
+                        <div id="editServicesCatalog" class="service-catalog"></div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn-action btn-secondary" onclick="closeEditProfileModal()">Cancelar</button>
@@ -2238,6 +2337,7 @@
     <script src="/js/contact-links.js"></script>
     <script src="/js/listing-card.js"></script>
     <script src="/js/public-body-video.js"></script>
+    <script src="/js/service-catalog-ui.js"></script>
     <script src="/js/service-pricing.js"></script>
     <script src="/js/components.js"></script>
     <script>
@@ -2848,6 +2948,19 @@
             } else {
                 priceEl.style.display = 'none';
             }
+
+            const servicesEl = document.getElementById('servicesDetail');
+            const servicesChipsEl = document.getElementById('servicesChips');
+            const labels = user.offered_services_labels || [];
+            if (servicesEl && servicesChipsEl) {
+                if (labels.length && typeof DeseoServiceCatalog !== 'undefined') {
+                    servicesEl.style.display = 'flex';
+                    servicesChipsEl.innerHTML = DeseoServiceCatalog.renderServiceChipsHtml(labels);
+                } else {
+                    servicesEl.style.display = 'none';
+                    servicesChipsEl.innerHTML = '';
+                }
+            }
         }
 
         // Save profile
@@ -2874,7 +2987,10 @@
                 service_price: profilePayload.service_price,
                 service_price_unit: profilePayload.service_price_unit,
                 age: document.getElementById('editAge').value,
-                category: document.getElementById('editCategory').value
+                category: document.getElementById('editCategory').value,
+                offered_services: typeof DeseoServiceCatalog !== 'undefined'
+                    ? DeseoServiceCatalog.readSelection('editServicesCatalog')
+                    : (currentUser?.offered_services || [])
             };
 
             try {
@@ -2972,7 +3088,7 @@
             document.getElementById('isPublicPost').checked = true;
 
             if (currentUser && !currentUser.profile_complete) {
-                showNotification('Completa tu perfil (nombre, país, ciudad, teléfono y tarifa) antes de publicar.', 'error');
+                showNotification('Completa tu perfil (nombre, ciudad, zona, teléfono, tarifa y servicios) antes de publicar.', 'error');
                 openEditProfileModal();
                 return;
             }
@@ -3022,7 +3138,7 @@
             }
         }
 
-        function openEditProfileModal() {
+        async function openEditProfileModal() {
             document.getElementById('editFullName').value = currentUser.full_name || '';
             document.getElementById('editBio').value = currentUser.bio || '';
             document.getElementById('editPhone').value = currentUser.phone || '';
@@ -3038,6 +3154,27 @@
                     zone: currentUser.zone,
                     zone_detail: currentUser.zone_detail
                 });
+            }
+            const category = document.getElementById('editCategory').value || currentUser.category || 'acompañantes-mujeres';
+            if (typeof DeseoServiceCatalog !== 'undefined') {
+                await DeseoServiceCatalog.mountEditor({
+                    containerId: 'editServicesCatalog',
+                    category,
+                    selectedIds: currentUser.offered_services || []
+                });
+                const catSelect = document.getElementById('editCategory');
+                if (catSelect && !catSelect.dataset.servicesBound) {
+                    catSelect.dataset.servicesBound = '1';
+                    catSelect.addEventListener('change', async () => {
+                        const current = DeseoServiceCatalog.readSelection('editServicesCatalog');
+                        const newCat = catSelect.value || 'acompañantes-mujeres';
+                        await DeseoServiceCatalog.mountEditor({
+                            containerId: 'editServicesCatalog',
+                            category: newCat,
+                            selectedIds: current
+                        });
+                    });
+                }
             }
             document.getElementById('editProfileModal').classList.add('active');
         }
