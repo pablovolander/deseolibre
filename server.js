@@ -57,7 +57,7 @@ const {
     resolveServiceLabels,
     postOffersService
 } = require('./lib/service-catalog');
-const { validateUserPublishCategory, resolveUserPublishCategory } = require('./lib/content-category');
+const { validateUserPublishCategory, resolveUserPublishCategory, validateUserCategoryChange, isCategoryLocked } = require('./lib/content-category');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1126,8 +1126,26 @@ function mapUserForClient(user) {
         age_verified: enriched.age_verified,
         profile_complete: userHasCompleteProfile(enriched),
         has_public_body_video: Boolean(resolvePublicBodyVideoUrl(enriched)),
+        publications_count: enriched.publications_count || 0,
+        category_locked: Boolean(enriched.category_locked),
         created_at: enriched.created_at
     };
+}
+
+async function attachPublicationMeta(user) {
+    if (!user?.id) {
+        return user;
+    }
+
+    const row = await runDbGet(
+        `SELECT
+            (SELECT COUNT(*) FROM content_posts WHERE user_id = ?) AS posts,
+            (SELECT COUNT(*) FROM reels WHERE user_id = ?) AS reels`,
+        [user.id, user.id]
+    );
+    user.publications_count = (row?.posts || 0) + (row?.reels || 0);
+    user.category_locked = isCategoryLocked(user, user.publications_count);
+    return user;
 }
 
 async function resolveAuthUser(req) {
@@ -1155,6 +1173,7 @@ async function resolveAuthUser(req) {
             user.face_obscured = profile.face_obscured;
             user.public_body_video_verified_at = profile.public_body_video_verified_at;
         }
+        await attachPublicationMeta(user);
     }
 
     return user;
@@ -1934,7 +1953,19 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
         }
 
         const ageValue = age && age !== '' ? parseInt(age, 10) : null;
-        const categoryValue = category && category !== '' ? category : (user.category || null);
+
+        const pubRow = await runDbGet(
+            `SELECT
+                (SELECT COUNT(*) FROM content_posts WHERE user_id = ?) AS posts,
+                (SELECT COUNT(*) FROM reels WHERE user_id = ?) AS reels`,
+            [userId, userId]
+        );
+        const publicationsCount = (pubRow?.posts || 0) + (pubRow?.reels || 0);
+        const categoryChange = validateUserCategoryChange(user, category, publicationsCount);
+        if (!categoryChange.ok) {
+            return res.status(403).json({ error: categoryChange.error });
+        }
+        const categoryValue = categoryChange.category ?? (user.category || null);
 
         let servicesJson = user.offered_services || null;
         if (offered_services !== undefined) {

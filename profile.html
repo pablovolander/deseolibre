@@ -2093,6 +2093,7 @@
                             <option value="acompañantes-hombres">👨 Acompañantes Hombres</option>
                             <option value="acompañantes-trans">🏳️‍⚧️ Acompañantes Trans</option>
                         </select>
+                        <small id="editCategoryHint" style="color: var(--text-muted); display:block; margin-top:6px;"></small>
                     </div>
                     <div class="form-group">
                         <label>Servicios que ofreces *</label>
@@ -3002,7 +3003,9 @@
                 service_price: profilePayload.service_price,
                 service_price_unit: profilePayload.service_price_unit,
                 age: document.getElementById('editAge').value,
-                category: document.getElementById('editCategory').value,
+                category: currentUser?.category_locked
+                    ? (currentUser.category || '')
+                    : document.getElementById('editCategory').value,
                 offered_services: typeof DeseoServiceCatalog !== 'undefined'
                     ? DeseoServiceCatalog.readSelection('editServicesCatalog')
                     : (currentUser?.offered_services || [])
@@ -3020,6 +3023,30 @@
                 await loadUserProfile();
             } catch (error) {
                 showNotification(error.message, 'error');
+            }
+        }
+
+        function configureEditProfileCategory() {
+            const catSelect = document.getElementById('editCategory');
+            const catHint = document.getElementById('editCategoryHint');
+            if (!catSelect) {
+                return;
+            }
+
+            if (currentUser?.category_locked) {
+                catSelect.value = currentUser.category || '';
+                catSelect.disabled = true;
+                if (catHint) {
+                    catHint.textContent = `Tu categoría está fijada en ${getCategoryName(currentUser.category)} porque ya tienes publicaciones.`;
+                }
+                return;
+            }
+
+            catSelect.disabled = false;
+            if (catHint) {
+                catHint.textContent = currentUser?.category
+                    ? ''
+                    : 'Elige tu categoría antes de publicar; se fijará con tu primera publicación.';
             }
         }
 
@@ -3211,6 +3238,7 @@
             document.getElementById('editPriceUnit').value = currentUser.service_price_unit || '';
             document.getElementById('editAge').value = currentUser.age || '';
             document.getElementById('editCategory').value = currentUser.category || '';
+            configureEditProfileCategory();
             if (typeof DeseoProfileFields !== 'undefined') {
                 DeseoProfileFields.initLocationPicker('edit', {
                     country: currentUser.country,
@@ -3230,6 +3258,9 @@
                 if (catSelect && !catSelect.dataset.servicesBound) {
                     catSelect.dataset.servicesBound = '1';
                     catSelect.addEventListener('change', async () => {
+                        if (currentUser?.category_locked) {
+                            return;
+                        }
                         const current = DeseoServiceCatalog.readSelection('editServicesCatalog');
                         const newCat = catSelect.value || 'acompañantes-mujeres';
                         await DeseoServiceCatalog.mountEditor({
@@ -3245,6 +3276,10 @@
 
         function closeEditProfileModal() {
             document.getElementById('editProfileModal').classList.remove('active');
+            const catHint = document.getElementById('editCategoryHint');
+            if (catHint) {
+                catHint.textContent = '';
+            }
         }
 
         function openChangeAvatarModal() {
