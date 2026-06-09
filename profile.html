@@ -125,6 +125,39 @@
             background: var(--btn-gradient-hover);
         }
 
+        .profile-danger-zone {
+            margin-top: 1.25rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .btn-delete-account {
+            background: transparent;
+            border: 1px solid rgba(248, 113, 113, 0.45);
+            color: #fca5a5;
+            padding: 0.55rem 1rem;
+            border-radius: 999px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .btn-delete-account:hover {
+            background: rgba(248, 113, 113, 0.12);
+            border-color: rgba(248, 113, 113, 0.75);
+        }
+
+        .delete-account-warning {
+            color: var(--medium-gray);
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-bottom: 1rem;
+        }
+
+        .delete-account-warning strong {
+            color: #fca5a5;
+        }
+
         /* PROFILE CONTAINER */
         .profile-container {
             max-width: 980px;
@@ -1804,6 +1837,11 @@
                     <div class="profile-actions" id="profileActions">
                         <!-- Buttons will be loaded dynamically based on whether it's own profile or not -->
                     </div>
+                    <div class="profile-danger-zone" id="profileDangerZone" style="display:none;">
+                        <button type="button" class="btn-delete-account" onclick="openDeleteAccountModal()">
+                            <i class="fas fa-user-times"></i> Eliminar mi cuenta
+                        </button>
+                    </div>
                             </div>
                         </div>
                         
@@ -2104,6 +2142,38 @@
                 <div class="modal-footer">
                     <button type="button" class="btn-action btn-secondary" onclick="closeEditProfileModal()">Cancelar</button>
                     <button type="submit" class="btn-action btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: DELETE ACCOUNT -->
+    <div class="modal" id="deleteAccountModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Eliminar cuenta</h2>
+                <button class="modal-close" onclick="closeDeleteAccountModal()">&times;</button>
+            </div>
+            <form id="deleteAccountForm" onsubmit="deleteAccount(event)">
+                <div class="modal-body">
+                    <p class="delete-account-warning">
+                        Esta acción es <strong>permanente</strong>. Se borrarán tu perfil, publicaciones, reels,
+                        verificación, fotos y videos asociados a tu cuenta.
+                    </p>
+                    <div class="form-group">
+                        <label for="deleteAccountPassword">Contraseña *</label>
+                        <input type="password" id="deleteAccountPassword" required autocomplete="current-password">
+                    </div>
+                    <div class="form-group">
+                        <label for="deleteAccountConfirm">Escribe <strong>ELIMINAR</strong> para confirmar *</label>
+                        <input type="text" id="deleteAccountConfirm" required placeholder="ELIMINAR" autocomplete="off">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-action btn-secondary" onclick="closeDeleteAccountModal()">Cancelar</button>
+                    <button type="submit" class="btn-action btn-primary" id="deleteAccountSubmitBtn" style="background:#dc2626;border-color:#dc2626;">
+                        Eliminar cuenta permanentemente
+                    </button>
                 </div>
             </form>
         </div>
@@ -2637,6 +2707,10 @@
         function hideEditButtons() {
             const editButtons = document.querySelectorAll('.edit-avatar-btn, .edit-cover-btn, .edit-profile-btn, .create-post-btn');
             editButtons.forEach(btn => btn.style.display = 'none');
+            const dangerZone = document.getElementById('profileDangerZone');
+            if (dangerZone) {
+                dangerZone.style.display = 'none';
+            }
         }
 
         // Load user posts
@@ -3660,7 +3734,15 @@
                         <i class="fas fa-share"></i>
                     </button>
                 `;
+                const dangerZone = document.getElementById('profileDangerZone');
+                if (dangerZone) {
+                    dangerZone.style.display = currentUser?.is_admin ? 'none' : 'block';
+                }
             } else {
+                const dangerZone = document.getElementById('profileDangerZone');
+                if (dangerZone) {
+                    dangerZone.style.display = 'none';
+                }
                 // Other user's profile - show follow button
                 const isFollowing = await checkIfFollowing(userId);
                 actionsContainer.innerHTML = `
@@ -3830,6 +3912,56 @@
             DeseoAuth.clearSession();
             authToken = null;
             window.location.href = 'index.html';
+        }
+
+        function openDeleteAccountModal() {
+            if (!isOwnProfile) {
+                return;
+            }
+            document.getElementById('deleteAccountModal').classList.add('active');
+        }
+
+        function closeDeleteAccountModal() {
+            document.getElementById('deleteAccountModal').classList.remove('active');
+            document.getElementById('deleteAccountForm').reset();
+        }
+
+        async function deleteAccount(event) {
+            event.preventDefault();
+            if (!isOwnProfile) {
+                return;
+            }
+
+            const password = document.getElementById('deleteAccountPassword').value;
+            const confirmText = document.getElementById('deleteAccountConfirm').value.trim();
+            const submitBtn = document.getElementById('deleteAccountSubmitBtn');
+
+            if (confirmText !== 'ELIMINAR') {
+                showNotification('Escribe ELIMINAR para confirmar', 'error');
+                return;
+            }
+
+            if (submitBtn) {
+                submitBtn.disabled = true;
+            }
+
+            try {
+                await apiCall(`${API_URL}/api/user/me`, {
+                    method: 'DELETE',
+                    body: JSON.stringify({ password, confirm: confirmText })
+                });
+
+                DeseoAuth.clearSession();
+                authToken = null;
+                sessionStorage.setItem('deseo_account_deleted', '1');
+                window.location.href = 'index.html';
+            } catch (error) {
+                showNotification(error.message || 'No se pudo eliminar la cuenta', 'error');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                }
+            }
         }
 
         // Close modals on outside click

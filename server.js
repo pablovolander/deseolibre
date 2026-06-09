@@ -20,8 +20,10 @@ const {
     syncPostsToFeedIndex,
     dedupePostsByUser,
     refreshUserProfilePictureInFeedIndex,
-    refreshUserOfferedServicesInFeedIndex
+    refreshUserOfferedServicesInFeedIndex,
+    removeUserFromFeedIndex
 } = require('./lib/category-feed-index');
+const { deleteUserAccountData } = require('./lib/delete-user-account');
 const {
     resolveCityQuery,
     resolveZoneQuery,
@@ -1091,7 +1093,7 @@ async function findUserRecordById(userId) {
         `SELECT id, username, email, full_name, bio, location, country, city, zone, zone_detail,
                 phone, telegram_username, service_price, service_price_unit, category,
                 offered_services, profile_picture, cover_photo, is_verified, verification_status,
-                age_verified, created_at
+                age_verified, is_admin, created_at
          FROM users WHERE id = ?`,
         [userId]
     );
@@ -1124,6 +1126,7 @@ function mapUserForClient(user) {
         cover_photo: enriched.cover_photo,
         is_verified: enriched.is_verified,
         age_verified: enriched.age_verified,
+        is_admin: Boolean(enriched.is_admin),
         profile_complete: userHasCompleteProfile(enriched),
         has_public_body_video: Boolean(resolvePublicBodyVideoUrl(enriched)),
         publications_count: enriched.publications_count || 0,
@@ -2033,6 +2036,67 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Error updating profile:', error);
         res.status(500).json({ error: 'Error al actualizar perfil' });
+    }
+});
+
+app.delete('/api/user/me', authenticateToken, async (req, res) => {
+    try {
+        const userId = getAuthUserId(req);
+        if (!userId) {
+            return res.status(401).json({ error: 'Sesión inválida' });
+        }
+
+        const { password, confirm } = req.body || {};
+        if (String(confirm || '').trim() !== 'ELIMINAR') {
+            return res.status(400).json({
+                error: 'Confirmación requerida',
+                message: 'Escribe ELIMINAR para confirmar la eliminación de tu cuenta.'
+            });
+        }
+
+        if (!password) {
+            return res.status(400).json({ error: 'Indica tu contraseña para eliminar la cuenta' });
+        }
+
+        const user = await runDbGet(
+            'SELECT id, password_hash, is_admin FROM users WHERE id = ?',
+            [userId]
+        );
+        if (!user) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        const passwordOk = await bcrypt.compare(String(password), user.password_hash);
+        if (!passwordOk) {
+            return res.status(403).json({ error: 'Contraseña incorrecta' });
+        }
+
+        const result = await deleteUserAccountData(
+            { run: runDb, all: runDbAll, get: runDbGet },
+            userId,
+            { localPublicDir: publicDir, allowAdminDelete: false }
+        );
+
+        if (!result.ok) {
+            const status = String(result.error || '').includes('administrador') ? 403 : 400;
+            return res.status(status).json({ error: result.error });
+        }
+
+        try {
+            await removeUserFromFeedIndex(userId);
+        } catch (indexErr) {
+            console.warn('No se pudo limpiar índice de feeds:', indexErr.message);
+        }
+
+        await saveDatabaseAsync();
+
+        res.json({
+            message: 'Tu cuenta y datos asociados fueron eliminados permanentemente.',
+            deleted: true
+        });
+    } catch (error) {
+        console.error('Error deleting user account:', error);
+        res.status(500).json({ error: 'No se pudo eliminar la cuenta. Intenta de nuevo.' });
     }
 });
 
