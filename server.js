@@ -1293,7 +1293,8 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
             phone,
             telegram_username,
             service_price,
-            service_price_unit
+            service_price_unit,
+            category
         } = req.body;
 
         if (!username || !email || !password) {
@@ -1309,8 +1310,9 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
             phone,
             telegram_username,
             service_price,
-            service_price_unit
-        });
+            service_price_unit,
+            category
+        }, { requireCategory: true });
         if (!profileCheck.ok) {
             return res.status(400).json({ error: profileCheck.error });
         }
@@ -1342,8 +1344,8 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
         const insertResult = await runDb(
             `INSERT INTO users (
                 username, email, password_hash, full_name, country, city, zone, zone_detail, location,
-                phone, telegram_username, service_price, service_price_unit
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                phone, telegram_username, service_price, service_price_unit, category
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 username,
                 email,
@@ -1357,7 +1359,8 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
                 profileCheck.phone,
                 profileCheck.telegram_username,
                 profileCheck.service_price,
-                profileCheck.service_price_unit
+                profileCheck.service_price_unit,
+                profileCheck.category
             ]
         );
 

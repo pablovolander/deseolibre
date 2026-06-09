@@ -2086,8 +2086,8 @@
                         <input type="number" id="editAge" placeholder="Ej: 25" min="18" max="99">
                     </div>
                     <div class="form-group">
-                        <label for="editCategory">Categoría principal:</label>
-                        <select id="editCategory">
+                        <label for="editCategory">Categoría principal *:</label>
+                        <select id="editCategory" required>
                             <option value="">Selecciona una categoría</option>
                             <option value="acompañantes-mujeres">👩 Acompañantes Mujeres</option>
                             <option value="acompañantes-hombres">👨 Acompañantes Hombres</option>
@@ -3036,6 +3036,7 @@
             if (currentUser?.category_locked) {
                 catSelect.value = currentUser.category || '';
                 catSelect.disabled = true;
+                catSelect.required = false;
                 if (catHint) {
                     catHint.textContent = `Tu categoría está fijada en ${getCategoryName(currentUser.category)} porque ya tienes publicaciones.`;
                 }
@@ -3043,10 +3044,11 @@
             }
 
             catSelect.disabled = false;
+            catSelect.required = true;
             if (catHint) {
                 catHint.textContent = currentUser?.category
-                    ? ''
-                    : 'Elige tu categoría antes de publicar; se fijará con tu primera publicación.';
+                    ? 'No podrás cambiar la categoría después de tu primera publicación.'
+                    : 'Elige en qué directorio publicarás (Mujeres, Hombres o Trans).';
             }
         }
 
@@ -3171,7 +3173,7 @@
             document.getElementById('isPublicPost').checked = true;
 
             if (currentUser && !currentUser.profile_complete) {
-                showNotification('Completa tu perfil (nombre, ciudad, zona, teléfono, tarifa y servicios) antes de publicar.', 'error');
+                showNotification('Completa tu perfil (nombre, categoría, ciudad, zona, teléfono, tarifa y servicios) antes de publicar.', 'error');
                 openEditProfileModal();
                 return;
             }

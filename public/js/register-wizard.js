@@ -102,7 +102,10 @@
         if (step === 2) {
             if (typeof DeseoProfileFields === 'undefined') return 'Campos de perfil no disponibles.';
             const payload = DeseoProfileFields.readProfilePayload('reg');
-            return payload.ok ? null : payload.error;
+            if (!payload.ok) return payload.error;
+            const category = ($('regCategory')?.value || '').trim();
+            if (!category) return 'Selecciona tu categoría (Mujeres, Hombres o Trans).';
+            return null;
         }
         if (step === 3) {
             const vType = $('regVerificationType')?.value;
@@ -266,7 +269,8 @@
                     phone: profilePayload.phone,
                     telegram_username: profilePayload.telegram_username,
                     service_price: profilePayload.service_price,
-                    service_price_unit: profilePayload.service_price_unit
+                    service_price_unit: profilePayload.service_price_unit,
+                    category: $('regCategory').value.trim()
                 })
             });
             const regData = await regRes.json().catch(() => ({}));
@@ -363,9 +367,32 @@
         $('registerForm')?.addEventListener('submit', (e) => e.preventDefault());
     }
 
+    function applyRegisterCategoryFromUrl() {
+        const params = new URLSearchParams(global.location.search);
+        const raw = (params.get('category') || sessionStorage.getItem('deseo_register_category') || '').trim();
+        const aliases = {
+            mujeres: 'acompañantes-mujeres',
+            hombres: 'acompañantes-hombres',
+            trans: 'acompañantes-trans'
+        };
+        const category = aliases[raw] || raw;
+        const sel = $('regCategory');
+        if (!sel || !category) {
+            return;
+        }
+        const hasOption = Array.from(sel.options).some((opt) => opt.value === category);
+        if (hasOption) {
+            sel.value = category;
+        }
+    }
+
     function open() {
         reset();
         loadLimits();
+        if (typeof DeseoProfileFields !== 'undefined') {
+            DeseoProfileFields.initLocationPicker('reg').catch(() => {});
+        }
+        applyRegisterCategoryFromUrl();
     }
 
     global.DeseoRegisterWizard = {

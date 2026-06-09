@@ -14,6 +14,32 @@ test('validateCountryCity accepts Mexican city', () => {
     assert.equal(result.city, 'Guadalajara');
 });
 
+test('validateUserProfileFields requires category when flagged', () => {
+    const missing = validateUserProfileFields({
+        full_name: 'Ana',
+        country: 'MX',
+        city: 'Ciudad de México',
+        zone: 'Polanco',
+        phone: '+52 555 123 4567',
+        service_price: 2000,
+        service_price_unit: 'hour'
+    }, { requireCategory: true });
+    assert.equal(missing.ok, false);
+
+    const ok = validateUserProfileFields({
+        full_name: 'Ana',
+        country: 'MX',
+        city: 'Ciudad de México',
+        zone: 'Polanco',
+        phone: '+52 555 123 4567',
+        service_price: 2000,
+        service_price_unit: 'hour',
+        category: 'acompañantes-hombres'
+    }, { requireCategory: true });
+    assert.equal(ok.ok, true);
+    assert.equal(ok.category, 'acompañantes-hombres');
+});
+
 test('validateUserProfileFields requires full profile', () => {
     const result = validateUserProfileFields({
         full_name: 'Ana',
@@ -46,6 +72,29 @@ test('validateUserProfileFields accepts profile without telegram', () => {
     });
     assert.equal(result.ok, true);
     assert.equal(result.telegram_username, '');
+});
+
+test('validateProfileCategory requires category on register', () => {
+    const { validateProfileCategory } = require('../lib/content-category');
+    assert.equal(validateProfileCategory('', true).ok, false);
+    assert.equal(validateProfileCategory('acompañantes-trans', true).ok, true);
+});
+
+test('userHasCompleteProfile requires category', () => {
+    assert.equal(
+        userHasCompleteProfile({
+            full_name: 'Ana',
+            country: 'MX',
+            city: 'Ciudad de México',
+            zone: 'Condesa',
+            phone: '+525551234567',
+            service_price: 1000,
+            service_price_unit: 'hour',
+            offered_services: '["hotel","compania"]',
+            public_body_video_url: '/uploads/public.mp4'
+        }),
+        false
+    );
 });
 
 test('userHasCompleteProfile detects missing fields', () => {

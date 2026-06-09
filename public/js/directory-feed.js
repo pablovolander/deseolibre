@@ -475,7 +475,9 @@
 
     window.showRegister = function () {
         sessionStorage.setItem('deseo_open_register', '1');
-        window.location.href = 'index.html?register=1';
+        sessionStorage.setItem('deseo_register_category', CATEGORY);
+        const params = new URLSearchParams({ register: '1', category: CATEGORY });
+        window.location.href = `index.html?${params}`;
     };
 
     window.showCreatePost = async function () {
