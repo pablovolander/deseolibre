@@ -1864,8 +1864,16 @@
                         <i class="fas fa-check-circle verified-badge" id="verifiedBadge" style="display:none;"></i>
                     </div>
                     <p class="profile-username" id="profileUsername">@username</p>
-                    <div class="profile-actions" id="profileActions">
-                        <!-- Buttons will be loaded dynamically based on whether it's own profile or not -->
+                    <div class="profile-actions" id="profileActions" style="display:none;">
+                        <button type="button" class="btn-action btn-primary create-post-btn" onclick="openCreatePostModal()">
+                            <i class="fas fa-plus"></i> Crear Publicación
+                        </button>
+                        <button type="button" class="btn-action btn-secondary edit-profile-btn" onclick="openEditProfileModal()">
+                            <i class="fas fa-edit"></i> Editar Perfil
+                        </button>
+                        <button type="button" class="btn-action btn-secondary" onclick="shareProfile()">
+                            <i class="fas fa-share"></i>
+                        </button>
                     </div>
                     <div class="profile-danger-zone" id="profileDangerZone">
                         <button type="button" class="btn-delete-account" id="deleteAccountBtn" onclick="openDeleteAccountModal()">
@@ -2430,6 +2438,7 @@
 
     <script src="/js/api-config.js"></script>
     <script src="/js/auth-session.js"></script>
+    <script src="/js/profile-bootstrap.js"></script>
     <script src="/js/age-gate.js"></script>
     <script src="/js/api-errors.js"></script>
     <script src="/js/verification-gate.js"></script>
@@ -2552,18 +2561,74 @@
             banner.style.display = 'block';
         }
 
+        function resolveCurrentUserFromStorage() {
+            let user = typeof DeseoAuth !== 'undefined' ? DeseoAuth.getCachedUser() : null;
+            if (!user && authToken && typeof DeseoProfileBootstrap !== 'undefined') {
+                user = DeseoProfileBootstrap.decodeTokenUser(authToken);
+            }
+            return user;
+        }
+
         async function safeLoadOwnProfileUI() {
             if (!currentUser) {
                 return;
             }
             await loadUserProfile();
-            await loadUserStats(currentUser.id);
+            try {
+                await loadUserStats(currentUser.id);
+            } catch (statsError) {
+                console.warn('No se pudieron cargar estadísticas:', statsError);
+            }
             await loadProfileActions(currentUser.id, true);
             showNavDeleteAccount(!currentUser.is_admin);
         }
 
+        async function tryVerifyAndLoadProfile(timeoutMs) {
+            const limit = timeoutMs || 10000;
+            try {
+                const data = await Promise.race([
+                    apiCall(`${API_URL}/api/auth/verify`),
+                    new Promise((_, reject) => {
+                        setTimeout(() => reject(new Error('Tiempo de espera agotado')), limit);
+                    })
+                ]);
+                if (data?.user) {
+                    currentUser = data.user;
+                    DeseoAuth.setSession(authToken, data.user);
+                    isOwnProfile = true;
+                    await safeLoadOwnProfileUI();
+                    return true;
+                }
+            } catch (error) {
+                console.warn('Verificación de sesión:', error.message || error);
+            }
+            return false;
+        }
+
+        function refreshSessionInBackground() {
+            if (!authToken) {
+                return;
+            }
+            verifyToken()
+                .then(() => {
+                    currentUser = DeseoAuth.getCachedUser() || currentUser;
+                    if (isOwnProfile && currentUser) {
+                        return safeLoadOwnProfileUI();
+                    }
+                    return null;
+                })
+                .then(() => renderProfileSetupBanner())
+                .catch((error) => {
+                    console.warn('Actualización de sesión en segundo plano:', error);
+                });
+        }
+
         // Check authentication on page load
         document.addEventListener('DOMContentLoaded', function() {
+            if (typeof DeseoProfileBootstrap !== 'undefined') {
+                DeseoProfileBootstrap.paintProfileHeader();
+            }
+
             if (typeof DeseoAuth === 'undefined') {
                 setProfileLoadError('No se pudo cargar la sesión. Recarga la página.');
                 return;
@@ -2571,7 +2636,7 @@
 
             viewingUserId = resolveViewingUserId();
             authToken = DeseoAuth.getToken();
-            currentUser = DeseoAuth.getCachedUser();
+            currentUser = resolveCurrentUserFromStorage();
 
             if (!authToken && !viewingUserId) {
                 window.location.href = 'index.html';
@@ -2588,15 +2653,16 @@
         async function initProfile() {
             viewingUserId = resolveViewingUserId();
             authToken = typeof DeseoAuth !== 'undefined' ? DeseoAuth.getToken() : null;
-            currentUser = currentUser || (typeof DeseoAuth !== 'undefined' ? DeseoAuth.getCachedUser() : null);
+            currentUser = resolveCurrentUserFromStorage();
+
+            if (typeof DeseoProfileBootstrap !== 'undefined') {
+                DeseoProfileBootstrap.paintProfileHeader();
+            }
 
             try {
                 const viewingOther = isViewingOtherProfile(viewingUserId, currentUser?.id);
 
-                if (!viewingOther && currentUser) {
-                    isOwnProfile = true;
-                    await safeLoadOwnProfileUI();
-                } else if (viewingOther) {
+                if (viewingOther) {
                     isOwnProfile = false;
                     await loadPublicProfile(viewingUserId);
                     await loadUserStats(viewingUserId);
@@ -2610,25 +2676,28 @@
                     await loadProfileActions(viewingUserId, false);
                     hideEditButtons();
                     showNavDeleteAccount(false);
-                }
-
-                if (authToken) {
-                    await verifyToken();
-                    currentUser = currentUser || DeseoAuth.getCachedUser();
-                }
-
-                if (viewingUserId && currentUser && String(viewingUserId) === String(currentUser.id)) {
-                    window.history.replaceState({}, '', 'profile.html');
-                    viewingUserId = null;
-                }
-
-                if (!isViewingOtherProfile(viewingUserId, currentUser?.id)) {
+                } else {
                     isOwnProfile = true;
-                    if (!currentUser) {
+                    if (viewingUserId && currentUser && String(viewingUserId) === String(currentUser.id)) {
+                        window.history.replaceState({}, '', 'profile.html');
+                        viewingUserId = null;
+                    }
+
+                    if (currentUser) {
+                        await safeLoadOwnProfileUI();
+                    } else if (authToken) {
+                        const loaded = await tryVerifyAndLoadProfile();
+                        if (!loaded) {
+                            currentUser = resolveCurrentUserFromStorage();
+                            if (currentUser) {
+                                await safeLoadOwnProfileUI();
+                            } else {
+                                setProfileLoadError('No se pudo cargar tu sesión. Cierra sesión e inicia de nuevo.');
+                            }
+                        }
+                    } else {
                         setProfileLoadError('Inicia sesión de nuevo para ver tu perfil.');
                         showNavDeleteAccount(false);
-                    } else {
-                        await safeLoadOwnProfileUI();
                     }
                 }
 
@@ -2637,6 +2706,9 @@
                 renderProfileSetupBanner();
             } catch (error) {
                 console.error('Error initializing profile:', error);
+                if (typeof DeseoProfileBootstrap !== 'undefined') {
+                    DeseoProfileBootstrap.paintProfileHeader();
+                }
                 if (currentUser && isOwnProfile) {
                     try {
                         await safeLoadOwnProfileUI();
@@ -2658,6 +2730,8 @@
                     }
                 }
             }
+
+            refreshSessionInBackground();
         }
 
         // API functions
@@ -2692,7 +2766,7 @@
                     return null;
                 }
 
-                currentUser = DeseoAuth.getCachedUser();
+                currentUser = DeseoAuth.getCachedUser() || resolveCurrentUserFromStorage();
                 if (!currentUser) {
                     showNotification('No se pudo verificar la sesión. Recarga la página.', 'error');
                 }
@@ -3546,6 +3620,18 @@
         }
 
         async function openEditProfileModal() {
+            if (!currentUser && authToken) {
+                currentUser = resolveCurrentUserFromStorage();
+                if (!currentUser?.category) {
+                    await tryVerifyAndLoadProfile(8000);
+                    currentUser = currentUser || resolveCurrentUserFromStorage();
+                }
+            }
+            if (!currentUser) {
+                showNotification('Inicia sesión de nuevo para editar tu perfil.', 'error');
+                return;
+            }
+
             document.getElementById('editFullName').value = currentUser.full_name || '';
             document.getElementById('editBio').value = currentUser.bio || '';
             document.getElementById('editPhone').value = currentUser.phone || '';
@@ -3977,14 +4063,21 @@
                     </button>
                 `;
                 const dangerZone = document.getElementById('profileDangerZone');
+                const deleteBtn = document.getElementById('deleteAccountBtn');
+                const hideDelete = Boolean(currentUser?.is_admin);
                 if (dangerZone) {
-                    dangerZone.style.display = currentUser?.is_admin ? 'none' : 'block';
+                    dangerZone.style.display = hideDelete ? 'none' : 'block';
                 }
+                if (deleteBtn) {
+                    deleteBtn.style.display = hideDelete ? 'none' : 'inline-flex';
+                }
+                showNavDeleteAccount(!hideDelete);
             } else {
                 const dangerZone = document.getElementById('profileDangerZone');
                 if (dangerZone) {
                     dangerZone.style.display = 'none';
                 }
+                showNavDeleteAccount(false);
                 // Other user's profile - show follow button
                 const isFollowing = await checkIfFollowing(userId);
                 actionsContainer.innerHTML = `
