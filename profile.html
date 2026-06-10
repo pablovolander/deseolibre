@@ -125,26 +125,24 @@
             background: var(--btn-gradient-hover);
         }
 
-        .profile-danger-zone {
-            margin-top: 1.25rem;
-            padding-top: 1rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.12);
+        .profile-footer-actions {
+            text-align: center;
+            padding: 2rem 20px 3rem;
         }
 
-        .btn-delete-account {
-            background: transparent;
-            border: 1px solid rgba(248, 113, 113, 0.45);
-            color: #fca5a5;
-            padding: 0.55rem 1rem;
-            border-radius: 999px;
+        .btn-delete-account-subtle {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.35);
+            font-size: 0.78rem;
             cursor: pointer;
-            font-size: 0.85rem;
-            transition: background 0.2s, border-color 0.2s;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            padding: 0.25rem 0.5rem;
         }
 
-        .btn-delete-account:hover {
-            background: rgba(248, 113, 113, 0.12);
-            border-color: rgba(248, 113, 113, 0.75);
+        .btn-delete-account-subtle:hover {
+            color: rgba(252, 165, 165, 0.8);
         }
 
         .delete-account-warning {
@@ -1827,9 +1825,6 @@
                     <ul class="nav-menu">
                 <li><a href="home.html"><i class="fas fa-home"></i> Inicio</a></li>
                 <li><a href="profile.html"><i class="fas fa-user"></i> Mi Perfil</a></li>
-                <li id="navDeleteAccountItem" style="display:none;">
-                    <a href="#" onclick="openDeleteAccountModal(); return false;"><i class="fas fa-user-times"></i> Eliminar cuenta</a>
-                </li>
                 <li><button class="btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Salir</button></li>
                     </ul>
         </div>
@@ -1873,11 +1868,6 @@
                         </button>
                         <button type="button" class="btn-action btn-secondary" onclick="shareProfile()">
                             <i class="fas fa-share"></i>
-                        </button>
-                    </div>
-                    <div class="profile-danger-zone" id="profileDangerZone">
-                        <button type="button" class="btn-delete-account" id="deleteAccountBtn" onclick="openDeleteAccountModal()">
-                            <i class="fas fa-user-times"></i> Eliminar mi cuenta
                         </button>
                     </div>
                             </div>
@@ -1983,6 +1973,12 @@
                 </button>
                     </div>
                 </div>
+
+        <footer class="profile-footer-actions" id="profileDangerZone" style="display:none;">
+            <button type="button" class="btn-delete-account-subtle" id="deleteAccountBtn" onclick="openDeleteAccountModal()">
+                Eliminar mi cuenta
+            </button>
+        </footer>
             </div>
 
     <!-- MODAL: CREATE POST -->
@@ -2509,10 +2505,10 @@
 
         const VERCEL_MAX_UPLOAD_BYTES = 4.5 * 1024 * 1024;
 
-        function showNavDeleteAccount(visible) {
-            const navItem = document.getElementById('navDeleteAccountItem');
-            if (navItem) {
-                navItem.style.display = visible ? 'list-item' : 'none';
+        function showDeleteAccountLink(visible) {
+            const footer = document.getElementById('profileDangerZone');
+            if (footer) {
+                footer.style.display = visible ? 'block' : 'none';
             }
         }
 
@@ -2580,7 +2576,7 @@
                 console.warn('No se pudieron cargar estadísticas:', statsError);
             }
             await loadProfileActions(currentUser.id, true);
-            showNavDeleteAccount(!currentUser.is_admin);
+            showDeleteAccountLink(!currentUser.is_admin);
         }
 
         async function tryVerifyAndLoadProfile(timeoutMs) {
@@ -2668,14 +2664,14 @@
                     await loadUserStats(viewingUserId);
                     await loadProfileActions(viewingUserId, false);
                     hideEditButtons();
-                    showNavDeleteAccount(false);
+                    showDeleteAccountLink(false);
                 } else if (viewingUserId && !currentUser) {
                     isOwnProfile = false;
                     await loadPublicProfile(viewingUserId);
                     await loadUserStats(viewingUserId);
                     await loadProfileActions(viewingUserId, false);
                     hideEditButtons();
-                    showNavDeleteAccount(false);
+                    showDeleteAccountLink(false);
                 } else {
                     isOwnProfile = true;
                     if (viewingUserId && currentUser && String(viewingUserId) === String(currentUser.id)) {
@@ -2697,7 +2693,7 @@
                         }
                     } else {
                         setProfileLoadError('Inicia sesión de nuevo para ver tu perfil.');
-                        showNavDeleteAccount(false);
+                        showDeleteAccountLink(false);
                     }
                 }
 
@@ -2724,7 +2720,7 @@
                 if (isOwnProfile && currentUser) {
                     try {
                         await loadProfileActions(currentUser.id, true);
-                        showNavDeleteAccount(!currentUser.is_admin);
+                        showDeleteAccountLink(!currentUser.is_admin);
                     } catch (finallyError) {
                         console.error('Error al cargar acciones del perfil:', finallyError);
                     }
@@ -4062,23 +4058,11 @@
                         <i class="fas fa-share"></i>
                     </button>
                 `;
-                const dangerZone = document.getElementById('profileDangerZone');
-                const deleteBtn = document.getElementById('deleteAccountBtn');
                 const hideDelete = Boolean(currentUser?.is_admin);
-                if (dangerZone) {
-                    dangerZone.style.display = hideDelete ? 'none' : 'block';
-                }
-                if (deleteBtn) {
-                    deleteBtn.style.display = hideDelete ? 'none' : 'inline-flex';
-                }
-                showNavDeleteAccount(!hideDelete);
+                showDeleteAccountLink(!hideDelete);
             } else {
                 actionsContainer.style.display = 'flex';
-                const dangerZone = document.getElementById('profileDangerZone');
-                if (dangerZone) {
-                    dangerZone.style.display = 'none';
-                }
-                showNavDeleteAccount(false);
+                showDeleteAccountLink(false);
                 // Other user's profile - show follow button
                 const isFollowing = await checkIfFollowing(userId);
                 actionsContainer.innerHTML = `

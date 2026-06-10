@@ -101,13 +101,9 @@
         if (!viewId || (user.id != null && String(viewId) === String(user.id))) {
             paintOwnProfileActions();
             global.document.body.classList.add('deseo-own-profile');
-            const dangerZone = global.document.getElementById('profileDangerZone');
-            if (dangerZone) {
-                dangerZone.style.display = 'block';
-            }
-            const navDelete = global.document.getElementById('navDeleteAccountItem');
-            if (navDelete) {
-                navDelete.style.display = 'list-item';
+            const footer = global.document.getElementById('profileDangerZone');
+            if (footer) {
+                footer.style.display = 'block';
             }
         }
     }
