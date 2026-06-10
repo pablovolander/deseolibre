@@ -3196,7 +3196,6 @@
                 return;
             }
 
-            const lockedCategory = resolveProfileCategory(currentUser?.category);
             if (lockedCategory && category !== lockedCategory) {
                 showNotification(`Solo puedes publicar en ${getCategoryName(lockedCategory)}`, 'error');
                 return;

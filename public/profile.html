@@ -3196,7 +3196,6 @@
                 return;
             }
 
-            const lockedCategory = resolveProfileCategory(currentUser?.category);
             if (lockedCategory && category !== lockedCategory) {
                 showNotification(`Solo puedes publicar en ${getCategoryName(lockedCategory)}`, 'error');
                 return;
@@ -4050,6 +4049,7 @@
             const actionsContainer = document.getElementById('profileActions');
             
             if (isOwn) {
+                actionsContainer.style.display = 'flex';
                 // Own profile - show edit buttons
                 actionsContainer.innerHTML = `
                     <button class="btn-action btn-primary" onclick="openCreatePostModal()">
@@ -4073,6 +4073,7 @@
                 }
                 showNavDeleteAccount(!hideDelete);
             } else {
+                actionsContainer.style.display = 'flex';
                 const dangerZone = document.getElementById('profileDangerZone');
                 if (dangerZone) {
                     dangerZone.style.display = 'none';
