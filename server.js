@@ -1418,17 +1418,24 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
             { expiresIn: '30d' }
         );
 
+        const profile = await runDbGet(
+            `SELECT public_body_video_url, body_verification_video_url, face_obscured,
+                    public_body_video_verified_at
+             FROM user_profiles WHERE user_id = ?`,
+            [user.id]
+        );
+        if (profile) {
+            user.public_body_video_url = profile.public_body_video_url;
+            user.body_verification_video_url = profile.body_verification_video_url;
+            user.face_obscured = profile.face_obscured;
+            user.public_body_video_verified_at = profile.public_body_video_verified_at;
+        }
+        await attachPublicationMeta(user);
+
         res.json({
             message: 'Login exitoso',
             token,
-            user: {
-                id: user.id,
-                username: user.username,
-                email: user.email,
-                age_verified: user.age_verified,
-                is_verified: user.is_verified,
-                verification_status: user.verification_status
-            }
+            user: mapUserForClient(user)
         });
     } catch (error) {
         console.error('Error en login:', error);
@@ -1727,6 +1734,11 @@ app.get('/api/user/:userId/posts', (req, res) => {
 // Verify token endpoint
 app.get('/api/auth/verify', authenticateToken, async (req, res) => {
     try {
+        await dbReady;
+        if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
+            await refreshDatabaseFromBlob();
+        }
+
         const user = await resolveAuthUser(req);
         if (!user) {
             return res.status(404).json({

@@ -537,8 +537,11 @@
             if (data.verificationFailed) {
                 showError('Cuenta creada, pero falló la verificación. Usa «Verificar identidad» para completarla.');
             } else {
-                showSuccess('¡Registro completo! Ya puedes publicar anuncios y reels.');
+                showSuccess('¡Registro completo! Completa tu perfil para publicar.');
             }
+            setTimeout(() => {
+                window.location.href = 'profile.html';
+            }, 1200);
         }
 
         async function verifyToken() {

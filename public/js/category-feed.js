@@ -139,11 +139,33 @@
         window.location.href = 'index.html?register=1';
     };
 
+    async function ensureProfileCompleteForPublish() {
+        let user = typeof DeseoAuth !== 'undefined' ? DeseoAuth.getCachedUser() : null;
+        if (authToken && (!user || user.profile_complete === undefined)) {
+            try {
+                user = await DeseoAuth.verifySession(API_URL);
+            } catch {
+                user = null;
+            }
+        }
+        if (user && user.profile_complete === false) {
+            showMessage('Completa tu perfil (servicios, video corporal y datos) en Mi perfil antes de publicar.', 'error');
+            setTimeout(() => {
+                window.location.href = 'profile.html';
+            }, 1800);
+            return false;
+        }
+        return true;
+    }
+
     window.showCreatePost = async function () {
         authToken = typeof DeseoAuth !== 'undefined' ? DeseoAuth.getToken() : localStorage.getItem('authToken');
         if (!authToken) {
             showMessage('Debes iniciar sesión primero', 'error');
             showRegister();
+            return;
+        }
+        if (!(await ensureProfileCompleteForPublish())) {
             return;
         }
         if (typeof DeseoVerification !== 'undefined') {

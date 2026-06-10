@@ -34,7 +34,7 @@ function createPostCard(post, options = {}) {
     if (showUser && post.username) {
         userHeader = `
             <div class="post-header">
-                <div class="post-user-info" onclick="window.location.href='profile.html?userId=${post.user_id}'">
+                <div class="post-user-info" onclick="window.location.href='profile.html?user=${post.user_id}'">
                     <img src="${typeof resolveMediaUrl === 'function' ? resolveMediaUrl(post.profile_picture || '/uploads/default-avatar.png') : `${API_URL}${post.profile_picture || '/uploads/default-avatar.png'}`}" 
                          alt="${post.username}" 
                          class="post-user-avatar">
@@ -173,7 +173,7 @@ function createUserCard(user, options = {}) {
     ` : '';
 
     card.innerHTML = `
-        <div class="user-card-header" onclick="window.location.href='profile.html?userId=${user.id}'">
+        <div class="user-card-header" onclick="window.location.href='profile.html?user=${user.id}'">
             <img src="${API_URL}${user.profile_picture || '/uploads/default-avatar.png'}" 
                  alt="${user.username}" 
                  class="user-avatar">
@@ -251,7 +251,7 @@ function createCommentElement(comment) {
              class="comment-avatar">
         <div class="comment-content">
             <div class="comment-header">
-                <span class="comment-username" onclick="window.location.href='profile.html?userId=${comment.user_id}'">
+                <span class="comment-username" onclick="window.location.href='profile.html?user=${comment.user_id}'">
                     ${comment.username}
                     ${comment.is_verified ? '<i class="fas fa-check-circle verified-badge"></i>' : ''}
                 </span>
@@ -482,7 +482,7 @@ function handleNotificationClick(notification) {
     if (notification.related_post_id) {
         window.location.href = `post.html?id=${notification.related_post_id}`;
     } else if (notification.related_user_id) {
-        window.location.href = `profile.html?userId=${notification.related_user_id}`;
+        window.location.href = `profile.html?user=${notification.related_user_id}`;
     }
 }
 

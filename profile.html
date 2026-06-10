@@ -205,6 +205,31 @@
             opacity: 1;
         }
 
+        .cover-photo-section.own-profile .cover-photo-overlay {
+            background: rgba(0, 0, 0, 0.25);
+            opacity: 1;
+        }
+
+        .profile-setup-banner {
+            margin: 0 20px 16px;
+            padding: 14px 18px;
+            border-radius: 12px;
+            background: rgba(255, 193, 7, 0.15);
+            border: 1px solid rgba(255, 193, 7, 0.45);
+            color: var(--text-light);
+        }
+
+        .profile-setup-banner-inner p {
+            margin: 0 0 12px;
+            line-height: 1.5;
+        }
+
+        .profile-setup-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
         .change-cover-btn {
             background: rgba(255, 255, 255, 0.16);
             color: var(--text-light);
@@ -1819,6 +1844,8 @@
             </div>
         </div>
 
+        <div id="profileSetupBanner" class="profile-setup-banner" style="display:none;" role="alert"></div>
+
         <!-- PROFILE HEADER -->
                 <div class="profile-header">
             <div class="profile-info-row">
@@ -2432,10 +2459,80 @@
             return headers;
         }
 
+        function resolveViewingUserId() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('user') || urlParams.get('userId') || null;
+        }
+
+        function isViewingOtherProfile(viewId, ownId) {
+            if (!viewId || ownId == null) {
+                return false;
+            }
+            return String(viewId) !== String(ownId);
+        }
+
+        function profileMediaUrl(path) {
+            if (!path) {
+                return '';
+            }
+            if (typeof resolveMediaUrl === 'function') {
+                return resolveMediaUrl(path);
+            }
+            if (path.startsWith('http://') || path.startsWith('https://')) {
+                return path;
+            }
+            return `${API_URL}${path.startsWith('/') ? path : `/${path}`}`;
+        }
+
+        function setProfileLoadError(message) {
+            const nameEl = document.getElementById('profileName');
+            if (nameEl) {
+                nameEl.textContent = 'Perfil no disponible';
+            }
+            const userEl = document.getElementById('profileUsername');
+            if (userEl) {
+                userEl.textContent = message;
+            }
+        }
+
+        function renderProfileSetupBanner() {
+            const banner = document.getElementById('profileSetupBanner');
+            if (!banner || !isOwnProfile || !currentUser) {
+                if (banner) {
+                    banner.style.display = 'none';
+                }
+                return;
+            }
+
+            if (currentUser.profile_complete && currentUser.is_verified) {
+                banner.style.display = 'none';
+                return;
+            }
+
+            const items = [];
+            if (!currentUser.profile_complete) {
+                items.push('servicios, video corporal público y datos del perfil');
+            }
+            if (!currentUser.is_verified) {
+                items.push('verificación de identidad');
+            }
+
+            banner.innerHTML = `
+                <div class="profile-setup-banner-inner">
+                    <p><strong>Configura tu cuenta</strong> para publicar fotos y videos: completa ${items.join(' y ')}.</p>
+                    <div class="profile-setup-actions">
+                        ${!currentUser.profile_complete ? '<button type="button" class="btn-action btn-primary" onclick="openEditProfileModal()">Completar perfil</button>' : ''}
+                        ${!currentUser.has_public_body_video ? '<button type="button" class="btn-action btn-secondary" onclick="openBodyVideoModal()">Subir video corporal</button>' : ''}
+                        ${!currentUser.is_verified ? '<a href="verificar-identidad.html" class="btn-action btn-secondary">Verificar identidad</a>' : ''}
+                    </div>
+                </div>`;
+            banner.style.display = 'block';
+        }
+
         // Check authentication on page load
         document.addEventListener('DOMContentLoaded', function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            viewingUserId = urlParams.get('user');
+            viewingUserId = resolveViewingUserId();
+            authToken = DeseoAuth.getToken();
 
             if (!authToken && !viewingUserId) {
                 window.location.href = 'index.html';
@@ -2450,38 +2547,59 @@
 
         // Initialize profile
         async function initProfile() {
+            viewingUserId = resolveViewingUserId();
+            authToken = DeseoAuth.getToken();
+
             try {
-                // Si hay token, verificarlo
                 if (authToken) {
                     await verifyToken();
                 }
-                
-                // Determinar si es perfil propio o ajeno
-                if (viewingUserId && currentUser && viewingUserId != currentUser.id) {
+                if (!currentUser && authToken) {
+                    currentUser = DeseoAuth.getCachedUser();
+                }
+
+                if (isViewingOtherProfile(viewingUserId, currentUser?.id)) {
                     isOwnProfile = false;
                     await loadPublicProfile(viewingUserId);
                     await loadUserStats(viewingUserId);
                     await loadProfileActions(viewingUserId, false);
                     hideEditButtons();
                 } else if (viewingUserId && !currentUser) {
-                    // Ver perfil público sin estar logueado
                     isOwnProfile = false;
                     await loadPublicProfile(viewingUserId);
                     await loadUserStats(viewingUserId);
                     await loadProfileActions(viewingUserId, false);
                     hideEditButtons();
                 } else {
-                    // Ver perfil propio
                     isOwnProfile = true;
+                    if (viewingUserId && currentUser && String(viewingUserId) === String(currentUser.id)) {
+                        window.history.replaceState({}, '', 'profile.html');
+                        viewingUserId = null;
+                    }
+                    if (!currentUser) {
+                        setProfileLoadError('Inicia sesión de nuevo para ver tu perfil.');
+                        return;
+                    }
                     await loadUserProfile();
                     await loadUserStats(currentUser.id);
                     await loadProfileActions(currentUser.id, true);
                 }
-                
+
                 await loadUserPosts();
                 initTabs();
+                renderProfileSetupBanner();
             } catch (error) {
                 console.error('Error initializing profile:', error);
+                if (currentUser) {
+                    try {
+                        await loadUserProfile();
+                        renderProfileSetupBanner();
+                    } catch (innerError) {
+                        console.error('Error al recuperar perfil parcial:', innerError);
+                    }
+                } else {
+                    setProfileLoadError('No se pudo cargar tu sesión. Cierra sesión e inicia de nuevo.');
+                }
                 showNotification('Error al cargar el perfil', 'error');
             }
         }
@@ -2531,15 +2649,22 @@
             if (!currentUser) return;
 
             try {
-                // Get full profile data including body verification video
                 const profileData = await apiCall(`${API_URL}/api/user/me`);
-                
-                // Update currentUser with profile data
+
                 if (profileData.public_body_video_url !== undefined) {
                     currentUser.public_body_video_url = profileData.public_body_video_url;
                 }
                 if (profileData.face_obscured !== undefined) {
                     currentUser.face_obscured = profileData.face_obscured;
+                }
+                if (profileData.has_public_body_video !== undefined) {
+                    currentUser.has_public_body_video = profileData.has_public_body_video;
+                }
+                if (profileData.display_name && !currentUser.full_name) {
+                    currentUser.full_name = profileData.display_name;
+                }
+                if (profileData.profile_image_url && !currentUser.profile_picture) {
+                    currentUser.profile_picture = profileData.profile_image_url;
                 }
 
                 displayBodyVerificationVideo();
@@ -2610,9 +2735,13 @@
         async function loadUserProfile() {
             if (!currentUser) return;
 
+            document.getElementById('coverSection')?.classList.toggle('own-profile', isOwnProfile);
+
             // Set basic info
-            document.getElementById('profileName').textContent = currentUser.full_name || currentUser.username;
-            document.getElementById('profileUsername').textContent = `@${currentUser.username}`;
+            document.getElementById('profileName').textContent = currentUser.full_name || currentUser.username || 'Mi perfil';
+            document.getElementById('profileUsername').textContent = currentUser.username
+                ? `@${currentUser.username}`
+                : '';
 
             // Show verified badge
             if (currentUser.is_verified) {
@@ -2620,15 +2749,21 @@
             }
 
             // Load avatar
+            const avatarEl = document.getElementById('profileAvatar');
             if (currentUser.profile_picture) {
-                document.getElementById('profileAvatar').src = `${API_URL}${currentUser.profile_picture}`;
+                avatarEl.src = profileMediaUrl(currentUser.profile_picture);
+            } else {
+                avatarEl.src = profileMediaUrl('/uploads/default-avatar.png');
             }
 
             // Load cover photo
+            const coverImg = document.getElementById('coverPhoto');
             if (currentUser.cover_photo) {
-                const coverImg = document.getElementById('coverPhoto');
-                coverImg.src = `${API_URL}${currentUser.cover_photo}`;
+                coverImg.src = profileMediaUrl(currentUser.cover_photo);
                 coverImg.style.display = 'block';
+            } else {
+                coverImg.removeAttribute('src');
+                coverImg.style.display = 'none';
             }
 
             // Load bio and details
@@ -2669,15 +2804,21 @@
                 }
 
                 // Load avatar
+                const avatarEl = document.getElementById('profileAvatar');
                 if (user.profile_picture) {
-                    document.getElementById('profileAvatar').src = `${API_URL}${user.profile_picture}`;
+                    avatarEl.src = profileMediaUrl(user.profile_picture);
+                } else {
+                    avatarEl.src = profileMediaUrl('/uploads/default-avatar.png');
                 }
 
                 // Load cover photo
+                const coverImg = document.getElementById('coverPhoto');
                 if (user.cover_photo) {
-                    const coverImg = document.getElementById('coverPhoto');
-                    coverImg.src = `${API_URL}${user.cover_photo}`;
+                    coverImg.src = profileMediaUrl(user.cover_photo);
                     coverImg.style.display = 'block';
+                } else {
+                    coverImg.removeAttribute('src');
+                    coverImg.style.display = 'none';
                 }
 
                 // Load bio and details
@@ -3032,10 +3173,10 @@
             const price = typeof DeseoListing !== 'undefined'
                 ? DeseoListing.getPrice(user)
                 : '';
-            if (price && price !== 'Consultar') {
+            if (priceEl && priceText && price && price !== 'Consultar') {
                 priceEl.style.display = 'flex';
                 priceText.textContent = price;
-            } else {
+            } else if (priceEl) {
                 priceEl.style.display = 'none';
             }
 
@@ -3095,6 +3236,7 @@
                 closeEditProfileModal();
                 await verifyToken();
                 await loadUserProfile();
+                renderProfileSetupBanner();
             } catch (error) {
                 showNotification(error.message, 'error');
             }
@@ -3146,6 +3288,7 @@
                 closeChangeAvatarModal();
                 await verifyToken();
                 await loadUserProfile();
+                renderProfileSetupBanner();
             } catch (error) {
                 showNotification(error.message, 'error');
             }
@@ -3171,6 +3314,7 @@
                 closeChangeCoverModal();
                 await verifyToken();
                 await loadUserProfile();
+                renderProfileSetupBanner();
             } catch (error) {
                 showNotification(error.message, 'error');
             }
@@ -3235,6 +3379,11 @@
         }
 
         async function openCreatePostModal() {
+            if (currentUser && !currentUser.profile_complete) {
+                showNotification('Completa tu perfil (servicios, video corporal público, ciudad, zona, teléfono y tarifa) antes de publicar.', 'error');
+                openEditProfileModal();
+                return;
+            }
             if (typeof DeseoVerification !== 'undefined') {
                 const ok = await DeseoVerification.requireVerifiedForPublish('Crear publicación');
                 if (!ok) return;
@@ -3245,12 +3394,6 @@
             configureCreatePostCategory();
 
             document.getElementById('isPublicPost').checked = true;
-
-            if (currentUser && !currentUser.profile_complete) {
-                showNotification('Completa tu perfil (nombre, categoría, ciudad, zona, teléfono, tarifa y servicios) antes de publicar.', 'error');
-                openEditProfileModal();
-                return;
-            }
             
             // Asegurar que los form-groups sean visibles
             const formGroups = modal.querySelectorAll('.form-group');
@@ -3535,7 +3678,9 @@
                 });
                 showNotification(data.message || 'Video publicado en tu perfil', 'success');
                 closeBodyVideoModal();
+                await verifyToken();
                 await loadProfileData();
+                renderProfileSetupBanner();
             } catch (error) {
                 console.error('Error uploading public body video:', error);
                 if (statusEl) statusEl.textContent = error.message || 'Error al subir el video';

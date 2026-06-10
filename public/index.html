@@ -271,16 +271,6 @@
                             <option value="half_hour">Por media hora</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label for="regCategory">Categoría en la que publicas *</label>
-                        <select id="regCategory" required>
-                            <option value="">Selecciona tu categoría</option>
-                            <option value="acompañantes-mujeres">👩 Acompañantes Mujeres</option>
-                            <option value="acompañantes-hombres">👨 Acompañantes Hombres</option>
-                            <option value="acompañantes-trans">🏳️‍⚧️ Acompañantes Trans</option>
-                        </select>
-                        <small>Define en qué directorio aparecerás. No podrás cambiarla después de publicar.</small>
-                    </div>
                 </div>
                 <div class="reg-wizard-step-panel" data-step="3">
                     <div class="form-group">
@@ -537,8 +527,11 @@
             if (data.verificationFailed) {
                 showError('Cuenta creada, pero falló la verificación. Usa «Verificar identidad» para completarla.');
             } else {
-                showSuccess('¡Registro completo! Ya puedes publicar anuncios y reels.');
+                showSuccess('¡Registro completo! Completa tu perfil para publicar.');
             }
+            setTimeout(() => {
+                window.location.href = 'profile.html';
+            }, 1200);
         }
 
         async function verifyToken() {
