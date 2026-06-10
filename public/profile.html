@@ -1827,6 +1827,9 @@
                     <ul class="nav-menu">
                 <li><a href="home.html"><i class="fas fa-home"></i> Inicio</a></li>
                 <li><a href="profile.html"><i class="fas fa-user"></i> Mi Perfil</a></li>
+                <li id="navDeleteAccountItem" style="display:none;">
+                    <a href="#" onclick="openDeleteAccountModal(); return false;"><i class="fas fa-user-times"></i> Eliminar cuenta</a>
+                </li>
                 <li><button class="btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Salir</button></li>
                     </ul>
         </div>
@@ -1864,8 +1867,8 @@
                     <div class="profile-actions" id="profileActions">
                         <!-- Buttons will be loaded dynamically based on whether it's own profile or not -->
                     </div>
-                    <div class="profile-danger-zone" id="profileDangerZone" style="display:none;">
-                        <button type="button" class="btn-delete-account" onclick="openDeleteAccountModal()">
+                    <div class="profile-danger-zone" id="profileDangerZone">
+                        <button type="button" class="btn-delete-account" id="deleteAccountBtn" onclick="openDeleteAccountModal()">
                             <i class="fas fa-user-times"></i> Eliminar mi cuenta
                         </button>
                     </div>
@@ -2495,6 +2498,26 @@
             }
         }
 
+        const VERCEL_MAX_UPLOAD_BYTES = 4.5 * 1024 * 1024;
+
+        function showNavDeleteAccount(visible) {
+            const navItem = document.getElementById('navDeleteAccountItem');
+            if (navItem) {
+                navItem.style.display = visible ? 'list-item' : 'none';
+            }
+        }
+
+        function validateUploadFile(file, label) {
+            if (!file) {
+                return 'Selecciona un archivo';
+            }
+            const isProd = !/localhost|127\.0\.0\.1/.test(window.location.hostname);
+            if (isProd && file.size > VERCEL_MAX_UPLOAD_BYTES) {
+                return `${label}: máximo 4.5 MB en el servidor. Comprime la imagen o usa JPG más pequeño.`;
+            }
+            return null;
+        }
+
         function renderProfileSetupBanner() {
             const banner = document.getElementById('profileSetupBanner');
             if (!banner || !isOwnProfile || !currentUser) {
@@ -2529,10 +2552,26 @@
             banner.style.display = 'block';
         }
 
+        async function safeLoadOwnProfileUI() {
+            if (!currentUser) {
+                return;
+            }
+            await loadUserProfile();
+            await loadUserStats(currentUser.id);
+            await loadProfileActions(currentUser.id, true);
+            showNavDeleteAccount(!currentUser.is_admin);
+        }
+
         // Check authentication on page load
         document.addEventListener('DOMContentLoaded', function() {
+            if (typeof DeseoAuth === 'undefined') {
+                setProfileLoadError('No se pudo cargar la sesión. Recarga la página.');
+                return;
+            }
+
             viewingUserId = resolveViewingUserId();
             authToken = DeseoAuth.getToken();
+            currentUser = DeseoAuth.getCachedUser();
 
             if (!authToken && !viewingUserId) {
                 window.location.href = 'index.html';
@@ -2548,41 +2587,49 @@
         // Initialize profile
         async function initProfile() {
             viewingUserId = resolveViewingUserId();
-            authToken = DeseoAuth.getToken();
+            authToken = typeof DeseoAuth !== 'undefined' ? DeseoAuth.getToken() : null;
+            currentUser = currentUser || (typeof DeseoAuth !== 'undefined' ? DeseoAuth.getCachedUser() : null);
 
             try {
-                if (authToken) {
-                    await verifyToken();
-                }
-                if (!currentUser && authToken) {
-                    currentUser = DeseoAuth.getCachedUser();
-                }
+                const viewingOther = isViewingOtherProfile(viewingUserId, currentUser?.id);
 
-                if (isViewingOtherProfile(viewingUserId, currentUser?.id)) {
+                if (!viewingOther && currentUser) {
+                    isOwnProfile = true;
+                    await safeLoadOwnProfileUI();
+                } else if (viewingOther) {
                     isOwnProfile = false;
                     await loadPublicProfile(viewingUserId);
                     await loadUserStats(viewingUserId);
                     await loadProfileActions(viewingUserId, false);
                     hideEditButtons();
+                    showNavDeleteAccount(false);
                 } else if (viewingUserId && !currentUser) {
                     isOwnProfile = false;
                     await loadPublicProfile(viewingUserId);
                     await loadUserStats(viewingUserId);
                     await loadProfileActions(viewingUserId, false);
                     hideEditButtons();
-                } else {
+                    showNavDeleteAccount(false);
+                }
+
+                if (authToken) {
+                    await verifyToken();
+                    currentUser = currentUser || DeseoAuth.getCachedUser();
+                }
+
+                if (viewingUserId && currentUser && String(viewingUserId) === String(currentUser.id)) {
+                    window.history.replaceState({}, '', 'profile.html');
+                    viewingUserId = null;
+                }
+
+                if (!isViewingOtherProfile(viewingUserId, currentUser?.id)) {
                     isOwnProfile = true;
-                    if (viewingUserId && currentUser && String(viewingUserId) === String(currentUser.id)) {
-                        window.history.replaceState({}, '', 'profile.html');
-                        viewingUserId = null;
-                    }
                     if (!currentUser) {
                         setProfileLoadError('Inicia sesión de nuevo para ver tu perfil.');
-                        return;
+                        showNavDeleteAccount(false);
+                    } else {
+                        await safeLoadOwnProfileUI();
                     }
-                    await loadUserProfile();
-                    await loadUserStats(currentUser.id);
-                    await loadProfileActions(currentUser.id, true);
                 }
 
                 await loadUserPosts();
@@ -2590,17 +2637,26 @@
                 renderProfileSetupBanner();
             } catch (error) {
                 console.error('Error initializing profile:', error);
-                if (currentUser) {
+                if (currentUser && isOwnProfile) {
                     try {
-                        await loadUserProfile();
+                        await safeLoadOwnProfileUI();
                         renderProfileSetupBanner();
                     } catch (innerError) {
                         console.error('Error al recuperar perfil parcial:', innerError);
                     }
-                } else {
+                } else if (!currentUser) {
                     setProfileLoadError('No se pudo cargar tu sesión. Cierra sesión e inicia de nuevo.');
                 }
-                showNotification('Error al cargar el perfil', 'error');
+                showNotification(error.message || 'Error al cargar el perfil', 'error');
+            } finally {
+                if (isOwnProfile && currentUser) {
+                    try {
+                        await loadProfileActions(currentUser.id, true);
+                        showNavDeleteAccount(!currentUser.is_admin);
+                    } catch (finallyError) {
+                        console.error('Error al cargar acciones del perfil:', finallyError);
+                    }
+                }
             }
         }
 
@@ -2771,11 +2827,19 @@
                 document.getElementById('bioText').textContent = currentUser.bio;
             }
 
-            applyProfileDetailsToBio(currentUser);
+            try {
+                applyProfileDetailsToBio(currentUser);
+            } catch (detailsError) {
+                console.error('Error al mostrar detalles del perfil:', detailsError);
+            }
 
             if (currentUser.category) {
-                document.getElementById('categoryDetail').style.display = 'flex';
-                document.getElementById('categoryText').textContent = getCategoryName(currentUser.category);
+                const categoryDetail = document.getElementById('categoryDetail');
+                const categoryText = document.getElementById('categoryText');
+                if (categoryDetail && categoryText) {
+                    categoryDetail.style.display = 'flex';
+                    categoryText.textContent = getCategoryName(currentUser.category);
+                }
             }
 
             // Load profile data including body verification video
@@ -3146,15 +3210,15 @@
             const location = typeof DeseoListing !== 'undefined'
                 ? DeseoListing.getLocation(user)
                 : (user.location || '');
-            if (location && location !== 'Ubicación no indicada') {
+            if (locEl && locText && location && location !== 'Ubicación no indicada') {
                 locEl.style.display = 'flex';
                 locText.textContent = location;
-            } else {
+            } else if (locEl) {
                 locEl.style.display = 'none';
             }
 
             const phone = user.phone || '';
-            if ((phone || user.telegram_username) && phoneLinksEl) {
+            if (phoneEl && (phone || user.telegram_username) && phoneLinksEl) {
                 phoneEl.style.display = 'flex';
                 if (typeof DeseoContact !== 'undefined') {
                     phoneLinksEl.innerHTML = DeseoContact.renderMessagingLinksHtml(
@@ -3274,23 +3338,38 @@
 
             const formData = new FormData();
             const fileInput = document.getElementById('avatarFile');
-            if (fileInput.files.length > 0) {
-                formData.append('avatar', fileInput.files[0]);
+            if (!fileInput.files.length) {
+                showNotification('Selecciona una imagen', 'error');
+                return;
             }
 
+            const file = fileInput.files[0];
+            const sizeError = validateUploadFile(file, 'Avatar');
+            if (sizeError) {
+                showNotification(sizeError, 'error');
+                return;
+            }
+
+            formData.append('avatar', file);
+
             try {
-                await apiCall(`${API_URL}/api/user/avatar`, {
+                const result = await apiCall(`${API_URL}/api/user/avatar`, {
                     method: 'POST',
                     body: formData
                 });
 
+                if (result.avatar_url) {
+                    currentUser.profile_picture = result.avatar_url;
+                    document.getElementById('profileAvatar').src = profileMediaUrl(result.avatar_url);
+                }
+
                 showNotification('Foto de perfil actualizada', 'success');
                 closeChangeAvatarModal();
-                await verifyToken();
-                await loadUserProfile();
+                verifyToken().catch(() => {});
                 renderProfileSetupBanner();
             } catch (error) {
-                showNotification(error.message, 'error');
+                const msg = error.data?.error || error.message || 'No se pudo subir la foto';
+                showNotification(msg, 'error');
             }
         }
 
@@ -3300,23 +3379,41 @@
 
             const formData = new FormData();
             const fileInput = document.getElementById('coverFile');
-            if (fileInput.files.length > 0) {
-                formData.append('cover', fileInput.files[0]);
+            if (!fileInput.files.length) {
+                showNotification('Selecciona una imagen', 'error');
+                return;
             }
 
+            const file = fileInput.files[0];
+            const sizeError = validateUploadFile(file, 'Portada');
+            if (sizeError) {
+                showNotification(sizeError, 'error');
+                return;
+            }
+
+            formData.append('cover', file);
+
             try {
-                await apiCall(`${API_URL}/api/user/cover`, {
+                const result = await apiCall(`${API_URL}/api/user/cover`, {
                     method: 'POST',
                     body: formData
                 });
 
+                const coverUrl = result.cover_url || result.cover_photo;
+                if (coverUrl) {
+                    currentUser.cover_photo = coverUrl;
+                    const coverImg = document.getElementById('coverPhoto');
+                    coverImg.src = profileMediaUrl(coverUrl);
+                    coverImg.style.display = 'block';
+                }
+
                 showNotification('Foto de portada actualizada', 'success');
                 closeChangeCoverModal();
-                await verifyToken();
-                await loadUserProfile();
+                verifyToken().catch(() => {});
                 renderProfileSetupBanner();
             } catch (error) {
-                showNotification(error.message, 'error');
+                const msg = error.data?.error || error.message || 'No se pudo subir la portada';
+                showNotification(msg, 'error');
             }
         }
 

@@ -434,13 +434,14 @@ const upload = multer({
         // Imágenes: jpeg, jpg, png, gif, webp, bmp
         // Videos: mp4, avi, mov, wmv, flv, mkv, webm, mpeg, mpg
         // Audios: mp3, wav, m4a, aac, ogg, flac, wma
-        const allowedTypes = /jpeg|jpg|png|gif|webp|bmp|mp4|avi|mov|wmv|flv|mkv|webm|mpeg|mpg|mp3|wav|m4a|aac|ogg|flac|wma/;
-        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = file.mimetype.startsWith('image/') || 
-                         file.mimetype.startsWith('video/') || 
-                         file.mimetype.startsWith('audio/');
-        
-        // Logging condicional (solo en desarrollo)
+        const allowedTypes = /jpeg|jpg|jfif|png|gif|webp|bmp|heic|heif|mp4|avi|mov|wmv|flv|mkv|webm|mpeg|mpg|mp3|wav|m4a|aac|ogg|flac|wma/;
+        const ext = path.extname(file.originalname).toLowerCase().replace(/^\./, '');
+        const extname = !ext || allowedTypes.test(ext);
+        const isImage = file.mimetype.startsWith('image/');
+        const isVideo = file.mimetype.startsWith('video/');
+        const isAudio = file.mimetype.startsWith('audio/');
+        const mimetype = isImage || isVideo || isAudio;
+
         if (isDevelopment) {
             console.log('📁 Validando archivo:', {
                 originalname: file.originalname,
@@ -448,12 +449,11 @@ const upload = multer({
                 size: (file.size / 1024 / 1024).toFixed(2) + ' MB'
             });
         }
-        
+
         if (mimetype && extname) {
             return cb(null, true);
-        } else {
-            cb(new Error('Tipo de archivo no permitido. Solo se permiten imágenes, videos y audios.'));
         }
+        cb(new Error('Tipo de archivo no permitido. Usa JPG, PNG, WEBP, HEIC, MP4 u otros formatos habituales.'));
     }
 });
 
@@ -1735,9 +1735,6 @@ app.get('/api/user/:userId/posts', (req, res) => {
 app.get('/api/auth/verify', authenticateToken, async (req, res) => {
     try {
         await dbReady;
-        if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
-            await refreshDatabaseFromBlob();
-        }
 
         const user = await resolveAuthUser(req);
         if (!user) {
