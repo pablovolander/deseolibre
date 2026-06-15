@@ -2636,6 +2636,11 @@
             currentUser = resolveCurrentUserFromStorage();
 
             if (!authToken && !viewingUserId) {
+                const lastProfileId = sessionStorage.getItem('deseo_last_profile_id');
+                if (lastProfileId) {
+                    window.location.href = `profile.html?user=${encodeURIComponent(lastProfileId)}`;
+                    return;
+                }
                 window.location.href = 'index.html';
                 return;
             }
@@ -2661,6 +2666,7 @@
 
                 if (viewingOther) {
                     isOwnProfile = false;
+                    sessionStorage.setItem('deseo_last_profile_id', String(viewingUserId));
                     await loadPublicProfile(viewingUserId);
                     await loadUserStats(viewingUserId);
                     await loadProfileActions(viewingUserId, false);
@@ -2668,6 +2674,7 @@
                     showDeleteAccountLink(false);
                 } else if (viewingUserId && !currentUser) {
                     isOwnProfile = false;
+                    sessionStorage.setItem('deseo_last_profile_id', String(viewingUserId));
                     await loadPublicProfile(viewingUserId);
                     await loadUserStats(viewingUserId);
                     await loadProfileActions(viewingUserId, false);
@@ -2677,6 +2684,7 @@
                     isOwnProfile = true;
                     if (currentUser?.id) {
                         viewingUserId = String(currentUser.id);
+                        sessionStorage.setItem('deseo_last_profile_id', viewingUserId);
                         const publicProfileUrl = `profile.html?user=${encodeURIComponent(currentUser.id)}`;
                         if (!window.location.search.includes('user=')) {
                             window.history.replaceState({}, '', publicProfileUrl);
@@ -3041,6 +3049,40 @@
         }
 
         // Render posts
+        function normalizePostContentType(post) {
+            const mediaPath = post.media_url || post.file_url || '';
+            const rawType = post.content_type === 'image' ? 'photo' : post.content_type;
+            if (rawType) {
+                return rawType;
+            }
+            if (/\.(mp4|mov|webm|avi|mkv|mpeg|mpg)/i.test(mediaPath)) {
+                return 'video';
+            }
+            if (/\.(mp3|wav|m4a|aac|ogg|flac|wma)/i.test(mediaPath)) {
+                return 'audio';
+            }
+            return 'photo';
+        }
+
+        function getPostThumbnail(post) {
+            const mediaPath = post.media_url || post.file_url || '';
+            const type = normalizePostContentType(post);
+
+            if (type === 'photo') {
+                return { thumbnail: resolveMediaUrl(mediaPath), icon: '📷' };
+            }
+            if (type === 'video') {
+                return { thumbnail: resolveMediaUrl(post.thumbnail_url || mediaPath), icon: '🎥' };
+            }
+            if (type === 'audio') {
+                return {
+                    thumbnail: 'https://via.placeholder.com/300x300/6c5ce7/ffffff?text=🎙️+Audio',
+                    icon: '🎙️'
+                };
+            }
+            return { thumbnail: resolveMediaUrl(mediaPath), icon: '📷' };
+        }
+
         function renderPosts() {
             const grid = document.getElementById('postsGrid');
             
@@ -3050,9 +3092,10 @@
             let filteredPosts = userPosts;
             if (currentFilter !== 'all') {
                 filteredPosts = userPosts.filter(post => {
-                    if (currentFilter === 'photos') return post.content_type === 'photo';
-                    if (currentFilter === 'videos') return post.content_type === 'video';
-                    if (currentFilter === 'audios') return post.content_type === 'audio';
+                    const type = normalizePostContentType(post);
+                    if (currentFilter === 'photos') return type === 'photo';
+                    if (currentFilter === 'videos') return type === 'video';
+                    if (currentFilter === 'audios') return type === 'audio';
                     return true;
                 });
             }
@@ -3080,26 +3123,13 @@
             }
 
             grid.innerHTML = filteredPosts.map((post, index) => {
-                let thumbnail = '';
-                let typeIcon = '';
+                const { thumbnail, icon: typeIcon } = getPostThumbnail(post);
                 
                 console.log(`📌 Post ${index + 1}:`, {
-                    type: post.content_type,
+                    type: normalizePostContentType(post),
                     media_url: post.media_url,
                     thumbnail_url: post.thumbnail_url
                 });
-                
-                const mediaPath = post.media_url || post.file_url || '';
-                if (post.content_type === 'photo') {
-                    thumbnail = resolveMediaUrl(mediaPath);
-                    typeIcon = '📷';
-                } else if (post.content_type === 'video') {
-                    thumbnail = resolveMediaUrl(post.thumbnail_url || mediaPath);
-                    typeIcon = '🎥';
-                } else if (post.content_type === 'audio') {
-                    thumbnail = 'https://via.placeholder.com/300x300/6c5ce7/ffffff?text=🎙️+Audio';
-                    typeIcon = '🎙️';
-                }
 
                 return `
                     <div class="post-item" onclick="viewPost(${post.id})">

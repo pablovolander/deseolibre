@@ -12,7 +12,7 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { restoreDatabaseIfNeeded, persistDatabase, persistDatabaseNow } = require('./lib/db-persist');
-const { persistUploadedFile, resolveMediaUrl, streamPrivateMedia, getBlobAccess } = require('./lib/media-storage');
+const { persistUploadedFile, resolveMediaUrl, streamPrivateMedia, getBlobAccess, getBlobToken } = require('./lib/media-storage');
 const { evaluateAutoVerification, getMaxVideoBytes, MIN_VIDEO_DURATION_SEC, MAX_VIDEO_DURATION_SEC, MIN_FACE_MATCH_SCORE } = require('./lib/auto-verification');
 const {
     addPostToFeedIndex,
@@ -406,6 +406,24 @@ app.use(express.urlencoded({ limit: '50mb', extended: true })); // For form data
 // En Vercel las subidas van a /tmp; servir /uploads desde ahí antes que public/
 if (isVercel) {
     app.use('/uploads', express.static(path.join(vercelUploadRoot, 'uploads')));
+    app.use('/uploads', async (req, res, next) => {
+        if (req.method !== 'GET' && req.method !== 'HEAD') {
+            return next();
+        }
+        if (!getBlobToken()) {
+            return res.status(404).json({ error: 'Archivo no encontrado' });
+        }
+        const relativePath = decodeURIComponent((req.path || '').replace(/^\//, ''));
+        if (!relativePath) {
+            return res.status(404).json({ error: 'Archivo no encontrado' });
+        }
+        try {
+            await streamPrivateMedia(`uploads/${relativePath}`, res, req.method === 'HEAD');
+        } catch (error) {
+            console.error('Error al servir upload desde Blob:', error);
+            res.status(404).json({ error: 'Archivo no encontrado' });
+        }
+    });
 }
 // Servir archivos estáticos de public (CSS, JS, uploads locales)
 app.use(express.static(publicDir));
@@ -1735,7 +1753,7 @@ app.get('/api/user/:userId/posts', async (req, res) => {
                 created_at,
                 updated_at
             FROM content_posts
-            WHERE user_id = ? AND is_public = 1
+            WHERE user_id = ? AND (is_public IS NULL OR is_public = 1 OR is_public = '1' OR is_public = 'true')
             ORDER BY created_at DESC`,
             [userId]
         );
