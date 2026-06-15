@@ -2455,6 +2455,7 @@
         let currentFilter = 'all';
         let viewingUserId = null; // ID del usuario cuyo perfil estamos viendo
         let isOwnProfile = true; // Si es el perfil del usuario logueado
+        let displayProfileUser = null; // Datos del perfil mostrado (propio o ajeno)
 
         function profileFetchHeaders(extra) {
             const headers = { ...(extra || {}) };
@@ -2674,9 +2675,12 @@
                     showDeleteAccountLink(false);
                 } else {
                     isOwnProfile = true;
-                    if (viewingUserId && currentUser && String(viewingUserId) === String(currentUser.id)) {
-                        window.history.replaceState({}, '', 'profile.html');
-                        viewingUserId = null;
+                    if (currentUser?.id) {
+                        viewingUserId = String(currentUser.id);
+                        const publicProfileUrl = `profile.html?user=${encodeURIComponent(currentUser.id)}`;
+                        if (!window.location.search.includes('user=')) {
+                            window.history.replaceState({}, '', publicProfileUrl);
+                        }
                     }
 
                     if (currentUser) {
@@ -2805,14 +2809,15 @@
         }
 
         // Display public body video on profile
-        function displayBodyVerificationVideo() {
+        function displayBodyVerificationVideo(subjectUser) {
+            const profileUser = subjectUser || displayProfileUser || currentUser;
             const section = document.getElementById('bodyVerificationSection');
             const videoElement = document.getElementById('bodyVerificationVideo');
             const placeholder = document.getElementById('bodyVideoPlaceholder');
             const videoInfo = document.getElementById('bodyVideoInfo');
             const editBtn = document.getElementById('editBodyVideoBtn');
             const uploadBtn = document.getElementById('uploadBodyVideoBtn');
-            const publicVideoUrl = getPublicBodyVideoUrl(currentUser);
+            const publicVideoUrl = getPublicBodyVideoUrl(profileUser);
 
             if (isOwnProfile) {
                 section.style.display = 'block';
@@ -2860,6 +2865,8 @@
         // Load user profile
         async function loadUserProfile() {
             if (!currentUser) return;
+
+            displayProfileUser = currentUser;
 
             document.getElementById('coverSection')?.classList.toggle('own-profile', isOwnProfile);
 
@@ -2927,6 +2934,7 @@
                 if (!response.ok) throw new Error(data.error);
                 
                 const user = data.user;
+                displayProfileUser = user;
                 
                 // Set basic info
                 document.getElementById('profileName').textContent = user.full_name || user.username;
@@ -2962,11 +2970,7 @@
 
                 applyProfileDetailsToBio(user);
 
-                currentUser = {
-                    public_body_video_url: user.public_body_video_url,
-                    face_obscured: user.face_obscured
-                };
-                displayBodyVerificationVideo();
+                displayBodyVerificationVideo(user);
 
                 if (user.category) {
                     document.getElementById('categoryDetail').style.display = 'flex';
@@ -2992,12 +2996,13 @@
         async function loadUserPosts() {
             try {
                 console.log('🔄 Cargando publicaciones del usuario...');
+                const targetUserId = viewingUserId || currentUser?.id;
+                const usePublicApi = !authToken || !isOwnProfile;
                 let url = `${API_URL}/api/user/content`;
-                
-                // Si estamos viendo el perfil de otro usuario, cargar sus posts públicos
-                if (!isOwnProfile && viewingUserId) {
-                    url = `${API_URL}/api/user/${viewingUserId}/posts`;
-                    console.log('👀 Cargando perfil de otro usuario:', viewingUserId);
+
+                if (usePublicApi && targetUserId) {
+                    url = `${API_URL}/api/user/${targetUserId}/posts`;
+                    console.log('👀 Cargando publicaciones públicas del usuario:', targetUserId);
                 }
                 
                 console.log('📡 URL de carga:', url);
@@ -3889,26 +3894,28 @@
             console.log('👁️ Viendo detalles del post:', postId);
             
             // Buscar el post en el array local
-            const post = userPosts.find(p => p.id === postId);
+            const post = userPosts.find(p => String(p.id) === String(postId));
             
             if (!post) {
                 showNotification('No se pudo cargar la publicación', 'error');
                 return;
             }
+
+            const profileForPost = displayProfileUser || currentUser;
             
             console.log('📦 Datos del post:', post);
             
             // Llenar los datos del modal
             document.getElementById('postDetailTitle').textContent = post.title;
             document.getElementById('postDetailDescription').textContent = post.description;
-            document.getElementById('postUsername').textContent = currentUser.username;
+            document.getElementById('postUsername').textContent = profileForPost?.username || profileForPost?.full_name || 'Usuario';
             document.getElementById('postLikes').textContent = post.likes_count || 0;
             document.getElementById('postComments').textContent = post.comments_count || 0;
             
             // Avatar del usuario
-            const avatarUrl = currentUser.profile_picture ? 
-                `${API_URL}${currentUser.profile_picture}` : 
-                `${API_URL}/uploads/default-avatar.png`;
+            const avatarUrl = profileForPost?.profile_picture
+                ? profileMediaUrl(profileForPost.profile_picture)
+                : profileMediaUrl('/uploads/default-avatar.png');
             document.getElementById('postUserAvatar').src = avatarUrl;
             
             // Fecha
@@ -4229,8 +4236,14 @@
         }
 
         function logout() {
+            const publicProfileId = viewingUserId || currentUser?.id;
             DeseoAuth.clearSession();
             authToken = null;
+            currentUser = null;
+            if (publicProfileId) {
+                window.location.href = `profile.html?user=${encodeURIComponent(publicProfileId)}`;
+                return;
+            }
             window.location.href = 'index.html';
         }
 

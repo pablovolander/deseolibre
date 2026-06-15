@@ -1663,72 +1663,90 @@ app.get('/api/user/profile', authenticateToken, (req, res) => {
 });
 
 // Get public profile of any user
-app.get('/api/user/public/:userId', (req, res) => {
-    const userId = req.params.userId;
-
-    db.get(
-        `SELECT u.id, u.username, u.full_name, u.bio, u.location, u.country, u.city, u.zone, u.zone_detail,
-                u.phone, u.telegram_username, u.service_price, u.service_price_unit, u.category,
-                u.offered_services, u.profile_picture, u.cover_photo, u.is_verified, u.created_at,
-                u.followers_count, u.following_count, u.posts_count,
-                up.public_body_video_url, up.body_verification_video_url, up.face_obscured
-         FROM users u
-         LEFT JOIN user_profiles up ON up.user_id = u.id
-         WHERE u.id = ?`,
-        [userId],
-        (err, row) => {
-            if (err) {
-                return res.status(500).json({ error: 'Error interno del servidor' });
-            }
-
-            if (!row) {
-                return res.status(404).json({ error: 'Usuario no encontrado' });
-            }
-
-            const user = enrichUserWithServices({ ...row });
-            user.public_body_video_url = resolvePublicBodyVideoUrl(user);
-            delete user.body_verification_video_url;
-
-            res.json({ user });
+app.get('/api/user/public/:userId', async (req, res) => {
+    try {
+        await dbReady;
+        if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
+            await refreshDatabaseFromBlob();
         }
-    );
+
+        const userId = req.params.userId;
+        const origin = getRequestOrigin(req);
+
+        const row = await runDbGet(
+            `SELECT u.id, u.username, u.full_name, u.bio, u.location, u.country, u.city, u.zone, u.zone_detail,
+                    u.phone, u.telegram_username, u.service_price, u.service_price_unit, u.category,
+                    u.offered_services, u.profile_picture, u.cover_photo, u.is_verified, u.created_at,
+                    u.followers_count, u.following_count, u.posts_count,
+                    up.public_body_video_url, up.body_verification_video_url, up.face_obscured
+             FROM users u
+             LEFT JOIN user_profiles up ON up.user_id = u.id
+             WHERE u.id = ?`,
+            [userId]
+        );
+
+        if (!row) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        const user = enrichUserWithServices({ ...row });
+        user.public_body_video_url = resolvePublicBodyVideoUrl(user);
+        delete user.body_verification_video_url;
+        if (user.profile_picture) {
+            user.profile_picture = resolveMediaUrl(user.profile_picture, origin);
+        }
+        if (user.cover_photo) {
+            user.cover_photo = resolveMediaUrl(user.cover_photo, origin);
+        }
+        if (user.public_body_video_url) {
+            user.public_body_video_url = resolveMediaUrl(user.public_body_video_url, origin);
+        }
+
+        res.json({ user });
+    } catch (err) {
+        console.error('Error loading public profile:', err);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
 });
 
 // Get public posts of a specific user
-app.get('/api/user/:userId/posts', (req, res) => {
-    const userId = req.params.userId;
-
-    const query = `
-        SELECT 
-            id,
-            title,
-            description,
-            content_type,
-            file_url as media_url,
-            thumbnail_url,
-            price,
-            is_premium,
-            is_public,
-            category,
-            likes_count,
-            comments_count,
-            created_at,
-            updated_at
-        FROM content_posts
-        WHERE user_id = ? AND is_public = 1
-        ORDER BY created_at DESC
-    `;
-
-    db.all(query, [userId], (err, posts) => {
-        if (err) {
-            console.error('Error loading user posts:', err);
-            return res.status(500).json({ error: 'Error al cargar publicaciones' });
+app.get('/api/user/:userId/posts', async (req, res) => {
+    try {
+        await dbReady;
+        if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
+            await refreshDatabaseFromBlob();
         }
+
+        const userId = req.params.userId;
+        const posts = await runDbAll(
+            `SELECT 
+                id,
+                title,
+                description,
+                content_type,
+                file_url as media_url,
+                thumbnail_url,
+                price,
+                is_premium,
+                is_public,
+                category,
+                likes_count,
+                comments_count,
+                created_at,
+                updated_at
+            FROM content_posts
+            WHERE user_id = ? AND is_public = 1
+            ORDER BY created_at DESC`,
+            [userId]
+        );
 
         res.json({
             posts: enrichPostsWithMediaUrls(posts, req)
         });
-    });
+    } catch (err) {
+        console.error('Error loading user posts:', err);
+        res.status(500).json({ error: 'Error al cargar publicaciones' });
+    }
 });
 
 // Verify token endpoint
