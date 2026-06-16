@@ -3848,6 +3848,7 @@ app.post('/api/admin/bootstrap', async (req, res) => {
         const configuredSecret = String(process.env.ADMIN_BOOTSTRAP_SECRET || '').trim();
         const providedSecret = String(req.body?.secret || '').trim();
         const email = String(req.body?.email || '').trim().toLowerCase();
+        const username = String(req.body?.username || '').trim();
 
         if (!configuredSecret) {
             return res.status(503).json({
@@ -3860,13 +3861,19 @@ app.post('/api/admin/bootstrap', async (req, res) => {
             return res.status(403).json({ error: 'Clave de bootstrap inválida' });
         }
 
-        if (!email) {
-            return res.status(400).json({ error: 'Indica el email de la cuenta a promover' });
+        if (!email && !username) {
+            return res.status(400).json({ error: 'Indica el email o el username de la cuenta a promover' });
         }
 
-        const user = await runDbGet('SELECT id, username, email, is_admin FROM users WHERE LOWER(email) = ?', [email]);
+        const user = email
+            ? await runDbGet('SELECT id, username, email, is_admin FROM users WHERE LOWER(email) = ?', [email])
+            : await runDbGet('SELECT id, username, email, is_admin FROM users WHERE LOWER(username) = LOWER(?)', [username]);
         if (!user) {
-            return res.status(404).json({ error: 'No existe una cuenta con ese email' });
+            return res.status(404).json({
+                error: email
+                    ? 'No existe una cuenta con ese email'
+                    : `No existe una cuenta con el usuario "${username}"`
+            });
         }
 
         if (user.is_admin) {
