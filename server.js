@@ -13,6 +13,17 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { restoreDatabaseIfNeeded, persistDatabase, persistDatabaseNow } = require('./lib/db-persist');
 const { persistUploadedFile, resolveMediaUrl, streamPrivateMedia, getBlobAccess, getBlobToken } = require('./lib/media-storage');
+const {
+    generateResetToken,
+    hashResetToken,
+    getResetExpiryDate,
+    isValidEmail: isValidResetEmail,
+    validateNewPassword,
+    buildResetUrl,
+    getAppBaseUrl,
+    sendPasswordResetEmail,
+    isResetTokenExpired
+} = require('./lib/password-reset');
 const { evaluateAutoVerification, getMaxVideoBytes, MIN_VIDEO_DURATION_SEC, MAX_VIDEO_DURATION_SEC, MIN_FACE_MATCH_SCORE } = require('./lib/auto-verification');
 const {
     addPostToFeedIndex,
@@ -915,6 +926,15 @@ async function applyDatabaseMigrations(database) {
         used_at DATETIME,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
+    await exec(`CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        token_hash TEXT NOT NULL UNIQUE,
+        expires_at DATETIME NOT NULL,
+        used_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`);
     await exec('ALTER TABLE users ADD COLUMN offered_services TEXT');
 }
 
@@ -1457,6 +1477,151 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
         });
     } catch (error) {
         console.error('Error en login:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+async function findValidPasswordResetRecord(rawToken) {
+    if (!rawToken) {
+        return null;
+    }
+    const tokenHash = hashResetToken(rawToken);
+    const record = await runDbGet(
+        `SELECT prt.id, prt.user_id, prt.expires_at, prt.used_at, u.email, u.username
+         FROM password_reset_tokens prt
+         JOIN users u ON u.id = prt.user_id
+         WHERE prt.token_hash = ? AND prt.used_at IS NULL`,
+        [tokenHash]
+    );
+    if (!record || isResetTokenExpired(record.expires_at)) {
+        return null;
+    }
+    return record;
+}
+
+const PASSWORD_RESET_GENERIC_MESSAGE =
+    'Si existe una cuenta con ese email, recibirás un enlace para restablecer tu contraseña en unos minutos.';
+
+app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
+    try {
+        await dbReady;
+        if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
+            await refreshDatabaseFromBlob();
+        }
+
+        const email = String(req.body?.email || '').trim().toLowerCase();
+        if (!isValidResetEmail(email)) {
+            return res.status(400).json({ error: 'Indica un email válido' });
+        }
+
+        const user = await runDbGet(
+            'SELECT id, username, email FROM users WHERE LOWER(email) = ?',
+            [email]
+        );
+
+        if (!user) {
+            return res.json({ message: PASSWORD_RESET_GENERIC_MESSAGE });
+        }
+
+        const rawToken = generateResetToken();
+        const tokenHash = hashResetToken(rawToken);
+        const expiresAt = getResetExpiryDate();
+
+        await runDb(
+            `UPDATE password_reset_tokens
+             SET used_at = CURRENT_TIMESTAMP
+             WHERE user_id = ? AND used_at IS NULL`,
+            [user.id]
+        );
+        await runDb(
+            `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+             VALUES (?, ?, ?)`,
+            [user.id, tokenHash, expiresAt]
+        );
+        await saveDatabaseAsync();
+
+        const resetUrl = buildResetUrl(getAppBaseUrl(req), rawToken);
+        const payload = { message: PASSWORD_RESET_GENERIC_MESSAGE };
+        let emailSent = false;
+
+        try {
+            await sendPasswordResetEmail({
+                to: user.email,
+                resetUrl,
+                username: user.username
+            });
+            emailSent = true;
+        } catch (emailError) {
+            console.error('Error enviando email de recuperación:', emailError.message);
+            if (isDevelopment) {
+                payload.devResetUrl = resetUrl;
+                console.log('DEV reset URL:', resetUrl);
+            }
+        }
+
+        if (!emailSent && !isDevelopment) {
+            console.warn(
+                'Recuperación de contraseña: configura RESEND_API_KEY y MAIL_FROM en Vercel para enviar correos.'
+            );
+        }
+
+        res.json(payload);
+    } catch (error) {
+        console.error('Error en forgot-password:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+app.get('/api/auth/reset-password/validate', async (req, res) => {
+    try {
+        await dbReady;
+        const rawToken = String(req.query.token || '').trim();
+        const record = await findValidPasswordResetRecord(rawToken);
+        if (!record) {
+            return res.json({ valid: false, error: 'Enlace inválido o expirado' });
+        }
+        res.json({ valid: true });
+    } catch (error) {
+        console.error('Error validando token de reset:', error);
+        res.status(500).json({ valid: false, error: 'Error interno del servidor' });
+    }
+});
+
+app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
+    try {
+        await dbReady;
+        if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
+            await refreshDatabaseFromBlob();
+        }
+
+        const rawToken = String(req.body?.token || '').trim();
+        const password = String(req.body?.password || '');
+        const passwordCheck = validateNewPassword(password);
+        if (!passwordCheck.ok) {
+            return res.status(400).json({ error: passwordCheck.error });
+        }
+
+        const record = await findValidPasswordResetRecord(rawToken);
+        if (!record) {
+            return res.status(400).json({
+                error: 'Enlace inválido o expirado. Solicita uno nuevo desde «Olvidé mi contraseña».'
+            });
+        }
+
+        const passwordHash = await bcrypt.hash(password, 10);
+        await runDb(
+            'UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+            [passwordHash, record.user_id]
+        );
+        await runDb(
+            'UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = ?',
+            [record.id]
+        );
+        await saveDatabaseAsync();
+
+        res.json({ message: 'Contraseña actualizada. Ya puedes iniciar sesión.' });
+    } catch (error) {
+        console.error('Error en reset-password:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 });

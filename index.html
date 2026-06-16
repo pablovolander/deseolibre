@@ -238,11 +238,34 @@
                 </div>
                 <div class="form-group">
                     <label for="loginPassword">Contraseña:</label>
-                    <input type="password" id="loginPassword" required>
+                    <input type="password" id="loginPassword" required autocomplete="current-password">
                 </div>
+                <p class="form-toggle" style="margin-top:-0.25rem;margin-bottom:0.75rem;text-align:right;">
+                    <a href="#" onclick="event.preventDefault(); showForgotPasswordForm();">¿Olvidaste tu contraseña?</a>
+                </p>
                 <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
                 <div class="form-toggle">
                     <p>¿No tienes cuenta? <a href="#" onclick="showRegisterForm()">Regístrate aquí</a></p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Forgot password modal -->
+    <div id="forgotPasswordModal" class="modal">
+        <div class="modal-content">
+            <h2>Recuperar contraseña</h2>
+            <p style="color:var(--text-muted, rgba(255,255,255,.7));margin-bottom:1rem;">
+                Te enviaremos un enlace a tu email para elegir una contraseña nueva. El enlace expira en 1 hora.
+            </p>
+            <form id="forgotPasswordForm" class="login-form">
+                <div class="form-group">
+                    <label for="forgotEmail">Email de tu cuenta</label>
+                    <input type="email" id="forgotEmail" required autocomplete="email">
+                </div>
+                <button type="submit" class="btn btn-primary" id="forgotSubmitBtn">Enviar enlace</button>
+                <div class="form-toggle">
+                    <p><a href="#" onclick="event.preventDefault(); showLoginForm();">Volver a iniciar sesión</a></p>
                 </div>
             </form>
         </div>
@@ -424,6 +447,11 @@
                 } else if (shouldOpenRegisterWizard()) {
                     setTimeout(() => openRegisterWizardIfPending(), 400);
                     if (window.history && window.history.replaceState && new URLSearchParams(window.location.search).get('register') === '1') {
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                    }
+                } else if (new URLSearchParams(window.location.search).get('forgot') === '1') {
+                    setTimeout(() => showForgotPasswordForm(), 400);
+                    if (window.history && window.history.replaceState) {
                         window.history.replaceState({}, document.title, window.location.pathname);
                     }
                 }
@@ -684,6 +712,44 @@
             }, 100);
         }
 
+        function showForgotPasswordForm() {
+            closeAllModals();
+            const modal = document.getElementById('forgotPasswordModal');
+            modal.style.display = 'block';
+            modal.classList.add('show');
+            document.body.classList.add('modal-open');
+            const loginEmail = document.getElementById('loginEmail')?.value?.trim();
+            if (loginEmail) {
+                document.getElementById('forgotEmail').value = loginEmail;
+            }
+            setTimeout(() => {
+                document.getElementById('forgotEmail')?.focus();
+            }, 100);
+        }
+
+        async function requestPasswordReset(email) {
+            const submitBtn = document.getElementById('forgotSubmitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Enviando...';
+            try {
+                const response = await apiCall('/api/auth/forgot-password', {
+                    method: 'POST',
+                    body: JSON.stringify({ email })
+                });
+                closeModal('forgotPasswordModal');
+                showSuccess(response.message || 'Revisa tu email para continuar.');
+                if (response.devResetUrl) {
+                    console.log('Enlace de recuperación (solo desarrollo):', response.devResetUrl);
+                    showSuccess('Modo desarrollo: enlace copiado en la consola del navegador (F12).');
+                }
+            } catch (error) {
+                console.error('Forgot password error:', error);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Enviar enlace';
+            }
+        }
+
         function showRegisterForm() {
             closeAllModals();
             const modal = document.getElementById('registerModal');
@@ -777,6 +843,12 @@
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
             login(email, password);
+        });
+
+        document.getElementById('forgotPasswordForm')?.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('forgotEmail').value.trim();
+            requestPasswordReset(email);
         });
 
         document.getElementById('regWizardSubmit')?.addEventListener('click', function() {
