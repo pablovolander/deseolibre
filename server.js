@@ -35,6 +35,7 @@ const {
     removeUserFromFeedIndex
 } = require('./lib/category-feed-index');
 const { deleteUserAccountData } = require('./lib/delete-user-account');
+const { formatUserForAdminList, filterDeletableUserIds } = require('./lib/admin-users');
 const {
     resolveCityQuery,
     resolveZoneQuery,
@@ -3836,6 +3837,223 @@ app.get('/api/admin/verifications/stats', authenticateToken, (req, res) => {
     });
 });
 
+// One-time bootstrap: promote user to admin with ADMIN_BOOTSTRAP_SECRET (set in Vercel env)
+app.post('/api/admin/bootstrap', async (req, res) => {
+    try {
+        await dbReady;
+        if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
+            await refreshDatabaseFromBlob();
+        }
+
+        const configuredSecret = String(process.env.ADMIN_BOOTSTRAP_SECRET || '').trim();
+        const providedSecret = String(req.body?.secret || '').trim();
+        const email = String(req.body?.email || '').trim().toLowerCase();
+
+        if (!configuredSecret) {
+            return res.status(503).json({
+                error: 'Bootstrap no configurado',
+                message: 'Define ADMIN_BOOTSTRAP_SECRET en Vercel para usar este endpoint una sola vez.'
+            });
+        }
+
+        if (!providedSecret || providedSecret !== configuredSecret) {
+            return res.status(403).json({ error: 'Clave de bootstrap inválida' });
+        }
+
+        if (!email) {
+            return res.status(400).json({ error: 'Indica el email de la cuenta a promover' });
+        }
+
+        const user = await runDbGet('SELECT id, username, email, is_admin FROM users WHERE LOWER(email) = ?', [email]);
+        if (!user) {
+            return res.status(404).json({ error: 'No existe una cuenta con ese email' });
+        }
+
+        if (user.is_admin) {
+            return res.json({ message: 'Esa cuenta ya es administrador', user: { id: user.id, email: user.email } });
+        }
+
+        await runDb('UPDATE users SET is_admin = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [user.id]);
+        await saveDatabaseAsync();
+
+        res.json({
+            message: `Cuenta ${user.email} promovida a administrador. Ya puedes usar admin-usuarios.html`,
+            user: { id: user.id, username: user.username, email: user.email }
+        });
+    } catch (error) {
+        console.error('Error en admin bootstrap:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+async function assertAdminUser(req, res) {
+    const userId = req.user?.userId;
+    if (!userId) {
+        res.status(401).json({ error: 'Token de acceso requerido' });
+        return null;
+    }
+    const user = await runDbGet('SELECT id, is_admin FROM users WHERE id = ?', [userId]);
+    if (!user?.is_admin) {
+        res.status(403).json({ error: 'Acceso denegado' });
+        return null;
+    }
+    return user;
+}
+
+async function deleteUsersByAdmin(adminId, userIds) {
+    const deleted = [];
+    const failed = [];
+
+    for (const targetId of userIds) {
+        if (Number(targetId) === Number(adminId)) {
+            failed.push({ id: targetId, error: 'No puedes eliminar tu propia cuenta desde el panel' });
+            continue;
+        }
+
+        try {
+            const result = await deleteUserAccountData(
+                { run: runDb, all: runDbAll, get: runDbGet },
+                targetId,
+                { localPublicDir: publicDir, allowAdminDelete: false }
+            );
+
+            if (!result.ok) {
+                failed.push({ id: targetId, error: result.error || 'No se pudo eliminar' });
+                continue;
+            }
+
+            try {
+                await removeUserFromFeedIndex(targetId);
+            } catch (indexErr) {
+                console.warn('No se pudo limpiar índice de feeds:', indexErr.message);
+            }
+
+            deleted.push(targetId);
+        } catch (error) {
+            failed.push({ id: targetId, error: error.message || 'Error al eliminar' });
+        }
+    }
+
+    if (deleted.length) {
+        await saveDatabaseAsync();
+    }
+
+    return { deleted, failed };
+}
+
+// Admin: list users
+app.get('/api/admin/users', authenticateToken, async (req, res) => {
+    try {
+        await dbReady;
+        if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
+            await refreshDatabaseFromBlob();
+        }
+
+        const admin = await assertAdminUser(req, res);
+        if (!admin) {
+            return;
+        }
+
+        const users = await runDbAll(
+            `SELECT id, username, email, full_name, is_verified, is_admin, created_at, posts_count
+             FROM users
+             ORDER BY datetime(created_at) DESC, id DESC`
+        );
+
+        res.json({
+            users: users.map(formatUserForAdminList)
+        });
+    } catch (error) {
+        console.error('Error listando usuarios admin:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Admin: bulk delete users (test cleanup)
+app.post('/api/admin/users/bulk-delete', authenticateToken, async (req, res) => {
+    try {
+        await dbReady;
+        if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
+            await refreshDatabaseFromBlob();
+        }
+
+        const admin = await assertAdminUser(req, res);
+        if (!admin) {
+            return;
+        }
+
+        const confirm = String(req.body?.confirm || '').trim();
+        if (confirm !== 'ELIMINAR') {
+            return res.status(400).json({
+                error: 'Confirmación requerida',
+                message: 'Escribe ELIMINAR para confirmar la eliminación.'
+            });
+        }
+
+        const onlyLikelyTest = Boolean(req.body?.only_likely_test);
+        const allUsers = await runDbAll(
+            'SELECT id, username, email, is_admin FROM users',
+            []
+        );
+
+        const userIds = filterDeletableUserIds(allUsers, {
+            adminId: admin.id,
+            onlyLikelyTest,
+            userIds: Array.isArray(req.body?.user_ids) ? req.body.user_ids : null
+        });
+
+        if (!userIds.length) {
+            return res.json({
+                message: 'No hay cuentas para eliminar con los criterios indicados.',
+                deleted: [],
+                failed: []
+            });
+        }
+
+        const result = await deleteUsersByAdmin(admin.id, userIds);
+        res.json({
+            message: `Se eliminaron ${result.deleted.length} cuenta(s).`,
+            deleted: result.deleted,
+            failed: result.failed
+        });
+    } catch (error) {
+        console.error('Error en bulk-delete admin:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Admin: delete single user
+app.delete('/api/admin/users/:userId', authenticateToken, async (req, res) => {
+    try {
+        await dbReady;
+        if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
+            await refreshDatabaseFromBlob();
+        }
+
+        const admin = await assertAdminUser(req, res);
+        if (!admin) {
+            return;
+        }
+
+        const targetId = Number(req.params.userId);
+        if (!Number.isFinite(targetId)) {
+            return res.status(400).json({ error: 'ID de usuario inválido' });
+        }
+
+        const result = await deleteUsersByAdmin(admin.id, [targetId]);
+        if (!result.deleted.length) {
+            const err = result.failed[0]?.error || 'No se pudo eliminar la cuenta';
+            const status = err.includes('administrador') ? 403 : 400;
+            return res.status(status).json({ error: err });
+        }
+
+        res.json({ message: 'Cuenta eliminada correctamente.', deleted_user_id: targetId });
+    } catch (error) {
+        console.error('Error eliminando usuario admin:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
 // ============================================
 // SOCIAL NETWORK ENDPOINTS
 // ============================================
@@ -5330,6 +5548,10 @@ app.get('/verificar-identidad.html', (req, res) => {
 
 app.get('/admin-verificaciones.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'admin-verificaciones.html'));
+});
+
+app.get('/admin-usuarios.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin-usuarios.html'));
 });
 
 app.get('/policies.html', (req, res) => {

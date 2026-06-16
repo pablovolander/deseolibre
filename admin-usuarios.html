@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin — Usuarios | Deseo Libre</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="/js/api-config.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: Inter, sans-serif;
+            background: linear-gradient(135deg, #ff6b6b, #6c5ce7);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,.25);
+        }
+        .header {
+            background: linear-gradient(135deg, #ff6b6b, #6c5ce7);
+            color: #fff;
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .header h1 { font-size: 1.5rem; }
+        .header-actions { display: flex; gap: .75rem; flex-wrap: wrap; }
+        .btn {
+            border: none;
+            border-radius: 8px;
+            padding: .65rem 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+        }
+        .btn-light { background: #fff; color: #6c5ce7; }
+        .btn-danger { background: #dc3545; color: #fff; }
+        .btn-secondary { background: #f1f3f5; color: #333; }
+        .toolbar {
+            padding: 1rem 2rem;
+            background: #f8f9fa;
+            display: flex;
+            gap: .75rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .message {
+            margin: 1rem 2rem 0;
+            padding: .75rem 1rem;
+            border-radius: 8px;
+            display: none;
+        }
+        .message.show { display: block; }
+        .message.success { background: #d4edda; color: #155724; }
+        .message.error { background: #f8d7da; color: #721c24; }
+        .table-wrap { padding: 1rem 2rem 2rem; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: .75rem; text-align: left; border-bottom: 1px solid #eee; }
+        th { font-size: .85rem; color: #666; }
+        .badge {
+            display: inline-block;
+            padding: .2rem .5rem;
+            border-radius: 999px;
+            font-size: .75rem;
+            font-weight: 600;
+        }
+        .badge-test { background: #fff3cd; color: #856404; }
+        .badge-admin { background: #e2d5ff; color: #4b3ca7; }
+        .badge-verified { background: #d4edda; color: #155724; }
+        .row-actions button {
+            background: none;
+            border: none;
+            color: #dc3545;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .confirm-box {
+            margin: 0 2rem 1rem;
+            padding: 1rem;
+            background: #fff5f5;
+            border: 1px solid #f5c2c7;
+            border-radius: 8px;
+            display: none;
+        }
+        .confirm-box.show { display: block; }
+        .confirm-box input {
+            width: 100%;
+            max-width: 280px;
+            padding: .5rem;
+            margin: .5rem 0;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+        .empty { text-align: center; color: #666; padding: 2rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-users-cog"></i> Gestión de usuarios</h1>
+            <div class="header-actions">
+                <a href="admin-verificaciones.html" class="btn btn-light"><i class="fas fa-shield-alt"></i> Verificaciones</a>
+                <a href="index.html" class="btn btn-light"><i class="fas fa-home"></i> Inicio</a>
+            </div>
+        </header>
+
+        <div class="toolbar">
+            <button class="btn btn-secondary" onclick="loadUsers()"><i class="fas fa-sync"></i> Actualizar</button>
+            <button class="btn btn-danger" onclick="showPurgeConfirm()"><i class="fas fa-broom"></i> Eliminar cuentas de prueba</button>
+            <button class="btn btn-danger" onclick="showSelectedConfirm()"><i class="fas fa-trash"></i> Eliminar seleccionadas</button>
+            <span id="userCount" style="color:#666;font-size:.9rem;"></span>
+        </div>
+
+        <div id="message" class="message"></div>
+
+        <div id="purgeConfirm" class="confirm-box">
+            <strong>¿Eliminar todas las cuentas detectadas como prueba?</strong>
+            <p style="margin:.5rem 0;color:#666;font-size:.9rem;">Se borrarán usuarios con email @test.com, @example.com, nombres tipo test*, etc. No se tocan administradores.</p>
+            <input type="text" id="purgeConfirmInput" placeholder="Escribe ELIMINAR">
+            <div style="margin-top:.5rem;display:flex;gap:.5rem;">
+                <button class="btn btn-danger" onclick="purgeTestUsers()">Confirmar</button>
+                <button class="btn btn-secondary" onclick="hideConfirmBoxes()">Cancelar</button>
+            </div>
+        </div>
+
+        <div id="selectedConfirm" class="confirm-box">
+            <strong>¿Eliminar las cuentas marcadas?</strong>
+            <input type="text" id="selectedConfirmInput" placeholder="Escribe ELIMINAR">
+            <div style="margin-top:.5rem;display:flex;gap:.5rem;">
+                <button class="btn btn-danger" onclick="deleteSelected()">Confirmar</button>
+                <button class="btn btn-secondary" onclick="hideConfirmBoxes()">Cancelar</button>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this.checked)"></th>
+                        <th>ID</th>
+                        <th>Usuario</th>
+                        <th>Email</th>
+                        <th>Estado</th>
+                        <th>Posts</th>
+                        <th>Alta</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="usersBody">
+                    <tr><td colspan="8" class="empty">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let users = [];
+
+        function authHeaders() {
+            const token = localStorage.getItem('authToken');
+            return {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+            };
+        }
+
+        function showMessage(text, type) {
+            const el = document.getElementById('message');
+            el.textContent = text;
+            el.className = `message show ${type}`;
+        }
+
+        function hideConfirmBoxes() {
+            document.getElementById('purgeConfirm').classList.remove('show');
+            document.getElementById('selectedConfirm').classList.remove('show');
+            document.getElementById('purgeConfirmInput').value = '';
+            document.getElementById('selectedConfirmInput').value = '';
+        }
+
+        function showPurgeConfirm() {
+            hideConfirmBoxes();
+            document.getElementById('purgeConfirm').classList.add('show');
+        }
+
+        function showSelectedConfirm() {
+            const ids = getSelectedIds();
+            if (!ids.length) {
+                showMessage('Marca al menos una cuenta (que no sea admin).', 'error');
+                return;
+            }
+            hideConfirmBoxes();
+            document.getElementById('selectedConfirm').classList.add('show');
+        }
+
+        function getSelectedIds() {
+            return [...document.querySelectorAll('.user-select:checked')].map((el) => Number(el.value));
+        }
+
+        function toggleSelectAll(checked) {
+            document.querySelectorAll('.user-select:not(:disabled)').forEach((el) => {
+                el.checked = checked;
+            });
+        }
+
+        function escapeHtml(text) {
+            return String(text || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        function renderUsers() {
+            const tbody = document.getElementById('usersBody');
+            const testCount = users.filter((u) => u.likely_test).length;
+            document.getElementById('userCount').textContent =
+                `${users.length} usuarios · ${testCount} posibles prueba`;
+
+            if (!users.length) {
+                tbody.innerHTML = '<tr><td colspan="8" class="empty">No hay usuarios</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = users.map((user) => {
+                const badges = [];
+                if (user.is_admin) badges.push('<span class="badge badge-admin">Admin</span>');
+                if (user.likely_test) badges.push('<span class="badge badge-test">Prueba</span>');
+                if (user.is_verified) badges.push('<span class="badge badge-verified">Verificado</span>');
+                const date = user.created_at ? new Date(user.created_at).toLocaleDateString('es-MX') : '—';
+                const disabled = user.is_admin ? 'disabled' : '';
+                return `<tr>
+                    <td><input class="user-select" type="checkbox" value="${user.id}" ${disabled} ${user.likely_test ? 'checked' : ''}></td>
+                    <td>${user.id}</td>
+                    <td>${escapeHtml(user.username)}</td>
+                    <td>${escapeHtml(user.email)}</td>
+                    <td>${badges.join(' ') || '—'}</td>
+                    <td>${user.posts_count || 0}</td>
+                    <td>${date}</td>
+                    <td class="row-actions">${user.is_admin ? '' : `<button type="button" onclick="deleteOne(${user.id})">Eliminar</button>`}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        async function loadUsers() {
+            try {
+                const response = await fetch(`${API_URL}/api/admin/users`, { headers: authHeaders() });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(data.error || 'No se pudo cargar la lista');
+                }
+                users = data.users || [];
+                renderUsers();
+            } catch (error) {
+                showMessage(error.message, 'error');
+                document.getElementById('usersBody').innerHTML =
+                    `<tr><td colspan="8" class="empty">${escapeHtml(error.message)}</td></tr>`;
+            }
+        }
+
+        async function purgeTestUsers() {
+            const confirm = document.getElementById('purgeConfirmInput').value.trim();
+            if (confirm !== 'ELIMINAR') {
+                showMessage('Escribe ELIMINAR para confirmar.', 'error');
+                return;
+            }
+            try {
+                const response = await fetch(`${API_URL}/api/admin/users/bulk-delete`, {
+                    method: 'POST',
+                    headers: authHeaders(),
+                    body: JSON.stringify({ confirm: 'ELIMINAR', only_likely_test: true })
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.error || data.message || 'Error al eliminar');
+                hideConfirmBoxes();
+                showMessage(data.message || 'Listo', 'success');
+                await loadUsers();
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        }
+
+        async function deleteSelected() {
+            const confirm = document.getElementById('selectedConfirmInput').value.trim();
+            const userIds = getSelectedIds();
+            if (confirm !== 'ELIMINAR') {
+                showMessage('Escribe ELIMINAR para confirmar.', 'error');
+                return;
+            }
+            try {
+                const response = await fetch(`${API_URL}/api/admin/users/bulk-delete`, {
+                    method: 'POST',
+                    headers: authHeaders(),
+                    body: JSON.stringify({ confirm: 'ELIMINAR', user_ids: userIds })
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.error || data.message || 'Error al eliminar');
+                hideConfirmBoxes();
+                showMessage(data.message || 'Listo', 'success');
+                await loadUsers();
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        }
+
+        async function deleteOne(userId) {
+            const user = users.find((u) => u.id === userId);
+            const label = user ? `${user.username} (${user.email})` : `ID ${userId}`;
+            if (!confirm(`¿Eliminar la cuenta ${label}?`)) return;
+            try {
+                const response = await fetch(`${API_URL}/api/admin/users/${userId}`, {
+                    method: 'DELETE',
+                    headers: authHeaders()
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.error || 'Error al eliminar');
+                showMessage(data.message || 'Cuenta eliminada', 'success');
+                await loadUsers();
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        }
+
+        if (!localStorage.getItem('authToken')) {
+            showMessage('Inicia sesión con una cuenta administrador y vuelve a esta página.', 'error');
+        } else {
+            loadUsers();
+        }
+    </script>
+</body>
+</html>
