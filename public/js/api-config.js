@@ -72,4 +72,31 @@
     global.getApiUrl = getApiUrl;
     global.resolveMediaUrl = resolveMediaUrl;
     global.API_URL = getApiBaseUrl();
+
+    async function checkBlobStorageHealth() {
+        try {
+            const response = await fetch(getApiUrl('/api/health'));
+            if (!response.ok) {
+                return;
+            }
+            const health = await response.json();
+            if (!health.blobSuspended || !health.error) {
+                return;
+            }
+            const banner = document.getElementById('storageBanner');
+            if (banner) {
+                banner.textContent = health.error;
+                banner.hidden = false;
+            }
+        } catch (_) {
+            // ignore
+        }
+    }
+
+    global.checkBlobStorageHealth = checkBlobStorageHealth;
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', checkBlobStorageHealth);
+    } else {
+        checkBlobStorageHealth();
+    }
 })(window);

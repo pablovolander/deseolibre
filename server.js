@@ -44,6 +44,14 @@ const {
 const { deleteUserAccountData } = require('./lib/delete-user-account');
 const { formatUserForAdminList, filterDeletableUserIds } = require('./lib/admin-users');
 const {
+    isBlobUnavailableError,
+    toBlobStorageUnavailableError,
+    markBlobSuspended,
+    isBlobStorageSuspended,
+    getBlobUnavailablePayload,
+    sendApiError
+} = require('./lib/blob-errors');
+const {
     resolveCityQuery,
     resolveZoneQuery,
     postMatchesCity,
@@ -595,6 +603,9 @@ function saveDatabase() {
             dbDirty = false;
         })
         .catch((error) => {
+            if (isBlobUnavailableError(error)) {
+                markBlobSuspended(error);
+            }
             console.error('Error al guardar la base de datos en Blob:', error.message);
         });
 }
@@ -1027,6 +1038,9 @@ async function refreshDatabaseFromBlob() {
             db = new sqlite3.Database(dbPath);
             await ensureDatabaseSchemaUpToDate();
         } catch (error) {
+            if (isBlobUnavailableError(error)) {
+                throw toBlobStorageUnavailableError(error);
+            }
             console.error('Error al refrescar base de datos desde Blob:', error.message);
             if (!db) {
                 db = new sqlite3.Database(dbPath);
@@ -1062,7 +1076,7 @@ const requireUserVerification = (req, res, next) => {
         
         db.get('SELECT is_verified FROM users WHERE id = ?', [decoded.userId], (err, user) => {
             if (err) {
-                return res.status(500).json({ error: 'Error interno del servidor' });
+                return sendApiError(res, error, { development: isDevelopment });
             }
             
             if (!user) {
@@ -1237,7 +1251,7 @@ const requireAgeVerification = (req, res, next) => {
     
     db.get('SELECT age_verified FROM users WHERE id = ?', [userId], (err, user) => {
         if (err) {
-            return res.status(500).json({ error: 'Error interno del servidor' });
+            return sendApiError(res, error, { development: isDevelopment });
         }
         
         if (!user || !user.age_verified) {
@@ -1267,7 +1281,7 @@ const requireAgeAccess = (req, res, next) => {
 
     db.get('SELECT age_verified FROM users WHERE id = ?', [userId], (err, user) => {
         if (err) {
-            return res.status(500).json({ error: 'Error interno del servidor' });
+            return sendApiError(res, error, { development: isDevelopment });
         }
 
         if (!user || !user.age_verified) {
@@ -1295,7 +1309,7 @@ const checkUserBan = (req, res, next) => {
         [userId],
         (err, ban) => {
             if (err) {
-                return res.status(500).json({ error: 'Error interno del servidor' });
+                return sendApiError(res, error, { development: isDevelopment });
             }
             
             if (ban) {
@@ -1323,7 +1337,9 @@ app.get('/api/health', async (req, res) => {
             vercel: isVercel,
             database: dbPath,
             blobPersistence: Boolean(isVercel && process.env.BLOB_READ_WRITE_TOKEN),
-            blobAccess: getBlobAccess()
+            blobAccess: getBlobAccess(),
+            blobSuspended: isBlobStorageSuspended(),
+            ...(isBlobStorageSuspended() ? getBlobUnavailablePayload() : {})
         });
     } catch (error) {
         res.status(503).json({ ok: false, error: error.message });
@@ -1432,8 +1448,7 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
             user: mapUserForClient(newUser)
         });
     } catch (error) {
-        console.error('Error en registro:', error);
-        res.status(500).json({ error: 'Error interno del servidor' });
+        return sendApiError(res, error, { development: isDevelopment, logLabel: 'Error en registro:' });
     }
 });
 
@@ -1488,7 +1503,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
         });
     } catch (error) {
         console.error('Error en login:', error);
-        res.status(500).json({ error: 'Error interno del servidor' });
+        return sendApiError(res, error, { development: isDevelopment });
     }
 });
 
@@ -1578,8 +1593,7 @@ app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
 
         res.json(payload);
     } catch (error) {
-        console.error('Error en forgot-password:', error);
-        res.status(500).json({ error: 'Error interno del servidor' });
+        return sendApiError(res, error, { development: isDevelopment, logLabel: 'Error en forgot-password:' });
     }
 });
 
@@ -1594,7 +1608,13 @@ app.get('/api/auth/reset-password/validate', async (req, res) => {
         res.json({ valid: true });
     } catch (error) {
         console.error('Error validando token de reset:', error);
-        res.status(500).json({ valid: false, error: 'Error interno del servidor' });
+        if (isBlobUnavailableError(error)) {
+            return res.status(503).json({ valid: false, ...getBlobUnavailablePayload() });
+        }
+        return res.status(500).json({
+            valid: false,
+            error: isDevelopment ? error.message : 'Error interno del servidor'
+        });
     }
 });
 
@@ -1633,7 +1653,7 @@ app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
         res.json({ message: 'Contraseña actualizada. Ya puedes iniciar sesión.' });
     } catch (error) {
         console.error('Error en reset-password:', error);
-        res.status(500).json({ error: 'Error interno del servidor' });
+        return sendApiError(res, error, { development: isDevelopment });
     }
 });
 
@@ -1689,7 +1709,7 @@ app.post('/api/auth/start-verification', authenticateToken, (req, res) => {
     // Check if user is already verified
     db.get('SELECT is_verified FROM users WHERE id = ?', [userId], (err, user) => {
         if (err) {
-            return res.status(500).json({ error: 'Error interno del servidor' });
+            return sendApiError(res, error, { development: isDevelopment });
         }
 
         if (user.is_verified) {
@@ -1796,7 +1816,7 @@ app.get('/api/auth/verification-status', authenticateToken, (req, res) => {
         [userId],
         (err, user) => {
             if (err) {
-                return res.status(500).json({ error: 'Error interno del servidor' });
+                return sendApiError(res, error, { development: isDevelopment });
             }
 
             if (!user) {
@@ -1845,7 +1865,7 @@ app.get('/api/user/profile', authenticateToken, (req, res) => {
 
     db.get('SELECT id, username, email, age_verified, age_verification_date, created_at FROM users WHERE id = ?', [userId], (err, user) => {
         if (err) {
-            return res.status(500).json({ error: 'Error interno del servidor' });
+            return sendApiError(res, error, { development: isDevelopment });
         }
 
         if (!user) {
@@ -1899,7 +1919,7 @@ app.get('/api/user/public/:userId', async (req, res) => {
         res.json({ user });
     } catch (err) {
         console.error('Error loading public profile:', err);
-        res.status(500).json({ error: 'Error interno del servidor' });
+        return sendApiError(res, err, { development: isDevelopment });
     }
 });
 
@@ -1979,7 +1999,7 @@ app.post('/api/profile', authenticateToken, (req, res) => {
     // Check if profile exists
     db.get('SELECT id FROM user_profiles WHERE user_id = ?', [userId], (err, profile) => {
         if (err) {
-            return res.status(500).json({ error: 'Error interno del servidor' });
+            return sendApiError(res, error, { development: isDevelopment });
         }
 
         if (profile) {
@@ -2031,7 +2051,7 @@ app.get('/api/profile/:userId?', authenticateToken, (req, res) => {
 
     db.get(query, [targetUserId], (err, profile) => {
         if (err) {
-            return res.status(500).json({ error: 'Error interno del servidor' });
+            return sendApiError(res, error, { development: isDevelopment });
         }
 
         if (!profile) {
@@ -2090,7 +2110,7 @@ app.get('/api/user/me', authenticateToken, async (req, res) => {
         });
     } catch (error) {
         console.error('Error en /api/user/me:', error);
-        res.status(500).json({ error: 'Error interno del servidor' });
+        return sendApiError(res, error, { development: isDevelopment });
     }
 });
 
@@ -3044,13 +3064,13 @@ app.get('/api/feed', (req, res) => {
 
     db.all(query, [limit, offset], (err, posts) => {
         if (err) {
-            return res.status(500).json({ error: 'Error interno del servidor' });
+            return sendApiError(res, error, { development: isDevelopment });
         }
 
         // Get total count
         db.get('SELECT COUNT(*) as total FROM content_posts WHERE is_public = 1', (err, count) => {
             if (err) {
-                return res.status(500).json({ error: 'Error interno del servidor' });
+                return sendApiError(res, error, { development: isDevelopment });
             }
 
             res.json({
@@ -3133,7 +3153,7 @@ app.get('/api/content/my', authenticateToken, (req, res) => {
 
     db.all(query, [userId], (err, posts) => {
         if (err) {
-            return res.status(500).json({ error: 'Error interno del servidor' });
+            return sendApiError(res, error, { development: isDevelopment });
         }
         res.json({ posts });
     });
@@ -3147,7 +3167,7 @@ app.post('/api/content/:postId/like', authenticateToken, (req, res) => {
     // Check if already liked
     db.get('SELECT id FROM post_likes WHERE user_id = ? AND post_id = ?', [userId, postId], (err, like) => {
         if (err) {
-            return res.status(500).json({ error: 'Error interno del servidor' });
+            return sendApiError(res, error, { development: isDevelopment });
         }
 
         if (like) {
@@ -3210,7 +3230,7 @@ app.get('/api/content/:postId/comments', authenticateToken, requireAgeVerificati
 
     db.all(query, [postId], (err, comments) => {
         if (err) {
-            return res.status(500).json({ error: 'Error interno del servidor' });
+            return sendApiError(res, error, { development: isDevelopment });
         }
         res.json({ comments });
     });
@@ -3246,7 +3266,7 @@ app.post('/api/reports', authenticateToken, requireAgeVerification, checkUserBan
     
     db.get(checkQuery, [reporterId, reported_user_id, reported_post_id], (err, existingReport) => {
         if (err) {
-            return res.status(500).json({ error: 'Error interno del servidor' });
+            return sendApiError(res, error, { development: isDevelopment });
         }
 
         if (existingReport) {
@@ -3290,7 +3310,7 @@ app.get('/api/reports/my', authenticateToken, requireAgeVerification, checkUserB
 
     db.all(query, [userId], (err, reports) => {
         if (err) {
-            return res.status(500).json({ error: 'Error interno del servidor' });
+            return sendApiError(res, error, { development: isDevelopment });
         }
         res.json({ reports });
     });
@@ -3346,12 +3366,6 @@ app.get('/api/policies', (req, res) => {
     };
     
     res.json({ policies });
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ error: 'Algo salió mal!' });
 });
 
 // ==================== IDENTITY VERIFICATION SYSTEM ====================
@@ -3486,7 +3500,7 @@ app.get('/api/verification/status', authenticateToken, (req, res) => {
         [userId],
         (userErr, userRow) => {
             if (userErr) {
-                return res.status(500).json({ error: 'Error interno del servidor' });
+                return sendApiError(res, userErr, { development: isDevelopment });
             }
             if (!userRow) {
                 return res.status(404).json({ error: 'Usuario no encontrado' });
@@ -3503,7 +3517,7 @@ app.get('/api/verification/status', authenticateToken, (req, res) => {
 
             db.get(query, [userId], (err, verification) => {
                 if (err) {
-                    return res.status(500).json({ error: 'Error interno del servidor' });
+                    return sendApiError(res, error, { development: isDevelopment });
                 }
 
                 const base = {
@@ -3655,7 +3669,7 @@ app.get('/api/admin/verifications/pending', authenticateToken, (req, res) => {
     // Check if user is admin
     db.get('SELECT is_admin FROM users WHERE id = ?', [userId], (err, user) => {
         if (err) {
-            return res.status(500).json({ error: 'Error interno del servidor' });
+            return sendApiError(res, error, { development: isDevelopment });
         }
         
         if (!user || !user.is_admin) {
@@ -3678,7 +3692,7 @@ app.get('/api/admin/verifications/pending', authenticateToken, (req, res) => {
         
         db.all(query, params, (err, verifications) => {
             if (err) {
-                return res.status(500).json({ error: 'Error interno del servidor' });
+                return sendApiError(res, error, { development: isDevelopment });
             }
             
             const formattedVerifications = verifications.map(verification => {
@@ -3720,7 +3734,7 @@ app.post('/api/admin/verifications/:id/approve', authenticateToken, (req, res) =
     // Check if user is admin
     db.get('SELECT is_admin FROM users WHERE id = ?', [userId], (err, user) => {
         if (err) {
-            return res.status(500).json({ error: 'Error interno del servidor' });
+            return sendApiError(res, error, { development: isDevelopment });
         }
         
         if (!user || !user.is_admin) {
@@ -3739,7 +3753,7 @@ app.post('/api/admin/verifications/:id/approve', authenticateToken, (req, res) =
                 // Get user_id from verification
                 db.get('SELECT user_id FROM user_verifications WHERE id = ?', [verificationId], (err, verification) => {
                     if (err) {
-                        return res.status(500).json({ error: 'Error interno del servidor' });
+                        return sendApiError(res, error, { development: isDevelopment });
                     }
                     
                     // Update user verification status
@@ -3777,7 +3791,7 @@ app.post('/api/admin/verifications/:id/reject', authenticateToken, (req, res) =>
     // Check if user is admin
     db.get('SELECT is_admin FROM users WHERE id = ?', [userId], (err, user) => {
         if (err) {
-            return res.status(500).json({ error: 'Error interno del servidor' });
+            return sendApiError(res, error, { development: isDevelopment });
         }
         
         if (!user || !user.is_admin) {
@@ -3810,7 +3824,7 @@ app.get('/api/admin/verifications/stats', authenticateToken, (req, res) => {
     // Check if user is admin
     db.get('SELECT is_admin FROM users WHERE id = ?', [userId], (err, user) => {
         if (err) {
-            return res.status(500).json({ error: 'Error interno del servidor' });
+            return sendApiError(res, error, { development: isDevelopment });
         }
         
         if (!user || !user.is_admin) {
@@ -3827,7 +3841,7 @@ app.get('/api/admin/verifications/stats', authenticateToken, (req, res) => {
         
         db.all(query, [], (err, stats) => {
             if (err) {
-                return res.status(500).json({ error: 'Error interno del servidor' });
+                return sendApiError(res, error, { development: isDevelopment });
             }
             
             const formattedStats = {
@@ -3899,7 +3913,7 @@ app.post('/api/admin/bootstrap', async (req, res) => {
         });
     } catch (error) {
         console.error('Error en admin bootstrap:', error);
-        res.status(500).json({ error: 'Error interno del servidor' });
+        return sendApiError(res, error, { development: isDevelopment });
     }
 });
 
@@ -3982,7 +3996,7 @@ app.get('/api/admin/users', authenticateToken, async (req, res) => {
         });
     } catch (error) {
         console.error('Error listando usuarios admin:', error);
-        res.status(500).json({ error: 'Error interno del servidor' });
+        return sendApiError(res, error, { development: isDevelopment });
     }
 });
 
@@ -4035,7 +4049,7 @@ app.post('/api/admin/users/bulk-delete', authenticateToken, async (req, res) => 
         });
     } catch (error) {
         console.error('Error en bulk-delete admin:', error);
-        res.status(500).json({ error: 'Error interno del servidor' });
+        return sendApiError(res, error, { development: isDevelopment });
     }
 });
 
@@ -4067,7 +4081,7 @@ app.delete('/api/admin/users/:userId', authenticateToken, async (req, res) => {
         res.json({ message: 'Cuenta eliminada correctamente.', deleted_user_id: targetId });
     } catch (error) {
         console.error('Error eliminando usuario admin:', error);
-        res.status(500).json({ error: 'Error interno del servidor' });
+        return sendApiError(res, error, { development: isDevelopment });
     }
 });
 
@@ -5678,6 +5692,10 @@ app.use((err, req, res, next) => {
     // Error de CORS
     if (err.message && err.message.includes('CORS')) {
         return res.status(403).json({ error: 'Acceso denegado por CORS' });
+    }
+
+    if (isBlobUnavailableError(err)) {
+        return res.status(503).json(getBlobUnavailablePayload());
     }
 
     // Error genérico
