@@ -7,9 +7,14 @@ const {
     getBlobUnavailablePayload
 } = require('../lib/blob-errors');
 
-test('isBlobUnavailableError detects BlobStoreSuspendedError', () => {
-    const err = new Error('Blob store is suspended');
-    err.name = 'BlobStoreSuspendedError';
+test('isBlobUnavailableError detects real Vercel BlobStoreSuspendedError', () => {
+    const { BlobStoreSuspendedError } = require('@vercel/blob');
+    const err = new BlobStoreSuspendedError();
+    assert.equal(isBlobUnavailableError(err), true);
+});
+
+test('isBlobUnavailableError detects suspended message text', () => {
+    const err = new Error('Vercel Blob: This store has been suspended.');
     assert.equal(isBlobUnavailableError(err), true);
 });
 

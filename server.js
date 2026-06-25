@@ -1400,6 +1400,12 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
 
         await dbReady;
 
+        if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
+            if (await resolveBlobSuspendedStatus(isVercel)) {
+                return res.status(503).json(getBlobUnavailablePayload());
+            }
+        }
+
         const existing = await runDbGet(
             'SELECT id FROM users WHERE email = ? OR username = ?',
             [email, username]
