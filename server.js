@@ -1,12 +1,19 @@
 const express = require('express');
+const path = require('path');
+const fs = require('fs');
+
+// Variables locales (.env.local no se sube a git)
+const envLocalPath = path.join(__dirname, '.env.local');
+if (fs.existsSync(envLocalPath)) {
+    require('dotenv').config({ path: envLocalPath });
+}
+
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
 const os = require('os');
 const multer = require('multer');
-const fs = require('fs');
 const axios = require('axios');
 const helmet = require('helmet');
 const compression = require('compression');
@@ -82,6 +89,9 @@ const isServerless =
     Boolean(process.env.VERCEL_ENV) ||
     __dirname.includes('/var/task');
 const isVercel = isServerless;
+if (isVercel) {
+    app.set('trust proxy', 1);
+}
 const publicDir = path.join(__dirname, 'public');
 const vercelUploadRoot = path.join(os.tmpdir(), 'deseo_libre_uploads');
 
