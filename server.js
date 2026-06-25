@@ -18,7 +18,7 @@ const axios = require('axios');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
-const { restoreDatabaseIfNeeded, persistDatabase, persistDatabaseNow } = require('./lib/db-persist');
+const { restoreDatabaseIfNeeded, persistDatabase, persistDatabaseNow, resolveBlobSuspendedStatus } = require('./lib/db-persist');
 const { persistUploadedFile, resolveMediaUrl, streamPrivateMedia, getBlobAccess, getBlobToken } = require('./lib/media-storage');
 const {
     generateResetToken,
@@ -47,7 +47,6 @@ const {
     isBlobUnavailableError,
     toBlobStorageUnavailableError,
     markBlobSuspended,
-    isBlobStorageSuspended,
     getBlobUnavailablePayload,
     sendApiError
 } = require('./lib/blob-errors');
@@ -1331,6 +1330,7 @@ const checkUserBan = (req, res, next) => {
 app.get('/api/health', async (req, res) => {
     try {
         await dbReady;
+        const blobSuspended = await resolveBlobSuspendedStatus(isVercel);
         res.json({
             ok: true,
             environment: NODE_ENV,
@@ -1338,8 +1338,8 @@ app.get('/api/health', async (req, res) => {
             database: dbPath,
             blobPersistence: Boolean(isVercel && process.env.BLOB_READ_WRITE_TOKEN),
             blobAccess: getBlobAccess(),
-            blobSuspended: isBlobStorageSuspended(),
-            ...(isBlobStorageSuspended() ? getBlobUnavailablePayload() : {})
+            blobSuspended,
+            ...(blobSuspended ? getBlobUnavailablePayload() : {})
         });
     } catch (error) {
         res.status(503).json({ ok: false, error: error.message });
