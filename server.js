@@ -8,10 +8,22 @@ if (fs.existsSync(envLocalPath)) {
     require('dotenv').config({ path: envLocalPath });
 }
 
+if (process.env.SENTRY_DSN) {
+    try {
+        const Sentry = require('@sentry/node');
+        Sentry.init({
+            dsn: process.env.SENTRY_DSN,
+            environment: process.env.NODE_ENV || process.env.VERCEL_ENV || 'development',
+            tracesSampleRate: 0.1
+        });
+    } catch (error) {
+        console.warn('Sentry no disponible:', error.message);
+    }
+}
+
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const cors = require('cors');
-const sqlite3 = require('sqlite3').verbose();
 const os = require('os');
 const multer = require('multer');
 const axios = require('axios');
@@ -19,6 +31,12 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { restoreDatabaseIfNeeded, persistDatabase, persistDatabaseNow, resolveBlobSuspendedStatus } = require('./lib/db-persist');
+const {
+    usesTursoDatabase,
+    shouldPersistDatabaseToBlob,
+    createDatabaseConnection,
+    getDatabaseModeLabel
+} = require('./lib/database');
 const { persistUploadedFile, resolveMediaUrl, streamPrivateMedia, getBlobAccess, getBlobToken } = require('./lib/media-storage');
 const {
     generateResetToken,
@@ -588,14 +606,22 @@ const deleteFileIfExists = (relativePath) => {
 // Database setup (en Vercel el FS de despliegue es de solo lectura; tmp del sistema es escribible)
 const dbPath = isVercel ? path.join(os.tmpdir(), 'deseo_libre.db') : path.join(__dirname, 'deseo_libre.db');
 let db;
+let databaseMode = 'file';
 
 let dbDirty = false;
+
+function persistDatabaseEnabled() {
+    return shouldPersistDatabaseToBlob(isVercel);
+}
 
 function markDbDirty() {
     dbDirty = true;
 }
 
 function saveDatabase() {
+    if (!persistDatabaseEnabled()) {
+        return;
+    }
     markDbDirty();
     persistDatabaseNow(dbPath, isVercel)
         .then(() => {
@@ -610,6 +636,9 @@ function saveDatabase() {
 }
 
 async function saveDatabaseAsync() {
+    if (!persistDatabaseEnabled()) {
+        return;
+    }
     markDbDirty();
     await persistDatabaseNow(dbPath, isVercel);
     dbDirty = false;
@@ -968,11 +997,19 @@ async function ensureDatabaseSchemaUpToDate() {
 }
 
 const dbReady = (async () => {
-    await restoreDatabaseIfNeeded(dbPath, isVercel);
-    db = new sqlite3.Database(dbPath);
+    if (!usesTursoDatabase()) {
+        await restoreDatabaseIfNeeded(dbPath, isVercel);
+    }
+    const connection = await createDatabaseConnection(dbPath);
+    db = connection.db;
+    databaseMode = connection.mode;
     await ensureDatabaseSchemaUpToDate();
-    if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
+    if (usesTursoDatabase()) {
+        console.log('Base de datos remota Turso activa');
+    } else if (persistDatabaseEnabled()) {
         console.log('Persistencia de base de datos en Vercel Blob activa');
+    }
+    if (usesTursoDatabase() || persistDatabaseEnabled()) {
         try {
             const publicPosts = await new Promise((resolve, reject) => {
                 db.all(
@@ -1009,8 +1046,8 @@ const dbReady = (async () => {
         } catch (indexErr) {
             console.warn('No se pudo reconstruir índice de feeds:', indexErr.message);
         }
-    } else if (isVercel) {
-        console.warn('En Vercel sin BLOB_READ_WRITE_TOKEN los usuarios no persisten entre reinicios. Añade un Blob store en el proyecto.');
+    } else if (isVercel && !usesTursoDatabase()) {
+        console.warn('En Vercel sin Turso ni BLOB_READ_WRITE_TOKEN los usuarios no persisten entre reinicios.');
     }
     return db;
 })();
@@ -1018,7 +1055,7 @@ const dbReady = (async () => {
 let dbRefreshQueue = Promise.resolve();
 
 async function refreshDatabaseFromBlob() {
-    if (!isVercel || !process.env.BLOB_READ_WRITE_TOKEN) {
+    if (!persistDatabaseEnabled()) {
         return;
     }
 
@@ -1028,13 +1065,15 @@ async function refreshDatabaseFromBlob() {
                 await persistDatabaseNow(dbPath, isVercel);
                 dbDirty = false;
             }
-            if (db) {
+            if (db && databaseMode === 'file') {
                 await new Promise((resolve, reject) => {
                     db.close((err) => (err ? reject(err) : resolve()));
                 });
             }
             await restoreDatabaseIfNeeded(dbPath, isVercel);
-            db = new sqlite3.Database(dbPath);
+            const connection = await createDatabaseConnection(dbPath);
+            db = connection.db;
+            databaseMode = connection.mode;
             await ensureDatabaseSchemaUpToDate();
         } catch (error) {
             if (isBlobUnavailableError(error)) {
@@ -1042,7 +1081,9 @@ async function refreshDatabaseFromBlob() {
             }
             console.error('Error al refrescar base de datos desde Blob:', error.message);
             if (!db) {
-                db = new sqlite3.Database(dbPath);
+                const connection = await createDatabaseConnection(dbPath);
+                db = connection.db;
+                databaseMode = connection.mode;
                 await ensureDatabaseSchemaUpToDate();
             }
         }
@@ -1335,8 +1376,10 @@ app.get('/api/health', async (req, res) => {
             ok: true,
             environment: NODE_ENV,
             vercel: isVercel,
-            database: dbPath,
-            blobPersistence: Boolean(isVercel && process.env.BLOB_READ_WRITE_TOKEN),
+            database: usesTursoDatabase() ? 'turso' : dbPath,
+            databaseMode: getDatabaseModeLabel(databaseMode),
+            turso: usesTursoDatabase(),
+            blobPersistence: persistDatabaseEnabled(),
             blobAccess: getBlobAccess(),
             blobSuspended,
             ...(blobSuspended ? getBlobUnavailablePayload() : {})
@@ -1400,7 +1443,7 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
 
         await dbReady;
 
-        if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
+        if (persistDatabaseEnabled()) {
             if (await resolveBlobSuspendedStatus(isVercel)) {
                 return res.status(503).json(getBlobUnavailablePayload());
             }
@@ -5705,6 +5748,14 @@ app.use((err, req, res, next) => {
     }
 
     // Error genérico
+    if (process.env.SENTRY_DSN) {
+        try {
+            require('@sentry/node').captureException(err);
+        } catch (_) {
+            // ignore
+        }
+    }
+
     res.status(err.status || 500).json({
         error: isDevelopment 
             ? err.message || 'Error interno del servidor'

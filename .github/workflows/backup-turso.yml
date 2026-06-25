@@ -1,0 +1,29 @@
+name: Backup Turso DB
+
+on:
+  schedule:
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Turso CLI
+        uses: tursodatabase/setup-turso@v1
+        with:
+          token: ${{ secrets.TURSO_API_TOKEN }}
+
+      - name: Export database
+        run: |
+          turso db export "${{ secrets.TURSO_DB_NAME }}" --output-file deseo-libre-backup.db
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deseo-libre-turso-${{ github.run_number }}
+          path: deseo-libre-backup.db
+          retention-days: 14
