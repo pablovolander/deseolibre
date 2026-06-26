@@ -153,7 +153,10 @@ window.DeseoPublicBodyVideo = (function () {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-            throw new Error(data.error || data.message || 'No se pudo obtener el código');
+            const error = new Error(data.error || data.message || 'No se pudo obtener el código');
+            error.status = res.status;
+            error.data = data;
+            throw error;
         }
         challenge = data;
         return data;

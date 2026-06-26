@@ -2551,8 +2551,8 @@
                     <p><strong>Configura tu cuenta</strong> para publicar fotos y videos: completa ${items.join(' y ')}.</p>
                     <div class="profile-setup-actions">
                         ${!currentUser.profile_complete ? '<button type="button" class="btn-action btn-primary" onclick="openEditProfileModal()">Completar perfil</button>' : ''}
-                        ${!currentUser.has_public_body_video ? '<button type="button" class="btn-action btn-secondary" onclick="openBodyVideoModal()">Subir video corporal</button>' : ''}
-                        ${!currentUser.is_verified ? '<a href="verificar-identidad.html" class="btn-action btn-secondary">Verificar identidad</a>' : ''}
+                        ${!currentUser.has_public_body_video && currentUser.is_verified ? '<button type="button" class="btn-action btn-secondary" onclick="openBodyVideoModal()">Subir video corporal</button>' : ''}
+                        ${!currentUser.is_verified ? '<a href="verificar-identidad.html" class="btn-action btn-primary">Verificar identidad</a>' : ''}
                     </div>
                 </div>`;
             banner.style.display = 'block';
@@ -2862,7 +2862,7 @@
                 videoInfo.style.display = 'none';
                 if (isOwnProfile) {
                     editBtn.style.display = 'none';
-                    uploadBtn.style.display = 'inline-flex';
+                    uploadBtn.style.display = currentUser?.is_verified ? 'inline-flex' : 'none';
                 } else {
                     editBtn.style.display = 'none';
                     uploadBtn.style.display = 'none';
@@ -3818,7 +3818,9 @@
             const codeEl = document.getElementById('publicVideoChallengeCode');
             const statusEl = document.getElementById('publicVideoUploadStatus');
             const refreshBtn = document.getElementById('refreshChallengeBtn');
+            authToken = typeof DeseoAuth !== 'undefined' ? DeseoAuth.getToken() : authToken;
             if (!authToken || typeof DeseoPublicBodyVideo === 'undefined') {
+                if (codeEl) codeEl.textContent = '—';
                 if (statusEl) statusEl.textContent = 'Inicia sesión para obtener un código.';
                 return;
             }
@@ -3831,13 +3833,41 @@
                     statusEl.textContent = `Código válido ${Math.floor((data.expires_in_sec || 1200) / 60)} min. Graba el video mostrando el código.`;
                 }
             } catch (error) {
-                if (statusEl) statusEl.textContent = error.message || 'Error al obtener código';
+                if (codeEl) codeEl.textContent = '—';
+                const verifyRequired =
+                    error?.status === 403 ||
+                    String(error.message || '').toLowerCase().includes('verificación');
+                if (verifyRequired) {
+                    if (statusEl) {
+                        statusEl.innerHTML =
+                            'Debes <a href="verificar-identidad.html" style="color:var(--primary-color);font-weight:600;">verificar tu identidad</a> antes de obtener el código (documento, selfie y video privado).';
+                    }
+                } else if (statusEl) {
+                    statusEl.textContent = error.message || 'Error al obtener código';
+                }
             } finally {
                 if (refreshBtn) refreshBtn.disabled = false;
             }
         }
 
         async function openBodyVideoModal() {
+            authToken = typeof DeseoAuth !== 'undefined' ? DeseoAuth.getToken() : authToken;
+            const user = currentUser || (typeof DeseoAuth !== 'undefined' ? DeseoAuth.getCachedUser() : null);
+            if (!authToken) {
+                showNotification('Inicia sesión para subir tu video corporal', 'error');
+                return;
+            }
+            if (!user?.is_verified) {
+                const msg =
+                    'Primero verifica tu identidad (documento, selfie y video privado). Después podrás obtener el código para el video corporal público.';
+                if (typeof DeseoVerification !== 'undefined') {
+                    DeseoVerification.redirectToVerify(msg);
+                } else {
+                    showNotification(msg, 'error');
+                    window.location.href = 'verificar-identidad.html';
+                }
+                return;
+            }
             document.getElementById('bodyVideoModal').classList.add('active');
             document.getElementById('publicVideoUploadStatus').textContent = '';
             await refreshPublicVideoChallenge();
