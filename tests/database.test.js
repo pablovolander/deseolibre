@@ -3,7 +3,9 @@ const assert = require('node:assert/strict');
 const {
     usesTursoDatabase,
     shouldPersistDatabaseToBlob,
-    getDatabaseModeLabel
+    getDatabaseModeLabel,
+    isIgnorableSchemaError,
+    TursoDatabase
 } = require('../lib/database');
 
 test('usesTursoDatabase requires url and token', () => {
@@ -43,4 +45,50 @@ test('shouldPersistDatabaseToBlob is false when Turso is configured', () => {
 test('getDatabaseModeLabel maps modes', () => {
     assert.equal(getDatabaseModeLabel('turso'), 'turso');
     assert.equal(getDatabaseModeLabel('file'), 'file');
+});
+
+test('isIgnorableSchemaError detects duplicate column failures', () => {
+    assert.equal(
+        isIgnorableSchemaError(new Error('SQLite error: duplicate column name: is_admin')),
+        true
+    );
+    assert.equal(isIgnorableSchemaError(new Error('duplicate column')), true);
+    assert.equal(isIgnorableSchemaError(new Error('no such table: users')), false);
+});
+
+test('TursoDatabase keeps queue alive after failed statement', async () => {
+    const calls = [];
+    const client = {
+        execute: async ({ sql }) => {
+            calls.push(sql);
+            if (sql.includes('ADD COLUMN broken')) {
+                throw new Error('SQLite error: duplicate column name: broken');
+            }
+            return { rows: [{ id: 1 }], columns: ['id'] };
+        }
+    };
+    const db = new TursoDatabase(client);
+
+    await new Promise((resolve, reject) => {
+        db.run('ALTER TABLE users ADD COLUMN broken TEXT', [], (err) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve();
+            }
+        });
+    }).catch(() => {});
+
+    const row = await new Promise((resolve, reject) => {
+        db.get('SELECT id FROM users WHERE id = ?', [1], (err, result) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(result);
+            }
+        });
+    });
+
+    assert.deepEqual(row, { id: 1 });
+    assert.equal(calls.length, 2);
 });

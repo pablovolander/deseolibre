@@ -35,7 +35,8 @@ const {
     usesTursoDatabase,
     shouldPersistDatabaseToBlob,
     createDatabaseConnection,
-    getDatabaseModeLabel
+    getDatabaseModeLabel,
+    isIgnorableSchemaError
 } = require('./lib/database');
 const { persistUploadedFile, resolveMediaUrl, streamPrivateMedia, getBlobAccess, getBlobToken } = require('./lib/media-storage');
 const {
@@ -672,14 +673,6 @@ function initializeDatabaseSchema(database) {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
-    // Add is_admin column if it doesn't exist (for existing databases)
-    database.run(`ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE`, (err) => {
-        // Ignore error if column already exists
-        if (err && !err.message.includes('duplicate column')) {
-            console.error('Error adding is_admin column:', err);
-        }
-    });
-
     // User verification log table
     database.run(`CREATE TABLE IF NOT EXISTS user_verifications (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -696,7 +689,7 @@ function initializeDatabaseSchema(database) {
     // Add rejection_reason column if it doesn't exist (for existing databases)
     database.run(`ALTER TABLE user_verifications ADD COLUMN rejection_reason TEXT`, (err) => {
         // Ignore error if column already exists
-        if (err && !err.message.includes('duplicate column')) {
+            if (err && !isIgnorableSchemaError(err)) {
             console.error('Error adding rejection_reason column:', err);
         }
     });
@@ -723,12 +716,12 @@ function initializeDatabaseSchema(database) {
 
     // Add new verification fields for existing databases
     database.run(`ALTER TABLE user_profiles ADD COLUMN body_verification_video_url TEXT`, (err) => {
-        if (err && !err.message.includes('duplicate column')) {
+            if (err && !isIgnorableSchemaError(err)) {
             console.error('Error adding body_verification_video_url column:', err);
         }
     });
     database.run(`ALTER TABLE user_profiles ADD COLUMN face_obscured BOOLEAN DEFAULT 0`, (err) => {
-        if (err && !err.message.includes('duplicate column')) {
+            if (err && !isIgnorableSchemaError(err)) {
             console.error('Error adding face_obscured column:', err);
         }
     });
@@ -904,19 +897,19 @@ function initializeDatabaseSchema(database) {
 
     // Add statistics columns to users table if they don't exist
     database.run(`ALTER TABLE users ADD COLUMN followers_count INTEGER DEFAULT 0`, (err) => {
-        if (err && !err.message.includes('duplicate column')) {
+            if (err && !isIgnorableSchemaError(err)) {
             console.error('Error adding followers_count:', err);
         }
     });
     
     database.run(`ALTER TABLE users ADD COLUMN following_count INTEGER DEFAULT 0`, (err) => {
-        if (err && !err.message.includes('duplicate column')) {
+            if (err && !isIgnorableSchemaError(err)) {
             console.error('Error adding following_count:', err);
         }
     });
     
     database.run(`ALTER TABLE users ADD COLUMN posts_count INTEGER DEFAULT 0`, (err) => {
-        if (err && !err.message.includes('duplicate column')) {
+            if (err && !isIgnorableSchemaError(err)) {
             console.error('Error adding posts_count:', err);
         }
         resolve();
@@ -933,7 +926,7 @@ async function applyDatabaseMigrations(database) {
 
     const exec = (sql) => new Promise((resolve) => {
         conn.run(sql, (err) => {
-            if (err && !String(err.message || '').includes('duplicate column')) {
+                if (err && !isIgnorableSchemaError(err)) {
                 console.warn('Migración BD:', err.message);
             }
             resolve();
@@ -1055,7 +1048,7 @@ const dbReady = (async () => {
 let dbRefreshQueue = Promise.resolve();
 
 async function refreshDatabaseFromBlob() {
-    if (!persistDatabaseEnabled()) {
+    if (!persistDatabaseEnabled() || usesTursoDatabase()) {
         return;
     }
 
