@@ -3441,8 +3441,8 @@ app.post('/api/verification/upload', authenticateToken, upload.fields([
         }
 
         const pending = await runDbGet(
-            'SELECT id FROM user_verifications WHERE user_id = ? AND status = "pending"',
-            [userId]
+            'SELECT id FROM user_verifications WHERE user_id = ? AND status = ?',
+            [userId, 'pending']
         );
         if (pending) {
             return res.status(400).json({
