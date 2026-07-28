@@ -428,7 +428,7 @@
                 if (activeCiudad) {
                     refreshZoneUiForCity(activeCiudad, activeZona).then(() => loadDirectory());
                 }
-            }).catch(() => {});
+            }).catch(() => { });
         } else if (typeof DeseoCitySearch !== 'undefined') {
             DeseoCitySearch.bindInput({
                 inputId: 'searchCity',
@@ -441,7 +441,7 @@
                 }
             }).then((api) => {
                 citySearchApi = api;
-            }).catch(() => {});
+            }).catch(() => { });
         }
 
         zoneSelect?.addEventListener('change', () => {
@@ -458,7 +458,7 @@
             if (activeServicio) {
                 setActiveServicio(activeServicio);
             }
-        }).catch(() => {});
+        }).catch(() => { });
 
         document.getElementById('searchBtn')?.addEventListener('click', () => {
             performCitySearch();
@@ -475,7 +475,7 @@
             updateUI();
             loadDirectory();
             if (typeof DeseoAuth !== 'undefined' && authToken) {
-                DeseoAuth.verifySession(API_URL).catch(function () {});
+                DeseoAuth.verifySession(API_URL).catch(function () { });
             }
         })) {
             return;
@@ -484,7 +484,7 @@
         updateUI();
         loadDirectory();
         if (typeof DeseoAuth !== 'undefined' && authToken) {
-            DeseoAuth.verifySession(API_URL).catch(function () {});
+            DeseoAuth.verifySession(API_URL).catch(function () { });
         }
     };
 
@@ -519,6 +519,9 @@
         document.getElementById('createPostModal')?.classList.add('show');
         if (typeof DeseoPricing !== 'undefined') {
             DeseoPricing.prefillPublishPhone();
+        }
+        if (typeof DeseoUploadMobile !== 'undefined') {
+            DeseoUploadMobile.initAll(document.getElementById('createPostModal'));
         }
     };
 

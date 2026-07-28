@@ -473,8 +473,13 @@ if (isVercel) {
         }
     });
 }
-// Servir archivos estáticos de public (CSS, JS, uploads locales)
-app.use(express.static(publicDir));
+// Servir archivos estáticos de public (CSS, JS, uploads locales). HTML va por sendRootHtml.
+app.use((req, res, next) => {
+    if (/\.html$/i.test(req.path || '')) {
+        return next();
+    }
+    express.static(publicDir)(req, res, next);
+});
 
 // Configure multer for file uploads (memoria en Vercel = más fiable que disco en /tmp)
 const localUploadsDir = path.join(publicDir, 'uploads');

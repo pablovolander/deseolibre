@@ -2,12 +2,13 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <title>Mi Perfil - Deseo Libre</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="/css/components.css" rel="stylesheet">
     <link href="/css/responsive.css" rel="stylesheet">
+    <link href="/css/mobile.css" rel="stylesheet">
     <link href="/css/age-gate.css" rel="stylesheet">
     <style>
         * {
@@ -2024,7 +2025,7 @@
                             <p>Click para subir archivo</p>
                             <small id="fileInfo">Ningún archivo seleccionado</small>
                         </div>
-                        <input type="file" id="postFile" accept="image/*,video/*,audio/*" required style="display:none;" onchange="updateFileInfo(this)">
+                        <input type="file" id="postFile" accept="image/*,video/*,audio/*" data-mobile-capture="environment" required style="display:none;" onchange="updateFileInfo(this)">
                 </div>
                 <p style="color: var(--text-muted); font-size: 0.9rem;">Tu nombre, ciudad, tarifa y teléfono se toman de tu perfil.</p>
                 <div class="form-group">
@@ -2078,7 +2079,7 @@
                             <p>Selecciona el video grabado</p>
                             <small id="bodyVideoFileInfo">Ningún archivo seleccionado</small>
                         </div>
-                        <input type="file" id="bodyVideoFile" accept="video/mp4,video/webm,video/quicktime" style="display:none;" onchange="updateBodyVideoFileInfo(this)">
+                        <input type="file" id="bodyVideoFile" accept="video/mp4,video/webm,video/quicktime" data-mobile-capture="video" style="display:none;" onchange="updateBodyVideoFileInfo(this)">
                     </div>
                     <div class="form-group">
                         <div class="checkbox-group">
@@ -2228,7 +2229,7 @@
                             <p>Selecciona tu nueva foto de perfil</p>
                             <small id="avatarFileInfo">Ningún archivo seleccionado</small>
                         </div>
-                        <input type="file" id="avatarFile" accept="image/*" required style="display:none;" onchange="updateAvatarFileInfo(this)">
+                        <input type="file" id="avatarFile" accept="image/*" data-mobile-capture="selfie" required style="display:none;" onchange="updateAvatarFileInfo(this)">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -2255,7 +2256,7 @@
                             <small>Recomendado: 1500x500 px</small><br>
                             <small id="coverFileInfo">Ningún archivo seleccionado</small>
                         </div>
-                        <input type="file" id="coverFile" accept="image/*" required style="display:none;" onchange="updateCoverFileInfo(this)">
+                        <input type="file" id="coverFile" accept="image/*" data-mobile-capture="environment" required style="display:none;" onchange="updateCoverFileInfo(this)">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -2447,6 +2448,8 @@
     <script src="/js/service-catalog-ui.js"></script>
     <script src="/js/service-pricing.js"></script>
     <script src="/js/components.js"></script>
+    <script src="/js/upload-mobile.js"></script>
+    <script src="/js/mobile-shell.js"></script>
     <script>
         // Global variables
         let currentUser = null;

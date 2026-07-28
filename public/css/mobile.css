@@ -1,0 +1,404 @@
+/* Deseo Libre — mobile-first additions (shared) */
+
+:root {
+    --mobile-nav-height: calc(56px + env(safe-area-inset-bottom, 0px));
+    --mobile-touch-min: 44px;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
+/* Bottom navigation */
+body.dl-mobile-nav {
+    padding-bottom: var(--mobile-nav-height);
+}
+
+.dl-bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9000;
+    display: none;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    min-height: 56px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: rgba(15, 17, 24, 0.96);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+@media (max-width: 768px) {
+    .dl-bottom-nav {
+        display: grid;
+    }
+}
+
+.dl-bottom-nav a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    min-height: var(--mobile-touch-min);
+    padding: 0.35rem 0.25rem;
+    color: rgba(255, 255, 255, 0.55);
+    text-decoration: none;
+    font-size: 0.65rem;
+    font-weight: 600;
+    line-height: 1.1;
+}
+
+.dl-bottom-nav a i {
+    font-size: 1.15rem;
+}
+
+.dl-bottom-nav a.active {
+    color: #ff6b9d;
+}
+
+.dl-bottom-nav a:active {
+    opacity: 0.85;
+}
+
+/* Directory header — collapsible on mobile */
+.directory-menu-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: var(--mobile-touch-min);
+    height: var(--mobile-touch-min);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    cursor: pointer;
+    margin-left: auto;
+}
+
+@media (max-width: 768px) {
+    .directory-page .directory-header-inner {
+        flex-wrap: wrap;
+    }
+
+    .directory-page .directory-menu-btn {
+        display: inline-flex;
+    }
+
+    .directory-page .header-actions {
+        display: none;
+        flex: 1 1 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+        padding-top: 0.75rem;
+        margin-top: 0.25rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .directory-page .directory-header.menu-open .header-actions {
+        display: flex;
+    }
+
+    .directory-page .header-actions .btn-link,
+    .directory-page .header-actions .btn-primary-sm {
+        width: 100%;
+        text-align: center;
+        min-height: var(--mobile-touch-min);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .directory-page .directory-search {
+        flex-direction: column;
+    }
+
+    .directory-page .directory-search select,
+    .directory-page .directory-search input,
+    .directory-page .directory-search button {
+        width: 100%;
+        min-height: var(--mobile-touch-min);
+    }
+
+    .directory-page .category-nav {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap;
+        padding-bottom: 0.25rem;
+    }
+
+    .directory-page .category-nav a {
+        flex: 0 0 auto;
+        white-space: nowrap;
+        min-height: var(--mobile-touch-min);
+        display: inline-flex;
+        align-items: center;
+    }
+}
+
+/* Full-screen modals on small screens */
+@media (max-width: 768px) {
+    .home-page .modal.show,
+    .directory-page .modal.show {
+        padding: 0;
+        align-items: stretch;
+    }
+
+    .home-page .modal .modal-content,
+    .home-page .modal-content.register-wizard-modal,
+    .directory-page .modal .modal-content {
+        width: 100%;
+        max-width: 100%;
+        height: 100%;
+        max-height: 100%;
+        margin: 0;
+        border-radius: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .home-page .reg-wizard-actions {
+        position: sticky;
+        bottom: 0;
+        background: rgba(26, 29, 41, 0.98);
+        padding: 0.75rem 0 1rem;
+        margin-top: 1rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .home-page .reg-wizard-actions .modal-btn {
+        flex: 1;
+        min-height: var(--mobile-touch-min);
+    }
+
+    .directory-page .verify-wrap {
+        padding: 1rem 1rem calc(1rem + var(--mobile-nav-height));
+    }
+
+    .directory-page .verify-card {
+        padding: 1.15rem;
+    }
+
+    .directory-page .form-row select,
+    .directory-page .form-row input[type='file'],
+    .directory-page .form-row textarea,
+    .directory-page .form-row .btn-verify {
+        min-height: var(--mobile-touch-min);
+        font-size: 1rem;
+    }
+
+    .directory-page .btn-verify {
+        min-height: 48px;
+    }
+}
+
+/* Mobile file upload buttons (replace tiny file inputs) */
+.dl-mobile-file-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: 48px;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    border: 1px dashed rgba(255, 107, 157, 0.45);
+    background: rgba(255, 107, 157, 0.08);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.dl-mobile-file-btn.has-file {
+    border-style: solid;
+    background: rgba(125, 255, 168, 0.1);
+    border-color: rgba(125, 255, 168, 0.35);
+}
+
+.dl-mobile-file-btn input[type='file'] {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.dl-mobile-file-name {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.65);
+    word-break: break-all;
+}
+
+.dl-mobile-file-wrap {
+    position: relative;
+    margin-bottom: 0.5rem;
+}
+
+/* Home page — espacio para barra inferior */
+body.home-page.dl-mobile-nav {
+    padding-bottom: var(--mobile-nav-height);
+}
+
+body.home-page.dl-mobile-nav footer {
+    margin-bottom: 0.5rem;
+}
+
+/* Perfil — barra inferior y modales */
+body.dl-mobile-nav:not(.directory-page):not(.home-page) {
+    padding-bottom: var(--mobile-nav-height);
+}
+
+@media (max-width: 768px) {
+    body.dl-mobile-nav .modal.show {
+        padding: 0;
+        align-items: stretch;
+    }
+
+    body.dl-mobile-nav .modal .modal-content {
+        width: 100%;
+        max-width: 100%;
+        height: 100%;
+        max-height: 100%;
+        margin: 0;
+        border-radius: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    body.dl-mobile-nav .modal-footer {
+        position: sticky;
+        bottom: 0;
+        background: rgba(27, 32, 46, 0.98);
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    body.dl-mobile-nav .file-upload-area {
+        min-height: 120px;
+        padding: 1.25rem 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+    }
+
+    body.dl-mobile-nav .file-upload-area i {
+        font-size: 1.75rem;
+    }
+
+    body.dl-mobile-nav .profile-container {
+        padding-bottom: 0.5rem;
+    }
+
+    body.dl-mobile-nav .posts-grid {
+        padding-bottom: 0.5rem;
+    }
+}
+
+/* Directorio — rejilla y tarjetas */
+@media (max-width: 768px) {
+    .directory-page .profile-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        padding: 0 1rem 1rem;
+    }
+
+    .directory-page .profile-card {
+        max-width: 100%;
+    }
+
+    .directory-page .directory-hero {
+        padding: 1.25rem 1rem 1rem;
+    }
+
+    .directory-page .directory-hero h1 {
+        font-size: 1.45rem;
+    }
+
+    .directory-page .directory-trust {
+        flex-wrap: wrap;
+        gap: 0.45rem;
+    }
+
+    .directory-page .directory-cta-row {
+        flex-direction: column;
+    }
+
+    .directory-page .directory-cta-row a {
+        width: 100%;
+        text-align: center;
+        min-height: var(--mobile-touch-min);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .directory-page .service-filter-chips {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 0.25rem;
+    }
+
+    .directory-page .service-filter-chips .city-chip {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    .directory-page .form-group input,
+    .directory-page .form-group textarea,
+    .directory-page .form-group select,
+    .directory-page .dl-form-group input,
+    .directory-page .dl-form-group textarea,
+    .directory-page .dl-form-group select {
+        min-height: var(--mobile-touch-min);
+        font-size: 1rem;
+    }
+}
+
+/* Reels */
+@media (max-width: 768px) {
+    .reels-page .reels-main {
+        padding: 1rem 1rem calc(1rem + var(--mobile-nav-height));
+    }
+
+    .reels-page .reels-upload-panel summary,
+    .reels-page .btn-publish-reel {
+        min-height: var(--mobile-touch-min);
+    }
+
+    .reels-page .reels-upload-form input[type='text'],
+    .reels-page .reels-upload-form input[type='number'],
+    .reels-page .reels-upload-form textarea {
+        min-height: var(--mobile-touch-min);
+        font-size: 1rem;
+    }
+
+    .reels-page .reels-category-nav {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 0.25rem;
+    }
+
+    .reels-page .reels-category-nav a {
+        flex: 0 0 auto;
+        white-space: nowrap;
+        min-height: var(--mobile-touch-min);
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .reels-page .reels-feed {
+        gap: 1rem;
+    }
+}

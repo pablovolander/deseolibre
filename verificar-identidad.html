@@ -2,11 +2,13 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <title>Verificación automática - Deseo Libre</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="/css/responsive.css" rel="stylesheet">
     <link href="/css/directory.css" rel="stylesheet">
+    <link href="/css/mobile.css" rel="stylesheet">
     <style>
         .verify-wrap { max-width: 720px; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
         .verify-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.25rem; }
@@ -95,15 +97,15 @@
                     </div>
                     <div class="form-row">
                         <label for="id_front">Frente del documento *</label>
-                        <input type="file" id="id_front" accept="image/*" required>
+                        <input type="file" id="id_front" accept="image/*" data-mobile-upload="document" required>
                     </div>
                     <div class="form-row" id="idBackRow">
                         <label for="id_back">Reverso del documento *</label>
-                        <input type="file" id="id_back" accept="image/*">
+                        <input type="file" id="id_back" accept="image/*" data-mobile-upload="document">
                     </div>
                     <div class="form-row">
                         <label for="selfie">Selfie sosteniendo el documento junto al rostro *</label>
-                        <input type="file" id="selfie" accept="image/*" required>
+                        <input type="file" id="selfie" accept="image/*" data-mobile-upload="selfie" required>
                     </div>
                 </div>
 
@@ -115,7 +117,7 @@
                     </p>
                     <div class="form-row">
                         <label for="body_video">Sube el video (MP4, WebM, MOV) *</label>
-                        <input type="file" id="body_video" accept="video/mp4,video/webm,video/quicktime" required>
+                        <input type="file" id="body_video" accept="video/mp4,video/webm,video/quicktime" data-mobile-upload="video" required>
                         <p class="video-hint" id="videoSizeHint"></p>
                         <p id="videoDurationLabel"></p>
                         <p id="faceMatchLabel"></p>
@@ -384,5 +386,7 @@
             msg.textContent = e.message;
         });
     </script>
+    <script src="/js/upload-mobile.js"></script>
+    <script src="/js/mobile-shell.js"></script>
 </body>
 </html>
