@@ -9,6 +9,8 @@
     <link href="/css/directory.css" rel="stylesheet">
     <link href="/css/directory-modals.css" rel="stylesheet">
     <link href="/css/reels.css" rel="stylesheet">
+    <link href="/css/responsive.css" rel="stylesheet">
+    <link href="/css/mobile.css" rel="stylesheet">
     <link href="/css/age-gate.css" rel="stylesheet">
     <script src="/js/api-config.js"></script>
     <script src="/js/auth-session.js"></script>
@@ -50,10 +52,10 @@
                     <textarea name="description" maxlength="500" placeholder="Breve descripción"></textarea>
                 </label>
                 <label>Video *
-                    <input type="file" name="video" accept="video/mp4,video/webm,video/quicktime,video/*" required>
+                    <input type="file" name="video" accept="video/mp4,video/webm,video/quicktime,video/*" data-mobile-upload="video" required>
                 </label>
                 <label>Miniatura (opcional)
-                    <input type="file" name="thumbnail" accept="image/*">
+                    <input type="file" name="thumbnail" accept="image/*" data-mobile-upload="file">
                 </label>
                 <label>Duración en segundos (opcional)
                     <input type="number" name="duration_seconds" min="1" max="180" placeholder="45">
@@ -73,5 +75,7 @@
     </main>
 
     <script src="/js/reels-page.js"></script>
+    <script src="/js/upload-mobile.js"></script>
+    <script src="/js/mobile-shell.js"></script>
 </body>
 </html>

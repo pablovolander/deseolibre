@@ -2,12 +2,14 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <title>Acompañantes Mujeres - Deseo Libre</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <link href="/css/directory.css" rel="stylesheet">
     <link href="/css/directory-modals.css" rel="stylesheet">
+    <link href="/css/responsive.css" rel="stylesheet">
+    <link href="/css/mobile.css" rel="stylesheet">
     <link href="/css/age-gate.css" rel="stylesheet">
 </head>
 <body class="directory-page" data-category="acompañantes-mujeres">
@@ -91,7 +93,7 @@
                 <div class="form-group"><label>Descripción</label><textarea id="postDesc" rows="3" required></textarea></div>
                 <div class="form-group"><label>Tipo</label><select id="postType"><option value="photo">Foto</option><option value="video">Video</option></select></div>
                 <p class="form-hint">Tu nombre, ciudad, tarifa y teléfono salen de tu perfil.</p>
-                <div class="form-group"><label>Foto o video</label><input type="file" id="postFile" accept="image/*,video/*" required></div>
+                <div class="form-group"><label>Foto o video</label><input type="file" id="postFile" accept="image/*,video/*" data-mobile-upload="file" required></div>
                 <button type="submit" class="btn">Publicar</button>
                 <button type="button" class="btn" onclick="closeModal('createPostModal')">Cancelar</button>
             </form>
@@ -112,5 +114,7 @@
     <script src="/js/service-catalog-ui.js"></script>
     <script src="/js/directory-feed.js"></script>
     <script>initDirectoryFeed({ category: 'acompañantes-mujeres' });</script>
+    <script src="/js/upload-mobile.js"></script>
+    <script src="/js/mobile-shell.js"></script>
 </body>
 </html>

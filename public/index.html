@@ -2,13 +2,14 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <title>Deseo Libre — Directorio de acompañantes en México</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <link href="/css/responsive.css" rel="stylesheet">
     <link href="/css/age-gate.css" rel="stylesheet">
     <link href="/css/home.css" rel="stylesheet">
+    <link href="/css/mobile.css" rel="stylesheet">
     <script src="/js/api-config.js"></script>
     <script src="/js/city-search.js"></script>
     <script src="/js/location-search.js"></script>
@@ -373,22 +374,22 @@
                     </div>
                     <div class="form-group">
                         <label for="regIdFront">Frente del documento *</label>
-                        <input type="file" id="regIdFront" accept="image/*" required>
+                        <input type="file" id="regIdFront" accept="image/*" data-mobile-upload="document" required>
                     </div>
                     <div class="form-group" id="regIdBackRow">
                         <label for="regIdBack">Reverso del documento *</label>
-                        <input type="file" id="regIdBack" accept="image/*">
+                        <input type="file" id="regIdBack" accept="image/*" data-mobile-upload="document">
                     </div>
                     <div class="form-group">
                         <label for="regSelfie">Selfie sosteniendo el documento *</label>
-                        <input type="file" id="regSelfie" accept="image/*" required>
+                        <input type="file" id="regSelfie" accept="image/*" data-mobile-upload="selfie" required>
                     </div>
                 </div>
                 <div class="reg-wizard-step-panel" data-step="4">
                     <p class="reg-wizard-hint">Video privado de <span id="regMinDurLabel">8</span> a <span id="regMaxDurLabel">60</span> s (rostro visible para verificación). Luego subirás el video público en tu perfil.</p>
                     <div class="form-group">
                         <label for="regBodyVideo">Video corporal *</label>
-                        <input type="file" id="regBodyVideo" accept="video/mp4,video/webm,video/quicktime" required>
+                        <input type="file" id="regBodyVideo" accept="video/mp4,video/webm,video/quicktime" data-mobile-upload="video" required>
                         <p class="reg-wizard-video-meta" id="regVideoSizeHint"></p>
                         <p class="reg-wizard-video-meta" id="regVideoDurationLabel"></p>
                         <p class="reg-wizard-video-meta" id="regFaceMatchLabel"></p>
@@ -962,5 +963,7 @@
             heroGoToFeed('feed-trans.html');
         });
     </script>
+    <script src="/js/upload-mobile.js"></script>
+    <script src="/js/mobile-shell.js"></script>
 </body>
 </html>
