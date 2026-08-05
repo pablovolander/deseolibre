@@ -121,18 +121,14 @@ if (isVercel) {
 const publicDir = path.join(__dirname, 'public');
 const vercelUploadRoot = path.join(os.tmpdir(), 'deseo_libre_uploads');
 
-// JWT_SECRET debe estar configurado en producción (en Vercel usar variables de entorno del proyecto)
+// JWT_SECRET: solo permitir default en desarrollo local. En Vercel/producción debe existir.
 let JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET && isDevelopment) {
+if (!JWT_SECRET && isDevelopment && !isVercel) {
     console.warn('⚠️  ADVERTENCIA: JWT_SECRET no configurado, usando valor por defecto (SOLO DESARROLLO)');
     JWT_SECRET = 'deseo_libre_secret_key_2024_dev_only';
     process.env.JWT_SECRET = JWT_SECRET;
-} else if (!JWT_SECRET && isVercel) {
-    console.warn('⚠️  JWT_SECRET no está en el dashboard de Vercel; usando valor por defecto. Configurá JWT_SECRET en Production.');
-    JWT_SECRET = 'deseo_libre_secret_key_2024_dev_only';
-    process.env.JWT_SECRET = JWT_SECRET;
 } else if (!JWT_SECRET) {
-    console.error('❌ ERROR CRÍTICO: JWT_SECRET no está configurado. La aplicación no puede iniciar en producción.');
+    console.error('❌ ERROR CRÍTICO: JWT_SECRET no está configurado. Definilo en Vercel (Production) o en el entorno.');
     process.exit(1);
 }
 
@@ -379,47 +375,47 @@ const uploadLimiter = rateLimit({
 });
 
 // CORS configuration
+function isTrustedHostname(hostname) {
+    return (
+        hostname === 'localhost' ||
+        hostname === '127.0.0.1' ||
+        hostname.endsWith('.vercel.app')
+    );
+}
+
 const corsOptions = {
     origin: function (origin, callback) {
-        if (isDevelopment) {
-            // En desarrollo, permitir localhost y sin origin (Postman, etc.)
-            if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
-                callback(null, true);
-            } else {
-                callback(null, true); // Permisivo en desarrollo
-            }
-        } else {
-            const allowedOrigins = process.env.ALLOWED_ORIGINS 
-                ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
-                : null;
-
-            if (!origin) {
-                return callback(null, true);
-            }
-
-            if (!allowedOrigins) {
-                try {
-                    const { hostname } = new URL(origin);
-                    if (
-                        hostname.endsWith('.vercel.app') ||
-                        hostname.endsWith('.github.io') ||
-                        hostname === 'localhost' ||
-                        hostname === '127.0.0.1'
-                    ) {
-                        return callback(null, true);
-                    }
-                } catch (_) {
-                    return callback(null, true);
-                }
-                return callback(null, true);
-            }
-
-            if (allowedOrigins.includes(origin)) {
-                callback(null, true);
-            } else {
-                callback(new Error('No permitido por CORS'));
-            }
+        if (isDevelopment && !isVercel) {
+            // Desarrollo local: permisivo para Postman, previews, etc.
+            return callback(null, true);
         }
+
+        // Sin Origin = same-origin / curl / health checks
+        if (!origin) {
+            return callback(null, true);
+        }
+
+        const allowedOrigins = process.env.ALLOWED_ORIGINS
+            ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
+            : null;
+
+        if (allowedOrigins && allowedOrigins.length) {
+            if (allowedOrigins.includes(origin)) {
+                return callback(null, true);
+            }
+            return callback(new Error('No permitido por CORS'));
+        }
+
+        // Sin ALLOWED_ORIGINS: solo hosts de confianza (Vercel / localhost)
+        try {
+            const { hostname } = new URL(origin);
+            if (isTrustedHostname(hostname)) {
+                return callback(null, true);
+            }
+        } catch (_) {
+            return callback(new Error('No permitido por CORS'));
+        }
+        return callback(new Error('No permitido por CORS'));
     },
     credentials: true,
     optionsSuccessStatus: 200
@@ -3936,6 +3932,14 @@ app.post('/api/admin/bootstrap', async (req, res) => {
             return res.status(400).json({ error: 'Indica el email o el username de la cuenta a promover' });
         }
 
+        const existingAdmin = await runDbGet('SELECT id, email FROM users WHERE is_admin = 1 LIMIT 1');
+        if (existingAdmin) {
+            return res.status(403).json({
+                error: 'Bootstrap ya usado',
+                message: 'Ya existe un administrador. Quitá ADMIN_BOOTSTRAP_SECRET de Vercel y promové admins desde el panel.'
+            });
+        }
+
         const user = email
             ? await runDbGet('SELECT id, username, email, is_admin FROM users WHERE LOWER(email) = ?', [email])
             : await runDbGet('SELECT id, username, email, is_admin FROM users WHERE LOWER(username) = LOWER(?)', [username]);
@@ -3955,7 +3959,7 @@ app.post('/api/admin/bootstrap', async (req, res) => {
         await saveDatabaseAsync();
 
         res.json({
-            message: `Cuenta ${user.email} promovida a administrador. Ya puedes usar admin-usuarios.html`,
+            message: `Cuenta ${user.email} promovida a administrador. Quitá ADMIN_BOOTSTRAP_SECRET de Vercel. Ya puedes usar admin-usuarios.html`,
             user: { id: user.id, username: user.username, email: user.email }
         });
     } catch (error) {

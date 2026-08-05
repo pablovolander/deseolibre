@@ -100,8 +100,8 @@
         let user = typeof DeseoAuth !== 'undefined' ? DeseoAuth.getCachedUser() : null;
         if (!user && typeof DeseoAuth !== 'undefined' && authToken) {
             try {
-                const data = await DeseoAuth.verifySession(API_URL);
-                user = data.user;
+                // verifySession ya devuelve el objeto user (o null)
+                user = await DeseoAuth.verifySession(API_URL);
             } catch {
                 user = null;
             }
