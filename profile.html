@@ -126,6 +126,24 @@
             background: var(--btn-gradient-hover);
         }
 
+        .nav-admin-link {
+            display: none;
+        }
+
+        .nav-admin-link a {
+            color: #ffd08a !important;
+        }
+
+        .btn-admin {
+            background: linear-gradient(135deg, rgba(240, 180, 41, 0.95), rgba(108, 92, 231, 0.9));
+            color: #fff;
+            border: none;
+        }
+
+        .btn-admin:hover {
+            filter: brightness(1.05);
+        }
+
         .profile-footer-actions {
             text-align: center;
             padding: 2rem 20px 3rem;
@@ -1824,8 +1842,10 @@
             <div class="header-content">
                 <a href="index.html" class="logo">Deseo Libre</a>
                     <ul class="nav-menu">
-                <li><a href="home.html"><i class="fas fa-home"></i> Inicio</a></li>
+                <li><a href="index.html"><i class="fas fa-home"></i> Inicio</a></li>
                 <li><a href="profile.html"><i class="fas fa-user"></i> Mi Perfil</a></li>
+                <li class="nav-admin-link" id="navAdminUsers"><a href="admin-usuarios.html"><i class="fas fa-users-cog"></i> Admin</a></li>
+                <li class="nav-admin-link" id="navAdminVerify"><a href="admin-verificaciones.html"><i class="fas fa-shield-alt"></i> Verificaciones</a></li>
                 <li><button class="btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Salir</button></li>
                     </ul>
         </div>
@@ -1867,6 +1887,12 @@
                         <button type="button" class="btn-action btn-secondary edit-profile-btn" onclick="openEditProfileModal()">
                             <i class="fas fa-edit"></i> Editar Perfil
                         </button>
+                        <a href="admin-usuarios.html" class="btn-action btn-admin" id="adminPanelBtn" style="display:none; text-decoration:none;">
+                            <i class="fas fa-users-cog"></i> Panel Admin
+                        </a>
+                        <a href="admin-verificaciones.html" class="btn-action btn-admin" id="adminVerifyBtn" style="display:none; text-decoration:none;">
+                            <i class="fas fa-shield-alt"></i> Verificaciones
+                        </a>
                         <button type="button" class="btn-action btn-secondary" onclick="shareProfile()">
                             <i class="fas fa-share"></i>
                         </button>
@@ -2561,6 +2587,20 @@
             banner.style.display = 'block';
         }
 
+        function isAdminUser(user) {
+            return Boolean(user && (user.is_admin === true || user.is_admin === 1 || user.is_admin === '1'));
+        }
+
+        function updateAdminAccessUI(user) {
+            const show = Boolean(isOwnProfile && isAdminUser(user));
+            document.getElementById('navAdminUsers')?.style.setProperty('display', show ? 'list-item' : 'none');
+            document.getElementById('navAdminVerify')?.style.setProperty('display', show ? 'list-item' : 'none');
+            const adminPanelBtn = document.getElementById('adminPanelBtn');
+            const adminVerifyBtn = document.getElementById('adminVerifyBtn');
+            if (adminPanelBtn) adminPanelBtn.style.display = show ? 'inline-flex' : 'none';
+            if (adminVerifyBtn) adminVerifyBtn.style.display = show ? 'inline-flex' : 'none';
+        }
+
         function resolveCurrentUserFromStorage() {
             let user = typeof DeseoAuth !== 'undefined' ? DeseoAuth.getCachedUser() : null;
             if (!user && authToken && typeof DeseoProfileBootstrap !== 'undefined') {
@@ -2580,7 +2620,8 @@
                 console.warn('No se pudieron cargar estadísticas:', statsError);
             }
             await loadProfileActions(currentUser.id, true);
-            showDeleteAccountLink(!currentUser.is_admin);
+            showDeleteAccountLink(!isAdminUser(currentUser));
+            updateAdminAccessUI(currentUser);
         }
 
         async function tryVerifyAndLoadProfile(timeoutMs) {
@@ -2735,7 +2776,8 @@
                 if (isOwnProfile && currentUser) {
                     try {
                         await loadProfileActions(currentUser.id, true);
-                        showDeleteAccountLink(!currentUser.is_admin);
+                        showDeleteAccountLink(!isAdminUser(currentUser));
+                        updateAdminAccessUI(currentUser);
                     } catch (finallyError) {
                         console.error('Error al cargar acciones del perfil:', finallyError);
                     }
@@ -4116,7 +4158,14 @@
             
             if (isOwn) {
                 actionsContainer.style.display = 'flex';
-                // Own profile - show edit buttons
+                const adminButtons = isAdminUser(currentUser) ? `
+                    <a href="admin-usuarios.html" class="btn-action btn-admin" id="adminPanelBtn" style="text-decoration:none;">
+                        <i class="fas fa-users-cog"></i> Panel Admin
+                    </a>
+                    <a href="admin-verificaciones.html" class="btn-action btn-admin" id="adminVerifyBtn" style="text-decoration:none;">
+                        <i class="fas fa-shield-alt"></i> Verificaciones
+                    </a>
+                ` : '';
                 actionsContainer.innerHTML = `
                     <button class="btn-action btn-primary" onclick="openCreatePostModal()">
                         <i class="fas fa-plus"></i> Crear Publicación
@@ -4124,12 +4173,13 @@
                     <button class="btn-action btn-secondary" onclick="openEditProfileModal()">
                         <i class="fas fa-edit"></i> Editar Perfil
                     </button>
+                    ${adminButtons}
                     <button class="btn-action btn-secondary" onclick="shareProfile()">
                         <i class="fas fa-share"></i>
                     </button>
                 `;
-                const hideDelete = Boolean(currentUser?.is_admin);
-                showDeleteAccountLink(!hideDelete);
+                showDeleteAccountLink(!isAdminUser(currentUser));
+                updateAdminAccessUI(currentUser);
             } else {
                 actionsContainer.style.display = 'flex';
                 showDeleteAccountLink(false);

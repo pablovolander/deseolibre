@@ -63,6 +63,8 @@
                     <span id="userGreeting">Hola, <span id="username"></span></span>
                     <div class="user-dropdown">
                         <a href="profile.html">Mi Perfil</a>
+                        <a href="admin-usuarios.html" id="homeAdminLink" style="display:none;">Panel Admin</a>
+                        <a href="admin-verificaciones.html" id="homeAdminVerifyLink" style="display:none;">Verificaciones</a>
                         <a href="index.html">Inicio</a>
                         <a href="#" onclick="logout()">Cerrar Sesión</a>
                     </div>
@@ -683,6 +685,18 @@
         }
 
         // UI functions
+        function isAdminUser(user) {
+            return Boolean(user && (user.is_admin === true || user.is_admin === 1 || user.is_admin === '1'));
+        }
+
+        function updateAdminHomeLinks(user) {
+            const show = isAdminUser(user);
+            const adminLink = document.getElementById('homeAdminLink');
+            const verifyLink = document.getElementById('homeAdminVerifyLink');
+            if (adminLink) adminLink.style.display = show ? 'block' : 'none';
+            if (verifyLink) verifyLink.style.display = show ? 'block' : 'none';
+        }
+
         function updateUI() {
             const authButtons = document.getElementById('authButtons');
             const userMenu = document.getElementById('userMenu');
@@ -694,10 +708,12 @@
                 userMenu.classList.add('show');
                 usernameSpan.textContent = currentUser.username;
                 if (logoutBtn) logoutBtn.style.display = 'inline-flex';
+                updateAdminHomeLinks(currentUser);
             } else {
                 authButtons.style.display = '';
                 userMenu.classList.remove('show');
                 if (logoutBtn) logoutBtn.style.display = 'none';
+                updateAdminHomeLinks(null);
             }
         }
 
