@@ -1846,6 +1846,7 @@
                 <li><a href="profile.html"><i class="fas fa-user"></i> Mi Perfil</a></li>
                 <li class="nav-admin-link" id="navAdminUsers"><a href="admin-usuarios.html"><i class="fas fa-users-cog"></i> Admin</a></li>
                 <li class="nav-admin-link" id="navAdminVerify"><a href="admin-verificaciones.html"><i class="fas fa-shield-alt"></i> Verificaciones</a></li>
+                <li class="nav-admin-link" id="navAdminReports"><a href="admin-reportes.html"><i class="fas fa-flag"></i> Reportes</a></li>
                 <li><button class="btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Salir</button></li>
                     </ul>
         </div>
@@ -1892,6 +1893,9 @@
                         </a>
                         <a href="admin-verificaciones.html" class="btn-action btn-admin" id="adminVerifyBtn" style="display:none; text-decoration:none;">
                             <i class="fas fa-shield-alt"></i> Verificaciones
+                        </a>
+                        <a href="admin-reportes.html" class="btn-action btn-admin" id="adminReportsBtn" style="display:none; text-decoration:none;">
+                            <i class="fas fa-flag"></i> Reportes
                         </a>
                         <button type="button" class="btn-action btn-secondary" onclick="shareProfile()">
                             <i class="fas fa-share"></i>
@@ -2461,6 +2465,7 @@
 
     <script src="/js/api-config.js"></script>
     <script src="/js/auth-session.js"></script>
+    <script src="/js/report-modal.js"></script>
     <script src="/js/profile-bootstrap.js"></script>
     <script src="/js/age-gate.js"></script>
     <script src="/js/api-errors.js"></script>
@@ -2595,10 +2600,13 @@
             const show = Boolean(isOwnProfile && isAdminUser(user));
             document.getElementById('navAdminUsers')?.style.setProperty('display', show ? 'list-item' : 'none');
             document.getElementById('navAdminVerify')?.style.setProperty('display', show ? 'list-item' : 'none');
+            document.getElementById('navAdminReports')?.style.setProperty('display', show ? 'list-item' : 'none');
             const adminPanelBtn = document.getElementById('adminPanelBtn');
             const adminVerifyBtn = document.getElementById('adminVerifyBtn');
+            const adminReportsBtn = document.getElementById('adminReportsBtn');
             if (adminPanelBtn) adminPanelBtn.style.display = show ? 'inline-flex' : 'none';
             if (adminVerifyBtn) adminVerifyBtn.style.display = show ? 'inline-flex' : 'none';
+            if (adminReportsBtn) adminReportsBtn.style.display = show ? 'inline-flex' : 'none';
         }
 
         function resolveCurrentUserFromStorage() {
@@ -4165,6 +4173,9 @@
                     <a href="admin-verificaciones.html" class="btn-action btn-admin" id="adminVerifyBtn" style="text-decoration:none;">
                         <i class="fas fa-shield-alt"></i> Verificaciones
                     </a>
+                    <a href="admin-reportes.html" class="btn-action btn-admin" id="adminReportsBtn" style="text-decoration:none;">
+                        <i class="fas fa-flag"></i> Reportes
+                    </a>
                 ` : '';
                 actionsContainer.innerHTML = `
                     <button class="btn-action btn-primary" onclick="openCreatePostModal()">
@@ -4183,7 +4194,7 @@
             } else {
                 actionsContainer.style.display = 'flex';
                 showDeleteAccountLink(false);
-                // Other user's profile - show follow button
+                // Other user's profile - show follow + report
                 const isFollowing = await checkIfFollowing(userId);
                 actionsContainer.innerHTML = `
                     <button class="btn-action ${isFollowing ? 'btn-secondary' : 'btn-primary'}" 
@@ -4192,10 +4203,25 @@
                         <i class="fas ${isFollowing ? 'fa-user-check' : 'fa-user-plus'}"></i> 
                         ${isFollowing ? 'Siguiendo' : 'Seguir'}
                     </button>
+                    <button type="button" class="btn-action btn-secondary" onclick="openReportProfile(${userId})">
+                        <i class="fas fa-flag"></i> Reportar
+                    </button>
                     <button class="btn-action btn-secondary" onclick="shareProfile()">
                         <i class="fas fa-share"></i>
                     </button>
                 `;
+            }
+        }
+
+        function openReportProfile(userId) {
+            const name = document.getElementById('profileName')?.textContent || 'este perfil';
+            if (typeof DeseoReport !== 'undefined') {
+                DeseoReport.open({
+                    reportedUserId: userId,
+                    label: name
+                });
+            } else {
+                showNotification('No se pudo abrir el formulario de reporte', 'error');
             }
         }
 

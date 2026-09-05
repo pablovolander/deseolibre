@@ -3281,82 +3281,247 @@ app.get('/api/content/:postId/comments', authenticateToken, requireAgeVerificati
 
 // Reporting System Endpoints
 
+const VALID_REPORT_TYPES = ['inappropriate_content', 'harassment', 'spam', 'fake_profile', 'underage', 'other'];
+const VALID_REPORT_STATUSES = ['pending', 'reviewed', 'resolved', 'dismissed'];
+
 // Submit a report
-app.post('/api/reports', authenticateToken, requireAgeVerification, checkUserBan, (req, res) => {
-    const reporterId = req.user.userId;
-    const { reported_user_id, reported_post_id, report_type, description } = req.body;
+app.post('/api/reports', authenticateToken, checkUserBan, async (req, res) => {
+    try {
+        await dbReady;
+        const reporterId = req.user.userId;
+        const reportedUserId = req.body?.reported_user_id ? Number(req.body.reported_user_id) : null;
+        const reportedPostId = req.body?.reported_post_id ? Number(req.body.reported_post_id) : null;
+        const reportType = String(req.body?.report_type || '').trim();
+        const description = String(req.body?.description || '').trim();
 
-    if (!report_type || !description) {
-        return res.status(400).json({ error: 'Tipo de reporte y descripción son requeridos' });
-    }
-
-    const validReportTypes = ['inappropriate_content', 'harassment', 'spam', 'fake_profile', 'underage', 'other'];
-    if (!validReportTypes.includes(report_type)) {
-        return res.status(400).json({ error: 'Tipo de reporte inválido' });
-    }
-
-    if (!reported_user_id && !reported_post_id) {
-        return res.status(400).json({ error: 'Debe reportar un usuario o una publicación' });
-    }
-
-    // Check if user already reported this
-    const checkQuery = `
-        SELECT id FROM reports 
-        WHERE reporter_id = ? AND 
-        ((reported_user_id = ? AND reported_user_id IS NOT NULL) OR 
-         (reported_post_id = ? AND reported_post_id IS NOT NULL))
-    `;
-    
-    db.get(checkQuery, [reporterId, reported_user_id, reported_post_id], (err, existingReport) => {
-        if (err) {
-            return sendApiError(res, error, { development: isDevelopment });
+        if (!reportType || !description) {
+            return res.status(400).json({ error: 'Tipo de reporte y descripción son requeridos' });
+        }
+        if (description.length < 8) {
+            return res.status(400).json({ error: 'La descripción debe tener al menos 8 caracteres' });
+        }
+        if (!VALID_REPORT_TYPES.includes(reportType)) {
+            return res.status(400).json({ error: 'Tipo de reporte inválido' });
+        }
+        if (!reportedUserId && !reportedPostId) {
+            return res.status(400).json({ error: 'Debe reportar un usuario o una publicación' });
+        }
+        if (reportedUserId && Number(reportedUserId) === Number(reporterId)) {
+            return res.status(400).json({ error: 'No puedes reportarte a ti mismo' });
         }
 
+        if (reportedUserId) {
+            const target = await runDbGet('SELECT id FROM users WHERE id = ?', [reportedUserId]);
+            if (!target) {
+                return res.status(404).json({ error: 'Usuario reportado no encontrado' });
+            }
+        }
+        if (reportedPostId) {
+            const post = await runDbGet('SELECT id, user_id FROM content_posts WHERE id = ?', [reportedPostId]);
+            if (!post) {
+                return res.status(404).json({ error: 'Publicación reportada no encontrada' });
+            }
+        }
+
+        const existingReport = await runDbGet(
+            `SELECT id FROM reports
+             WHERE reporter_id = ?
+               AND (
+                    (reported_user_id IS NOT NULL AND reported_user_id = ?)
+                 OR (reported_post_id IS NOT NULL AND reported_post_id = ?)
+               )
+             LIMIT 1`,
+            [reporterId, reportedUserId, reportedPostId]
+        );
         if (existingReport) {
             return res.status(400).json({ error: 'Ya has reportado este contenido' });
         }
 
-        // Create new report
-        db.run(
-            `INSERT INTO reports (reporter_id, reported_user_id, reported_post_id, report_type, description) 
-             VALUES (?, ?, ?, ?, ?)`,
-            [reporterId, reported_user_id, reported_post_id, report_type, description],
-            function(err) {
-                if (err) {
-                    return res.status(500).json({ error: 'Error al crear el reporte' });
-                }
-                res.json({ 
-                    message: 'Reporte enviado exitosamente',
-                    report_id: this.lastID
-                });
-            }
+        const insertResult = await runDb(
+            `INSERT INTO reports (reporter_id, reported_user_id, reported_post_id, report_type, description, status)
+             VALUES (?, ?, ?, ?, ?, 'pending')`,
+            [reporterId, reportedUserId, reportedPostId, reportType, description]
         );
-    });
+        await saveDatabaseAsync();
+
+        res.json({
+            message: 'Reporte enviado exitosamente',
+            report_id: insertResult.lastID
+        });
+    } catch (error) {
+        console.error('Error creando reporte:', error);
+        return sendApiError(res, error, { development: isDevelopment });
+    }
 });
 
 // Get user's reports
-app.get('/api/reports/my', authenticateToken, requireAgeVerification, checkUserBan, (req, res) => {
-    const userId = req.user.userId;
-
-    const query = `
-        SELECT r.*, 
-               u1.username as reporter_username,
-               u2.username as reported_username,
-               cp.title as post_title
-        FROM reports r
-        JOIN users u1 ON r.reporter_id = u1.id
-        LEFT JOIN users u2 ON r.reported_user_id = u2.id
-        LEFT JOIN content_posts cp ON r.reported_post_id = cp.id
-        WHERE r.reporter_id = ?
-        ORDER BY r.created_at DESC
-    `;
-
-    db.all(query, [userId], (err, reports) => {
-        if (err) {
-            return sendApiError(res, error, { development: isDevelopment });
-        }
+app.get('/api/reports/my', authenticateToken, checkUserBan, async (req, res) => {
+    try {
+        await dbReady;
+        const userId = req.user.userId;
+        const reports = await runDbAll(
+            `SELECT r.*,
+                    u2.username as reported_username,
+                    cp.title as post_title
+             FROM reports r
+             LEFT JOIN users u2 ON r.reported_user_id = u2.id
+             LEFT JOIN content_posts cp ON r.reported_post_id = cp.id
+             WHERE r.reporter_id = ?
+             ORDER BY datetime(r.created_at) DESC`,
+            [userId]
+        );
         res.json({ reports });
-    });
+    } catch (error) {
+        console.error('Error listando mis reportes:', error);
+        return sendApiError(res, error, { development: isDevelopment });
+    }
+});
+
+// Admin: list reports
+app.get('/api/admin/reports', authenticateToken, async (req, res) => {
+    try {
+        await dbReady;
+        if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
+            await refreshDatabaseFromBlob();
+        }
+        const admin = await assertAdminUser(req, res);
+        if (!admin) {
+            return;
+        }
+
+        const status = String(req.query.status || 'pending').trim();
+        let sql = `
+            SELECT r.*,
+                   u1.username AS reporter_username,
+                   u1.email AS reporter_email,
+                   u2.username AS reported_username,
+                   u2.email AS reported_email,
+                   u2.is_verified AS reported_is_verified,
+                   cp.title AS post_title
+            FROM reports r
+            JOIN users u1 ON r.reporter_id = u1.id
+            LEFT JOIN users u2 ON r.reported_user_id = u2.id
+            LEFT JOIN content_posts cp ON r.reported_post_id = cp.id
+        `;
+        const args = [];
+        if (status && status !== 'all') {
+            if (!VALID_REPORT_STATUSES.includes(status)) {
+                return res.status(400).json({ error: 'Estado inválido' });
+            }
+            sql += ' WHERE r.status = ?';
+            args.push(status);
+        }
+        sql += ' ORDER BY datetime(r.created_at) DESC, r.id DESC LIMIT 200';
+
+        const reports = await runDbAll(sql, args);
+        const pendingCountRow = await runDbGet(
+            `SELECT COUNT(*) AS c FROM reports WHERE status = 'pending'`
+        );
+        res.json({
+            reports,
+            pending_count: Number(pendingCountRow?.c || 0)
+        });
+    } catch (error) {
+        console.error('Error listando reportes admin:', error);
+        return sendApiError(res, error, { development: isDevelopment });
+    }
+});
+
+// Admin: update report status
+app.patch('/api/admin/reports/:id', authenticateToken, async (req, res) => {
+    try {
+        await dbReady;
+        const admin = await assertAdminUser(req, res);
+        if (!admin) {
+            return;
+        }
+
+        const reportId = Number(req.params.id);
+        const nextStatus = String(req.body?.status || '').trim();
+        const adminNotes = String(req.body?.admin_notes || '').trim();
+
+        if (!VALID_REPORT_STATUSES.includes(nextStatus)) {
+            return res.status(400).json({ error: 'Estado inválido' });
+        }
+
+        const report = await runDbGet('SELECT * FROM reports WHERE id = ?', [reportId]);
+        if (!report) {
+            return res.status(404).json({ error: 'Reporte no encontrado' });
+        }
+
+        await runDb(
+            `UPDATE reports
+             SET status = ?, admin_notes = ?, updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?`,
+            [nextStatus, adminNotes || report.admin_notes || null, reportId]
+        );
+        await saveDatabaseAsync();
+
+        res.json({
+            message: 'Reporte actualizado',
+            report_id: reportId,
+            status: nextStatus
+        });
+    } catch (error) {
+        console.error('Error actualizando reporte:', error);
+        return sendApiError(res, error, { development: isDevelopment });
+    }
+});
+
+// Admin: ban user
+app.post('/api/admin/users/:userId/ban', authenticateToken, async (req, res) => {
+    try {
+        await dbReady;
+        const admin = await assertAdminUser(req, res);
+        if (!admin) {
+            return;
+        }
+
+        const targetId = Number(req.params.userId);
+        const reason = String(req.body?.reason || '').trim();
+        const isPermanent = req.body?.is_permanent !== false;
+        const days = Number(req.body?.days || 0);
+
+        if (!targetId) {
+            return res.status(400).json({ error: 'Usuario inválido' });
+        }
+        if (Number(targetId) === Number(admin.id)) {
+            return res.status(400).json({ error: 'No puedes banearte a ti mismo' });
+        }
+        if (!reason || reason.length < 4) {
+            return res.status(400).json({ error: 'Indica un motivo de baneo' });
+        }
+
+        const target = await runDbGet('SELECT id, username, email, is_admin FROM users WHERE id = ?', [targetId]);
+        if (!target) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+        if (target.is_admin) {
+            return res.status(403).json({ error: 'No se puede banear a un administrador' });
+        }
+
+        let expiresAt = null;
+        if (!isPermanent && days > 0) {
+            expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+        }
+
+        await runDb(
+            `INSERT INTO user_bans (user_id, reason, banned_by, expires_at, is_permanent)
+             VALUES (?, ?, ?, ?, ?)`,
+            [targetId, reason, admin.id, expiresAt, isPermanent ? 1 : 0]
+        );
+        await saveDatabaseAsync();
+
+        res.json({
+            message: `Usuario ${target.username || target.email} baneado`,
+            user_id: targetId,
+            is_permanent: isPermanent,
+            expires_at: expiresAt
+        });
+    } catch (error) {
+        console.error('Error baneando usuario:', error);
+        return sendApiError(res, error, { development: isDevelopment });
+    }
 });
 
 // Get policies
@@ -5634,6 +5799,10 @@ app.get('/admin-verificaciones.html', (req, res) => {
 
 app.get('/admin-usuarios.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'admin-usuarios.html'));
+});
+
+app.get('/admin-reportes.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin-reportes.html'));
 });
 
 app.get('/policies.html', (req, res) => {

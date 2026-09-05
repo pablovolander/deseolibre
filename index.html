@@ -65,6 +65,7 @@
                         <a href="profile.html">Mi Perfil</a>
                         <a href="admin-usuarios.html" id="homeAdminLink" style="display:none;">Panel Admin</a>
                         <a href="admin-verificaciones.html" id="homeAdminVerifyLink" style="display:none;">Verificaciones</a>
+                        <a href="admin-reportes.html" id="homeAdminReportsLink" style="display:none;">Reportes</a>
                         <a href="index.html">Inicio</a>
                         <a href="#" onclick="logout()">Cerrar Sesión</a>
                     </div>
@@ -693,8 +694,10 @@
             const show = isAdminUser(user);
             const adminLink = document.getElementById('homeAdminLink');
             const verifyLink = document.getElementById('homeAdminVerifyLink');
+            const reportsLink = document.getElementById('homeAdminReportsLink');
             if (adminLink) adminLink.style.display = show ? 'block' : 'none';
             if (verifyLink) verifyLink.style.display = show ? 'block' : 'none';
+            if (reportsLink) reportsLink.style.display = show ? 'block' : 'none';
         }
 
         function updateUI() {

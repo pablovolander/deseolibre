@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Admin — Reportes | Deseo Libre</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="/js/api-config.js"></script>
+    <script src="/js/auth-session.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: Inter, sans-serif;
+            background: linear-gradient(135deg, #ff6b6b, #6c5ce7);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,.25);
+        }
+        .header {
+            background: linear-gradient(135deg, #ff6b6b, #6c5ce7);
+            color: #fff;
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .header h1 { font-size: 1.5rem; }
+        .header-actions { display: flex; gap: .75rem; flex-wrap: wrap; }
+        .btn {
+            border: none;
+            border-radius: 8px;
+            padding: .65rem 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            font-size: .9rem;
+        }
+        .btn-light { background: #fff; color: #6c5ce7; }
+        .btn-danger { background: #dc3545; color: #fff; }
+        .btn-secondary { background: #f1f3f5; color: #333; }
+        .btn-success { background: #28a745; color: #fff; }
+        .btn-sm { padding: .4rem .65rem; font-size: .8rem; }
+        .toolbar {
+            padding: 1rem 2rem;
+            background: #f8f9fa;
+            display: flex;
+            gap: .75rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .toolbar select {
+            min-height: 40px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            padding: .4rem .6rem;
+        }
+        .message {
+            margin: 1rem 2rem 0;
+            padding: .75rem 1rem;
+            border-radius: 8px;
+            display: none;
+        }
+        .message.show { display: block; }
+        .message.success { background: #d4edda; color: #155724; }
+        .message.error { background: #f8d7da; color: #721c24; }
+        .table-wrap { padding: 1rem 2rem 2rem; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: .75rem; text-align: left; border-bottom: 1px solid #eee; vertical-align: top; }
+        th { font-size: .85rem; color: #666; }
+        .badge {
+            display: inline-block;
+            padding: .2rem .5rem;
+            border-radius: 999px;
+            font-size: .75rem;
+            font-weight: 600;
+        }
+        .badge-pending { background: #fff3cd; color: #856404; }
+        .badge-reviewed { background: #cce5ff; color: #004085; }
+        .badge-resolved { background: #d4edda; color: #155724; }
+        .badge-dismissed { background: #e2e3e5; color: #383d41; }
+        .empty { text-align: center; color: #666; padding: 2rem; }
+        .desc { font-size: .9rem; color: #444; max-width: 280px; }
+        .actions { display: flex; flex-wrap: wrap; gap: .35rem; }
+        .meta { font-size: .8rem; color: #777; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-flag"></i> Reportes</h1>
+            <div class="header-actions">
+                <a href="admin-usuarios.html" class="btn btn-light"><i class="fas fa-users-cog"></i> Usuarios</a>
+                <a href="admin-verificaciones.html" class="btn btn-light"><i class="fas fa-shield-alt"></i> Verificaciones</a>
+                <a href="index.html" class="btn btn-light"><i class="fas fa-home"></i> Inicio</a>
+            </div>
+        </header>
+
+        <div class="toolbar">
+            <label>
+                Estado
+                <select id="statusFilter">
+                    <option value="pending">Pendientes</option>
+                    <option value="reviewed">Revisados</option>
+                    <option value="resolved">Resueltos</option>
+                    <option value="dismissed">Descartados</option>
+                    <option value="all">Todos</option>
+                </select>
+            </label>
+            <button class="btn btn-secondary" onclick="loadReports()"><i class="fas fa-sync"></i> Actualizar</button>
+            <span id="pendingCount" style="color:#666;font-size:.9rem;"></span>
+        </div>
+
+        <div id="message" class="message"></div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Tipo</th>
+                        <th>Reportado</th>
+                        <th>Quién reportó</th>
+                        <th>Descripción</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="reportsBody">
+                    <tr><td colspan="7" class="empty">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = typeof getApiBaseUrl === 'function' ? getApiBaseUrl() : window.location.origin;
+        const TYPE_LABELS = {
+            inappropriate_content: 'Contenido inapropiado',
+            harassment: 'Acoso',
+            spam: 'Spam',
+            fake_profile: 'Perfil falso',
+            underage: 'Menor de edad',
+            other: 'Otro'
+        };
+
+        function showMessage(text, type) {
+            const el = document.getElementById('message');
+            el.textContent = text;
+            el.className = `message show ${type}`;
+        }
+
+        function getToken() {
+            return typeof DeseoAuth !== 'undefined' ? DeseoAuth.getToken() : localStorage.getItem('authToken');
+        }
+
+        async function api(path, options = {}) {
+            const token = getToken();
+            if (!token) {
+                throw new Error('Inicia sesión como administrador');
+            }
+            const response = await fetch(`${API_URL}${path}`, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                    ...(options.headers || {})
+                }
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.error || data.message || `Error HTTP ${response.status}`);
+            }
+            return data;
+        }
+
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        async function loadReports() {
+            const status = document.getElementById('statusFilter').value;
+            const body = document.getElementById('reportsBody');
+            body.innerHTML = '<tr><td colspan="7" class="empty">Cargando...</td></tr>';
+            try {
+                const data = await api(`/api/admin/reports?status=${encodeURIComponent(status)}`);
+                document.getElementById('pendingCount').textContent =
+                    `${data.pending_count || 0} pendiente(s)`;
+
+                if (!data.reports?.length) {
+                    body.innerHTML = '<tr><td colspan="7" class="empty">No hay reportes con este filtro</td></tr>';
+                    return;
+                }
+
+                body.innerHTML = data.reports.map((r) => {
+                    const reported = r.reported_username
+                        ? `<a href="profile.html?user=${r.reported_user_id}" target="_blank">@${escapeHtml(r.reported_username)}</a>
+                           <div class="meta">${escapeHtml(r.reported_email || '')}</div>`
+                        : (r.post_title
+                            ? `Post #${r.reported_post_id}: ${escapeHtml(r.post_title)}`
+                            : '—');
+                    const badgeClass = `badge-${r.status || 'pending'}`;
+                    return `<tr>
+                        <td>#${r.id}<div class="meta">${escapeHtml(r.created_at || '')}</div></td>
+                        <td>${escapeHtml(TYPE_LABELS[r.report_type] || r.report_type)}</td>
+                        <td>${reported}</td>
+                        <td>@${escapeHtml(r.reporter_username || '')}<div class="meta">${escapeHtml(r.reporter_email || '')}</div></td>
+                        <td class="desc">${escapeHtml(r.description)}</td>
+                        <td><span class="badge ${badgeClass}">${escapeHtml(r.status)}</span></td>
+                        <td class="actions">
+                            <button class="btn btn-success btn-sm" onclick="setStatus(${r.id}, 'resolved')">Resolver</button>
+                            <button class="btn btn-secondary btn-sm" onclick="setStatus(${r.id}, 'dismissed')">Descartar</button>
+                            <button class="btn btn-secondary btn-sm" onclick="setStatus(${r.id}, 'reviewed')">Revisado</button>
+                            ${r.reported_user_id ? `<button class="btn btn-danger btn-sm" onclick="banUser(${r.reported_user_id}, ${r.id})">Banear</button>` : ''}
+                        </td>
+                    </tr>`;
+                }).join('');
+            } catch (error) {
+                body.innerHTML = `<tr><td colspan="7" class="empty">${escapeHtml(error.message)}</td></tr>`;
+                showMessage(error.message, 'error');
+            }
+        }
+
+        async function setStatus(id, status) {
+            const notes = window.prompt('Nota interna (opcional):', '') || '';
+            try {
+                await api(`/api/admin/reports/${id}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ status, admin_notes: notes })
+                });
+                showMessage(`Reporte #${id} → ${status}`, 'success');
+                loadReports();
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        }
+
+        async function banUser(userId, reportId) {
+            const reason = window.prompt('Motivo del baneo:', 'Reporte de comunidad');
+            if (!reason) return;
+            try {
+                await api(`/api/admin/users/${userId}/ban`, {
+                    method: 'POST',
+                    body: JSON.stringify({ reason, is_permanent: true })
+                });
+                await api(`/api/admin/reports/${reportId}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ status: 'resolved', admin_notes: `Ban: ${reason}` })
+                });
+                showMessage(`Usuario #${userId} baneado`, 'success');
+                loadReports();
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        }
+
+        document.getElementById('statusFilter').addEventListener('change', loadReports);
+        loadReports();
+    </script>
+</body>
+</html>
