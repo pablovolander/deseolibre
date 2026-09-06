@@ -398,8 +398,9 @@
         const zoneSelect = document.getElementById('searchZone');
         if (cityInput) {
             const fromUrl = getCiudadFromUrl();
+            const fromPage = (document.body?.dataset?.city || '').trim();
             const saved = localStorage.getItem('deseo_search_city') || '';
-            activeCiudad = fromUrl || saved;
+            activeCiudad = fromUrl || fromPage || saved;
             if (activeCiudad) {
                 cityInput.value = activeCiudad;
             }

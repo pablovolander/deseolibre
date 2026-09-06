@@ -52,6 +52,17 @@ const {
     isResendConfigured,
     getMailFromAddress
 } = require('./lib/password-reset');
+const {
+    getSeoBaseUrl,
+    findCityBySlug,
+    findCategoryBySlug,
+    buildHomeMeta,
+    buildCategoryMeta,
+    buildCityCategoryMeta,
+    injectSeoIntoHtml,
+    buildRobotsTxt,
+    buildSitemapXml
+} = require('./lib/seo');
 const { evaluateAutoVerification, getMaxVideoBytes, MIN_VIDEO_DURATION_SEC, MAX_VIDEO_DURATION_SEC, MIN_FACE_MATCH_SCORE } = require('./lib/auto-verification');
 const {
     addPostToFeedIndex,
@@ -5772,11 +5783,11 @@ app.get('/api/users/suggested', authenticateToken, (req, res) => {
 
 // Rutas para páginas HTML principales
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    sendSeoHtml(res, 'index.html', buildHomeMeta());
 });
 
 app.get('/index.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    sendSeoHtml(res, 'index.html', buildHomeMeta());
 });
 
 app.get('/home.html', (req, res) => {
@@ -5815,7 +5826,7 @@ app.get('/policies.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'policies.html'));
 });
 
-function sendRootHtml(res, filename) {
+function resolveHtmlPath(filename) {
     const safeName = path.basename(decodeURIComponent(filename || ''));
     const candidates = [
         path.join(__dirname, safeName),
@@ -5823,12 +5834,53 @@ function sendRootHtml(res, filename) {
     ];
     for (const filePath of candidates) {
         if (fs.existsSync(filePath)) {
-            return res.sendFile(filePath);
+            return filePath;
         }
     }
-    console.error('HTML no encontrado:', safeName, 'cwd:', __dirname);
+    return null;
+}
+
+function sendRootHtml(res, filename) {
+    const filePath = resolveHtmlPath(filename);
+    if (filePath) {
+        return res.sendFile(filePath);
+    }
+    console.error('HTML no encontrado:', filename, 'cwd:', __dirname);
     return res.status(404).send('Página no encontrada');
 }
+
+function sendSeoHtml(res, filename, seo) {
+    const filePath = resolveHtmlPath(filename);
+    if (!filePath) {
+        return res.status(404).send('Página no encontrada');
+    }
+    try {
+        const raw = fs.readFileSync(filePath, 'utf8');
+        const html = injectSeoIntoHtml(raw, seo);
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.send(html);
+    } catch (error) {
+        console.error('Error sirviendo HTML SEO:', filename, error.message);
+        return sendRootHtml(res, filename);
+    }
+}
+
+app.get('/robots.txt', (req, res) => {
+    res.type('text/plain').send(buildRobotsTxt(getSeoBaseUrl()));
+});
+
+app.get('/sitemap.xml', (req, res) => {
+    res.type('application/xml').send(buildSitemapXml(getSeoBaseUrl()));
+});
+
+app.get('/:citySlug/:categorySlug', (req, res, next) => {
+    const city = findCityBySlug(req.params.citySlug);
+    const category = findCategoryBySlug(req.params.categorySlug);
+    if (!city || !category) {
+        return next();
+    }
+    return sendSeoHtml(res, category.feedFile, buildCityCategoryMeta(city, category));
+});
 
 const FEED_PAGE_BY_SLUG = {
     mujeres: 'feed-mujeres.html',
@@ -5855,13 +5907,23 @@ const REELS_PAGE_BY_SLUG = {
 };
 
 // Feeds por categoría (URLs cortas ASCII)
-app.get('/feed-mujeres.html', (req, res) => sendRootHtml(res, 'feed-mujeres.html'));
-app.get('/feed-hombres.html', (req, res) => sendRootHtml(res, 'feed-hombres.html'));
-app.get('/feed-trans.html', (req, res) => sendRootHtml(res, 'feed-trans.html'));
+app.get('/feed-mujeres.html', (req, res) => {
+    sendSeoHtml(res, 'feed-mujeres.html', buildCategoryMeta(findCategoryBySlug('mujeres')));
+});
+app.get('/feed-hombres.html', (req, res) => {
+    sendSeoHtml(res, 'feed-hombres.html', buildCategoryMeta(findCategoryBySlug('hombres')));
+});
+app.get('/feed-trans.html', (req, res) => {
+    sendSeoHtml(res, 'feed-trans.html', buildCategoryMeta(findCategoryBySlug('trans')));
+});
 
 app.get('/feed-:slug.html', (req, res) => {
     const slug = decodeURIComponent(req.params.slug || '');
     const mapped = FEED_PAGE_BY_SLUG[slug];
+    const category = findCategoryBySlug(slug);
+    if (mapped && category) {
+        return sendSeoHtml(res, mapped, buildCategoryMeta(category));
+    }
     if (mapped) {
         return sendRootHtml(res, mapped);
     }
