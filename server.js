@@ -48,7 +48,9 @@ const {
     buildResetUrl,
     getAppBaseUrl,
     sendPasswordResetEmail,
-    isResetTokenExpired
+    isResetTokenExpired,
+    isResendConfigured,
+    getMailFromAddress
 } = require('./lib/password-reset');
 const { evaluateAutoVerification, getMaxVideoBytes, MIN_VIDEO_DURATION_SEC, MAX_VIDEO_DURATION_SEC, MIN_FACE_MATCH_SCORE } = require('./lib/auto-verification');
 const {
@@ -1376,6 +1378,10 @@ app.get('/api/health', async (req, res) => {
             blobPersistence: persistDatabaseEnabled(),
             blobAccess: getBlobAccess(),
             blobSuspended,
+            email: {
+                configured: isResendConfigured(),
+                from: getMailFromAddress()
+            },
             ...(blobSuspended ? getBlobUnavailablePayload() : {})
         });
     } catch (error) {

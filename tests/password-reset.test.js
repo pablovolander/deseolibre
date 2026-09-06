@@ -8,7 +8,8 @@ const {
     validateNewPassword,
     buildResetUrl,
     buildResetEmailHtml,
-    isResetTokenExpired
+    isResetTokenExpired,
+    isResendConfigured
 } = require('../lib/password-reset');
 
 test('generateResetToken returns unique hex strings', () => {
@@ -47,4 +48,19 @@ test('buildResetEmailHtml escapes username', () => {
 test('isResetTokenExpired detects past dates', () => {
     assert.equal(isResetTokenExpired(new Date(Date.now() - 1000).toISOString()), true);
     assert.equal(isResetTokenExpired(new Date(Date.now() + 60000).toISOString()), false);
+});
+
+test('isResendConfigured rejects placeholders', () => {
+    const prev = process.env.RESEND_API_KEY;
+    try {
+        process.env.RESEND_API_KEY = '';
+        assert.equal(isResendConfigured(), false);
+        process.env.RESEND_API_KEY = 're_xxx';
+        assert.equal(isResendConfigured(), false);
+        process.env.RESEND_API_KEY = 're_' + 'a'.repeat(24);
+        assert.equal(isResendConfigured(), true);
+    } finally {
+        if (prev === undefined) delete process.env.RESEND_API_KEY;
+        else process.env.RESEND_API_KEY = prev;
+    }
 });
