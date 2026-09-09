@@ -2,6 +2,9 @@
  * Reels por categoría (Mujeres / Hombres / Trans)
  */
 (function () {
+    const MAX_REEL_BYTES = 4.5 * 1024 * 1024;
+    const MAX_REEL_DURATION_SEC = 60;
+
     const CATEGORIES = [
         {
             id: 'acompañantes-mujeres',
@@ -36,12 +39,15 @@
 
     let authToken = typeof DeseoAuth !== 'undefined' ? DeseoAuth.getToken() : localStorage.getItem('authToken');
     let currentUser = null;
-    let loadReelsRetried = false;
 
     function setStatus(el, message, type) {
         if (!el) return;
         el.textContent = message || '';
         el.className = 'reels-status' + (type ? ` ${type}` : '');
+    }
+
+    function formatMb(bytes) {
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     }
 
     function mediaUrl(path) {
@@ -59,6 +65,14 @@
         return div.innerHTML;
     }
 
+    function guessVideoMime(url) {
+        const lower = String(url || '').toLowerCase();
+        if (lower.includes('.webm')) return 'video/webm';
+        if (lower.includes('.mov') || lower.includes('.qt')) return 'video/quicktime';
+        if (lower.includes('.m4v')) return 'video/mp4';
+        return '';
+    }
+
     function getToken() {
         authToken = typeof DeseoAuth !== 'undefined' ? DeseoAuth.getToken() : localStorage.getItem('authToken');
         return authToken;
@@ -71,7 +85,7 @@
     function updateAuthUi() {
         const loggedIn = isLoggedIn();
         if (loginGate) loginGate.style.display = loggedIn ? 'none' : 'block';
-        if (uploadPanel) uploadPanel.style.display = 'block';
+        if (uploadPanel) uploadPanel.style.display = loggedIn ? 'block' : 'none';
     }
 
     function apiFetchHeaders(extra) {
@@ -197,8 +211,59 @@
             window.location.href = 'verificar-identidad.html';
             return false;
         } catch {
-            return true;
+            setStatus(uploadStatus, 'No se pudo comprobar la verificación. Intenta de nuevo.', 'error');
+            return false;
         }
+    }
+
+    function probeVideoFile(file) {
+        return new Promise((resolve) => {
+            if (!file) {
+                resolve({ duration: null, error: 'Selecciona un video' });
+                return;
+            }
+            const url = URL.createObjectURL(file);
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            const cleanup = () => {
+                URL.revokeObjectURL(url);
+                video.removeAttribute('src');
+                video.load();
+            };
+            video.onloadedmetadata = () => {
+                const duration = Number.isFinite(video.duration) ? video.duration : null;
+                cleanup();
+                resolve({ duration, error: null });
+            };
+            video.onerror = () => {
+                cleanup();
+                resolve({ duration: null, error: null });
+            };
+            video.src = url;
+        });
+    }
+
+    async function validateReelVideoFile(file) {
+        if (!file) {
+            return { ok: false, error: 'Selecciona un video' };
+        }
+        if (file.size > MAX_REEL_BYTES) {
+            return {
+                ok: false,
+                error: `El video pesa ${formatMb(file.size)}. Máximo ${formatMb(MAX_REEL_BYTES)}. Usa un clip más corto o comprímelo.`
+            };
+        }
+        const meta = await probeVideoFile(file);
+        if (meta.duration != null && meta.duration > MAX_REEL_DURATION_SEC + 0.5) {
+            return {
+                ok: false,
+                error: `El video dura ${Math.round(meta.duration)} s. Máximo ${MAX_REEL_DURATION_SEC} s.`
+            };
+        }
+        return {
+            ok: true,
+            durationSeconds: meta.duration != null ? Math.max(1, Math.round(meta.duration)) : null
+        };
     }
 
     async function handleReelsApiError(res, data) {
@@ -291,21 +356,30 @@
         }
     }
 
+    function updateCardLikeStats(card, count) {
+        const heartStat = card?.querySelector('.reel-stats [data-stat="likes"]');
+        if (heartStat) {
+            heartStat.innerHTML = `<i class="far fa-heart"></i> ${count}`;
+        }
+    }
+
     function createReelCard(reel) {
         const card = document.createElement('article');
         card.className = 'reel-card';
         card.dataset.reelId = reel.id;
 
         const videoUrl = mediaUrl(reel.video_url);
+        const mime = guessVideoMime(videoUrl);
         const avatar = mediaUrl(reel.profile_picture) || mediaUrl('/uploads/default-avatar.png');
         const username = escapeHtml(reel.username || 'Usuario');
         const isOwner = currentUser && reel.user_id === currentUser.id;
         const liked = !!reel.is_liked_by_me;
+        const sourceAttrs = mime ? `src="${videoUrl}" type="${mime}"` : `src="${videoUrl}"`;
 
         card.innerHTML = `
             <div class="reel-stage">
                 <video class="reel-video" controls playsinline preload="metadata" poster="${reel.thumbnail_url ? mediaUrl(reel.thumbnail_url) : ''}">
-                    <source src="${videoUrl}" type="video/mp4">
+                    <source ${sourceAttrs}>
                 </video>
                 <div class="reel-overlay">
                     <div class="reel-overlay-gradient" aria-hidden="true"></div>
@@ -319,9 +393,9 @@
                         ${reel.title ? `<h3 class="reel-title">${escapeHtml(reel.title)}</h3>` : ''}
                         ${reel.description ? `<p class="reel-desc">${escapeHtml(reel.description)}</p>` : ''}
                         <div class="reel-stats">
-                            <span><i class="far fa-eye"></i> ${reel.views_count || 0}</span>
-                            <span><i class="far fa-heart"></i> ${reel.likes_count || 0}</span>
-                            <span><i class="far fa-comment"></i> ${reel.comments_count || 0}</span>
+                            <span data-stat="views"><i class="far fa-eye"></i> ${reel.views_count || 0}</span>
+                            <span data-stat="likes"><i class="far fa-heart"></i> ${reel.likes_count || 0}</span>
+                            <span data-stat="comments"><i class="far fa-comment"></i> ${reel.comments_count || 0}</span>
                         </div>
                         <div class="reel-actions">
                             <button type="button" class="like-btn ${liked ? 'liked' : ''}" data-liked="${liked}" data-count="${reel.likes_count || 0}">
@@ -342,10 +416,10 @@
             </div>`;
 
         const video = card.querySelector('video');
-        video?.addEventListener('play', () => registerView(reel.id), { once: true });
+        video?.addEventListener('play', () => registerView(reel.id, card), { once: true });
 
         card.querySelector('.like-btn')?.addEventListener('click', (e) => {
-            toggleLike(reel.id, e.currentTarget);
+            toggleLike(reel.id, e.currentTarget, card);
         });
 
         card.querySelector('.comment-toggle-btn')?.addEventListener('click', () => {
@@ -370,16 +444,21 @@
         return card;
     }
 
-    async function registerView(reelId) {
+    async function registerView(reelId, card) {
         try {
-            await fetch(`${API_URL}/api/reels/${reelId}/view`, {
+            const res = await fetch(`${API_URL}/api/reels/${reelId}/view`, {
                 method: 'POST',
                 headers: apiFetchHeaders()
             });
+            if (!res.ok || !card) return;
+            const viewsEl = card.querySelector('.reel-stats [data-stat="views"]');
+            if (!viewsEl) return;
+            const current = parseInt(String(viewsEl.textContent || '').replace(/\D/g, ''), 10) || 0;
+            viewsEl.innerHTML = `<i class="far fa-eye"></i> ${current + 1}`;
         } catch (_) {}
     }
 
-    async function toggleLike(reelId, button) {
+    async function toggleLike(reelId, button, card) {
         if (!requireLoginForAction('Inicia sesión para dar me gusta.')) return;
         const liked = button.dataset.liked === 'true';
         const count = parseInt(button.dataset.count, 10) || 0;
@@ -395,6 +474,7 @@
             button.dataset.count = newCount;
             button.classList.toggle('liked', newLiked);
             button.innerHTML = `<i class="fas fa-heart"></i> ${newLiked ? 'Te gusta' : 'Me gusta'}`;
+            updateCardLikeStats(card, newCount);
         } catch {
             alert('No se pudo actualizar el like');
         }
@@ -445,7 +525,11 @@
             const list = card.querySelector('.comment-list');
             list.dataset.loaded = 'false';
             loadComments(reelId, list);
-            loadReels();
+            const commentsEl = card.querySelector('.reel-stats [data-stat="comments"]');
+            if (commentsEl) {
+                const current = parseInt(String(commentsEl.textContent || '').replace(/\D/g, ''), 10) || 0;
+                commentsEl.innerHTML = `<i class="far fa-comment"></i> ${current + 1}`;
+            }
         } catch {
             alert('No se pudo enviar el comentario');
         }
@@ -456,7 +540,7 @@
         try {
             const res = await fetch(`${API_URL}/api/reels/${reelId}`, {
                 method: 'DELETE',
-                headers: { Authorization: `Bearer ${authToken}` }
+                headers: apiFetchHeaders()
             });
             const data = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(data.error || 'Error');
@@ -467,9 +551,39 @@
         }
     }
 
+    function wireVideoInputValidation() {
+        const videoInput = uploadForm?.querySelector('input[name="video"]');
+        const durationInput = uploadForm?.querySelector('input[name="duration_seconds"]');
+        if (!videoInput) return;
+
+        videoInput.addEventListener('change', async () => {
+            const file = videoInput.files && videoInput.files[0];
+            if (!file) {
+                setStatus(uploadStatus, '', null);
+                return;
+            }
+            setStatus(uploadStatus, 'Revisando video...', null);
+            const check = await validateReelVideoFile(file);
+            if (!check.ok) {
+                setStatus(uploadStatus, check.error, 'error');
+                videoInput.value = '';
+                return;
+            }
+            if (check.durationSeconds != null && durationInput) {
+                durationInput.value = String(check.durationSeconds);
+            }
+            setStatus(
+                uploadStatus,
+                `Listo · ${formatMb(file.size)}${check.durationSeconds ? ` · ${check.durationSeconds}s` : ''}`,
+                'success'
+            );
+        });
+    }
+
     if (uploadForm) {
         const categoryInput = document.getElementById('reel-category-fixed');
         if (categoryInput) categoryInput.value = categoryId;
+        wireVideoInputValidation();
 
         uploadForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -481,9 +595,20 @@
                 return;
             }
 
+            const videoInput = uploadForm.querySelector('input[name="video"]');
+            const file = videoInput?.files && videoInput.files[0];
+            const check = await validateReelVideoFile(file);
+            if (!check.ok) {
+                setStatus(uploadStatus, check.error, 'error');
+                return;
+            }
+
             const formData = new FormData(uploadForm);
             formData.set('category', categoryId);
             if (!formData.get('is_public')) formData.set('is_public', 'false');
+            if (check.durationSeconds != null) {
+                formData.set('duration_seconds', String(check.durationSeconds));
+            }
 
             const btn = uploadForm.querySelector('.btn-publish-reel');
             if (btn) btn.disabled = true;
@@ -517,7 +642,6 @@
                 uploadForm.reset();
                 const pub = document.getElementById('reel-public');
                 if (pub) pub.checked = true;
-                loadReelsRetried = false;
                 loadReels();
             } catch (err) {
                 setStatus(uploadStatus, err.message || 'Error al subir', 'error');

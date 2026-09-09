@@ -73,7 +73,12 @@ const {
     refreshUserOfferedServicesInFeedIndex,
     removeUserFromFeedIndex
 } = require('./lib/category-feed-index');
-const { deleteUserAccountData } = require('./lib/delete-user-account');
+const { deleteUserAccountData, deleteStoredMediaUrls } = require('./lib/delete-user-account');
+const {
+    getReelUploadLimitBytes,
+    parseReelDurationSeconds,
+    buildReelTooLargeError
+} = require('./lib/reels');
 const { formatUserForAdminList, filterDeletableUserIds } = require('./lib/admin-users');
 const {
     isBlobUnavailableError,
@@ -554,10 +559,12 @@ const reelStorage = multer.diskStorage({
     }
 });
 
+const reelUploadLimitBytes = getReelUploadLimitBytes(isServerless);
+
 const reelUpload = multer({
     storage: isServerless ? multer.memoryStorage() : reelStorage,
     limits: {
-        fileSize: 200 * 1024 * 1024 // 200MB limit específico para reels
+        fileSize: reelUploadLimitBytes
     },
     fileFilter: function (req, file, cb) {
         const videoTypes = /mp4|mov|mkv|webm|avi|flv|wmv|m4v/;
@@ -591,6 +598,9 @@ const handleReelUpload = (req, res, next) => {
     reelFieldsUpload(req, res, (err) => {
         if (err) {
             console.error('❌ Error al subir reel:', err.message || err);
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ error: buildReelTooLargeError(reelUploadLimitBytes) });
+            }
             return res.status(400).json({ error: err.message || 'Error al subir reel' });
         }
         next();
@@ -4576,6 +4586,16 @@ app.post('/api/reels', authenticateToken, requireUserVerification, handleReelUpl
             return res.status(400).json({ error: 'Archivo de video es requerido' });
         }
 
+        const videoSize = Number(videoFile.size || videoFile.buffer?.length || 0);
+        if (videoSize > reelUploadLimitBytes) {
+            return res.status(400).json({ error: buildReelTooLargeError(reelUploadLimitBytes) });
+        }
+
+        const durationCheck = parseReelDurationSeconds(duration_seconds);
+        if (!durationCheck.ok) {
+            return res.status(400).json({ error: durationCheck.error });
+        }
+
         const thumbnailFile = req.files && Array.isArray(req.files.thumbnail) ? req.files.thumbnail[0] : null;
         const reelsUploadDir = path.join(localUploadsDir, 'reels');
 
@@ -4584,13 +4604,7 @@ app.post('/api/reels', authenticateToken, requireUserVerification, handleReelUpl
             ? await persistUploadedFile(thumbnailFile, isVercel, reelsUploadDir)
             : null;
 
-        let duration = null;
-        if (duration_seconds !== undefined && duration_seconds !== null && duration_seconds !== '') {
-            const parsed = parseInt(duration_seconds, 10);
-            if (!Number.isNaN(parsed) && parsed >= 0) {
-                duration = parsed;
-            }
-        }
+        const duration = durationCheck.value;
 
         const isPublicFlag = (() => {
             if (typeof is_public === 'string') {
@@ -4788,12 +4802,17 @@ app.post('/api/reels/:reelId/like', authenticateToken, requireAgeVerification, c
                 db.run(
                     'UPDATE reels SET likes_count = likes_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
                     [reelId],
-                    (updateErr) => {
+                    async (updateErr) => {
                         if (updateErr) {
                             console.error('❌ Error al actualizar likes de reel:', updateErr);
                             return res.status(500).json({ error: 'Error al actualizar likes' });
                         }
 
+                        try {
+                            await saveDatabaseAsync();
+                        } catch (persistErr) {
+                            console.error('Error persistiendo like de reel:', persistErr.message);
+                        }
                         res.json({ message: 'Like registrado' });
                     }
                 );
@@ -4822,18 +4841,23 @@ app.delete('/api/reels/:reelId/like', authenticateToken, requireAgeVerification,
                 return res.status(404).json({ error: 'No habías dado like a este reel' });
             }
 
-            db.run(
+                db.run(
                 `UPDATE reels 
                  SET likes_count = CASE WHEN likes_count > 0 THEN likes_count - 1 ELSE 0 END,
                      updated_at = CURRENT_TIMESTAMP
                  WHERE id = ?`,
                 [reelId],
-                (updateErr) => {
+                async (updateErr) => {
                     if (updateErr) {
                         console.error('❌ Error al actualizar likes de reel:', updateErr);
                         return res.status(500).json({ error: 'Error al actualizar contador de likes' });
                     }
 
+                    try {
+                        await saveDatabaseAsync();
+                    } catch (persistErr) {
+                        console.error('Error persistiendo unlike de reel:', persistErr.message);
+                    }
                     res.json({ message: 'Like eliminado' });
                 }
             );
@@ -4881,9 +4905,14 @@ app.post('/api/reels/:reelId/comment', authenticateToken, requireAgeVerification
                 db.run(
                     'UPDATE reels SET comments_count = comments_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
                     [reelId],
-                    (updateErr) => {
+                    async (updateErr) => {
                         if (updateErr) {
                             console.error('❌ Error al actualizar contador de comentarios:', updateErr);
+                        }
+                        try {
+                            await saveDatabaseAsync();
+                        } catch (persistErr) {
+                            console.error('Error persistiendo comentario de reel:', persistErr.message);
                         }
                     }
                 );
@@ -4963,7 +4992,7 @@ app.post('/api/reels/:reelId/view', optionalAuthenticateToken, (req, res) => {
     db.run(
         'UPDATE reels SET views_count = views_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
         [reelId],
-        function(err) {
+        async function(err) {
             if (err) {
                 console.error('❌ Error al registrar vista de reel:', err);
                 return res.status(500).json({ error: 'Error al registrar vista' });
@@ -4973,6 +5002,11 @@ app.post('/api/reels/:reelId/view', optionalAuthenticateToken, (req, res) => {
                 return res.status(404).json({ error: 'Reel no encontrado' });
             }
 
+            try {
+                await saveDatabaseAsync();
+            } catch (persistErr) {
+                console.error('Error persistiendo vista de reel:', persistErr.message);
+            }
             res.json({ message: 'Vista registrada' });
         }
     );
@@ -5022,8 +5056,16 @@ app.delete('/api/reels/:reelId', authenticateToken, checkUserBan, (req, res) => 
                                 return res.status(500).json({ error: 'Error al eliminar el reel' });
                             }
 
-                            deleteFileIfExists(reel.video_url);
-                            deleteFileIfExists(reel.thumbnail_url);
+                            try {
+                                await deleteStoredMediaUrls(
+                                    [reel.video_url, reel.thumbnail_url],
+                                    { localPublicDir: publicDir }
+                                );
+                            } catch (mediaErr) {
+                                console.warn('No se pudieron borrar medias del reel:', mediaErr.message);
+                                deleteFileIfExists(reel.video_url);
+                                deleteFileIfExists(reel.thumbnail_url);
+                            }
 
                             try {
                                 await saveDatabaseAsync();
