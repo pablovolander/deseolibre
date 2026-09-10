@@ -365,6 +365,126 @@ body.dl-mobile-nav:not(.directory-page):not(.home-page) {
     }
 }
 
+.dl-bottom-nav.dl-bottom-nav-hidden {
+    display: none !important;
+}
+
+/* Sticky contacto en perfil ajeno */
+.profile-contact-sticky {
+    display: none;
+}
+
+.profile-contact-sticky:not([hidden]) {
+    display: flex;
+}
+
+@media (max-width: 768px) {
+    .profile-contact-sticky:not([hidden]) {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: var(--mobile-nav-height);
+        z-index: 8500;
+        gap: 0.5rem;
+        padding: 0.65rem 0.85rem;
+        background: rgba(15, 17, 24, 0.97);
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    body.has-profile-contact-sticky.dl-mobile-nav {
+        padding-bottom: calc(var(--mobile-nav-height) + 4.25rem);
+    }
+
+    body.dl-modal-hides-nav .profile-contact-sticky {
+        bottom: 0;
+        padding-bottom: calc(0.65rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    .profile-contact-sticky .contact-links-sticky {
+        display: flex;
+        flex: 1;
+        gap: 0.5rem;
+        margin: 0;
+        width: 100%;
+    }
+
+    .profile-contact-sticky .contact-link {
+        flex: 1;
+        justify-content: center;
+        min-height: 48px;
+        padding: 0.75rem 0.85rem;
+        font-size: 0.95rem;
+        border-radius: 12px;
+    }
+
+    .contact-link {
+        min-height: var(--mobile-touch-min);
+        padding: 0.55rem 0.85rem;
+    }
+
+    /* Directorio compacto en móvil */
+    .directory-page .directory-hero {
+        padding: 0.85rem 1rem 0.5rem;
+    }
+
+    .directory-page .directory-hero h1 {
+        font-size: 1.35rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .directory-page .directory-hero > p {
+        display: none;
+    }
+
+    .directory-page .directory-trust,
+    .directory-page .directory-cta-row,
+    .directory-page .city-seo-links {
+        display: none;
+    }
+
+    .directory-page .directory-search {
+        margin-bottom: 0.65rem;
+        gap: 0.5rem;
+    }
+
+    .directory-page .directory-search input,
+    .directory-page .directory-search select,
+    .directory-page .directory-search button {
+        min-height: var(--mobile-touch-min);
+    }
+
+    .directory-page .service-filter-row {
+        margin: 0.15rem 0 0.5rem;
+    }
+
+    .directory-page .city-chips-row {
+        margin: 0 0 0.55rem;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 0.15rem;
+    }
+
+    .directory-page .category-nav {
+        position: sticky;
+        top: 0;
+        z-index: 40;
+        background: rgba(15, 17, 24, 0.94);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        padding: 0.45rem 0.75rem;
+        margin-bottom: 0.35rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .directory-page .directory-results {
+        padding-top: 0.25rem;
+    }
+}
+
 /* Reels immersive overrides — layout handled by reels.css */
 @media (max-width: 768px) {
     .reels-page.reels-immersive .reels-main {

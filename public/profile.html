@@ -2464,6 +2464,8 @@
         <span id="notificationMessage"></span>
     </div>
 
+    <div id="profileContactSticky" class="profile-contact-sticky" hidden aria-label="Contactar"></div>
+
     <script src="/js/api-config.js"></script>
     <script src="/js/auth-session.js"></script>
     <script src="/js/report-modal.js"></script>
@@ -3357,6 +3359,39 @@
             }
         }
 
+        function updateProfileContactSticky(user) {
+            const bar = document.getElementById('profileContactSticky');
+            if (!bar) {
+                return;
+            }
+            if (isOwnProfile || !user) {
+                bar.hidden = true;
+                bar.innerHTML = '';
+                document.body.classList.remove('has-profile-contact-sticky');
+                return;
+            }
+
+            const phone = user.phone || '';
+            const telegram = user.telegram_username || '';
+            let linksHtml = '';
+            if (typeof DeseoContact !== 'undefined') {
+                linksHtml = DeseoContact.renderMessagingLinksHtml(
+                    { phone, telegram_username: telegram },
+                    { stopPropagation: false, className: 'contact-links contact-links-sticky' }
+                );
+            }
+            if (!linksHtml) {
+                bar.hidden = true;
+                bar.innerHTML = '';
+                document.body.classList.remove('has-profile-contact-sticky');
+                return;
+            }
+
+            bar.innerHTML = linksHtml;
+            bar.hidden = false;
+            document.body.classList.add('has-profile-contact-sticky');
+        }
+
         function applyProfileDetailsToBio(user) {
             const locEl = document.getElementById('locationDetail');
             const locText = document.getElementById('locationText');
@@ -3391,6 +3426,8 @@
             } else if (phoneEl) {
                 phoneEl.style.display = 'none';
             }
+
+            updateProfileContactSticky(user);
 
             const price = typeof DeseoListing !== 'undefined'
                 ? DeseoListing.getPrice(user)
@@ -4167,6 +4204,7 @@
             
             if (isOwn) {
                 actionsContainer.style.display = 'flex';
+                updateProfileContactSticky(null);
                 const adminButtons = isAdminUser(currentUser) ? `
                     <a href="admin-usuarios.html" class="btn-action btn-admin" id="adminPanelBtn" style="text-decoration:none;">
                         <i class="fas fa-users-cog"></i> Panel Admin

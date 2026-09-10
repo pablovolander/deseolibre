@@ -145,6 +145,55 @@
 
         document.body.classList.add('dl-mobile-nav');
         document.body.appendChild(nav);
+        syncBottomNavWithModals();
+    }
+
+    function isAnyModalOpen() {
+        if (document.body.classList.contains('modal-open')) {
+            return true;
+        }
+        if (document.body.classList.contains('reels-upload-open')) {
+            return true;
+        }
+        const modals = document.querySelectorAll('.modal, .age-gate-modal, [role="dialog"]');
+        for (const modal of modals) {
+            if (modal.classList.contains('show') || modal.classList.contains('active')) {
+                return true;
+            }
+            const style = global.getComputedStyle ? global.getComputedStyle(modal) : null;
+            if (style && style.display !== 'none' && style.visibility !== 'hidden' && modal.style.display === 'block') {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function syncBottomNavWithModals() {
+        const nav = document.querySelector('.dl-bottom-nav');
+        if (!nav) {
+            return;
+        }
+        const open = isAnyModalOpen();
+        nav.classList.toggle('dl-bottom-nav-hidden', open);
+        document.body.classList.toggle('dl-modal-hides-nav', open);
+    }
+
+    function observeModalsForBottomNav() {
+        if (typeof MutationObserver === 'undefined') {
+            return;
+        }
+        const observer = new MutationObserver(() => {
+            syncBottomNavWithModals();
+        });
+        observer.observe(document.body, {
+            attributes: true,
+            attributeFilter: ['class', 'style'],
+            subtree: true,
+            childList: true
+        });
+        document.addEventListener('click', () => {
+            global.setTimeout(syncBottomNavWithModals, 0);
+        });
     }
 
     function mountDirectoryMenu() {
@@ -185,6 +234,7 @@
     function init() {
         mountBottomNav();
         mountDirectoryMenu();
+        observeModalsForBottomNav();
     }
 
     if (document.readyState === 'loading') {
