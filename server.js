@@ -1003,6 +1003,8 @@ async function applyDatabaseMigrations(database) {
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )`);
     await exec('ALTER TABLE users ADD COLUMN offered_services TEXT');
+    await exec('ALTER TABLE users ADD COLUMN profile_paused INTEGER DEFAULT 0');
+    await exec('ALTER TABLE users ADD COLUMN profile_paused_at DATETIME');
 }
 
 async function ensureDatabaseSchemaUpToDate() {
@@ -1213,10 +1215,14 @@ async function findUserRecordById(userId) {
         `SELECT id, username, email, full_name, bio, location, country, city, zone, zone_detail,
                 phone, telegram_username, service_price, service_price_unit, category,
                 offered_services, profile_picture, cover_photo, is_verified, verification_status,
-                age_verified, is_admin, created_at
+                age_verified, is_admin, profile_paused, profile_paused_at, created_at
          FROM users WHERE id = ?`,
         [userId]
     );
+}
+
+function isProfilePausedFlag(value) {
+    return value === 1 || value === true || value === '1' || value === 'true';
 }
 
 function mapUserForClient(user) {
@@ -1247,6 +1253,8 @@ function mapUserForClient(user) {
         is_verified: enriched.is_verified,
         age_verified: enriched.age_verified,
         is_admin: Boolean(enriched.is_admin),
+        profile_paused: isProfilePausedFlag(enriched.profile_paused),
+        profile_paused_at: enriched.profile_paused_at || null,
         profile_complete: userHasCompleteProfile(enriched),
         has_public_body_video: Boolean(resolvePublicBodyVideoUrl(enriched)),
         publications_count: enriched.publications_count || 0,
@@ -1947,7 +1955,7 @@ app.get('/api/user/profile', authenticateToken, (req, res) => {
 });
 
 // Get public profile of any user
-app.get('/api/user/public/:userId', async (req, res) => {
+app.get('/api/user/public/:userId', optionalAuthenticateToken, async (req, res) => {
     try {
         await dbReady;
         if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
@@ -1955,13 +1963,14 @@ app.get('/api/user/public/:userId', async (req, res) => {
         }
 
         const userId = req.params.userId;
+        const viewerId = getViewerUserId(req);
         const origin = getRequestOrigin(req);
 
         const row = await runDbGet(
             `SELECT u.id, u.username, u.full_name, u.bio, u.location, u.country, u.city, u.zone, u.zone_detail,
                     u.phone, u.telegram_username, u.service_price, u.service_price_unit, u.category,
                     u.offered_services, u.profile_picture, u.cover_photo, u.is_verified, u.created_at,
-                    u.followers_count, u.following_count, u.posts_count,
+                    u.followers_count, u.following_count, u.posts_count, u.profile_paused, u.profile_paused_at,
                     up.public_body_video_url, up.body_verification_video_url, up.face_obscured
              FROM users u
              LEFT JOIN user_profiles up ON up.user_id = u.id
@@ -1973,7 +1982,17 @@ app.get('/api/user/public/:userId', async (req, res) => {
             return res.status(404).json({ error: 'Usuario no encontrado' });
         }
 
+        const isOwner = viewerId && Number(viewerId) === Number(row.id);
+        if (isProfilePausedFlag(row.profile_paused) && !isOwner) {
+            return res.status(404).json({
+                error: 'Perfil no disponible',
+                code: 'PROFILE_PAUSED',
+                message: 'Este perfil está pausado temporalmente.'
+            });
+        }
+
         const user = enrichUserWithServices({ ...row });
+        user.profile_paused = isProfilePausedFlag(user.profile_paused);
         user.public_body_video_url = resolvePublicBodyVideoUrl(user);
         delete user.body_verification_video_url;
         if (user.profile_picture) {
@@ -1994,7 +2013,7 @@ app.get('/api/user/public/:userId', async (req, res) => {
 });
 
 // Get public posts of a specific user
-app.get('/api/user/:userId/posts', async (req, res) => {
+app.get('/api/user/:userId/posts', optionalAuthenticateToken, async (req, res) => {
     try {
         await dbReady;
         if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
@@ -2002,6 +2021,20 @@ app.get('/api/user/:userId/posts', async (req, res) => {
         }
 
         const userId = req.params.userId;
+        const viewerId = getViewerUserId(req);
+        const owner = await runDbGet('SELECT id, profile_paused FROM users WHERE id = ?', [userId]);
+        if (!owner) {
+            return res.status(404).json({ error: 'Usuario no encontrado', posts: [] });
+        }
+        const isOwner = viewerId && Number(viewerId) === Number(owner.id);
+        if (isProfilePausedFlag(owner.profile_paused) && !isOwner) {
+            return res.status(404).json({
+                error: 'Perfil no disponible',
+                code: 'PROFILE_PAUSED',
+                posts: []
+            });
+        }
+
         const posts = await runDbAll(
             `SELECT 
                 id,
@@ -2347,6 +2380,54 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Error updating profile:', error);
         res.status(500).json({ error: 'Error al actualizar perfil' });
+    }
+});
+
+app.put('/api/user/profile/pause', authenticateToken, checkUserBan, async (req, res) => {
+    try {
+        await dbReady;
+        const userId = getAuthUserId(req);
+        if (!userId) {
+            return res.status(401).json({ error: 'Sesión inválida' });
+        }
+
+        const paused = Boolean(
+            req.body?.paused === true ||
+            req.body?.paused === 1 ||
+            req.body?.paused === '1' ||
+            req.body?.paused === 'true'
+        );
+
+        await runDb(
+            `UPDATE users
+             SET profile_paused = ?,
+                 profile_paused_at = CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?`,
+            [paused ? 1 : 0, paused ? 1 : 0, userId]
+        );
+
+        if (paused) {
+            try {
+                await removeUserFromFeedIndex(userId);
+            } catch (indexErr) {
+                console.warn('No se pudo quitar usuario pausado del índice:', indexErr.message);
+            }
+        }
+
+        await saveDatabaseAsync();
+
+        const user = await resolveAuthUser(req);
+        res.json({
+            message: paused
+                ? 'Perfil pausado. No aparecerá en el directorio ni en reels.'
+                : 'Perfil reactivado. Ya puede aparecer en el directorio.',
+            profile_paused: paused,
+            user: mapUserForClient(user)
+        });
+    } catch (error) {
+        console.error('Error al pausar/activar perfil:', error);
+        return sendApiError(res, error, { development: isDevelopment, logLabel: 'pause profile:' });
     }
 });
 
@@ -3008,6 +3089,7 @@ app.get('/api/content/category/:category', async (req, res) => {
     const filterPosts = (rows) => {
         let list = filterPostsForCategory(category, rows);
         list = list.filter((p) => p.is_verified === 1 || p.is_verified === true);
+        list = list.filter((p) => !isProfilePausedFlag(p.profile_paused));
         if (genero && genero !== 'todos' && category !== 'acompañantes-mujeres' && category !== 'acompañantes-hombres') {
             list = list.filter((p) => {
                 if (!p.audience) {
@@ -3076,10 +3158,13 @@ app.get('/api/content/category/:category', async (req, res) => {
                     u.service_price,
                     u.service_price_unit,
                     u.offered_services,
-                    u.bio
+                    u.bio,
+                    u.profile_paused
         FROM content_posts cp
         JOIN users u ON cp.user_id = u.id
-                WHERE cp.is_public = 1 AND u.is_verified = 1 AND cp.category IN (${categoryPlaceholders})${extraWhere}
+                WHERE cp.is_public = 1 AND u.is_verified = 1
+                  AND (u.profile_paused IS NULL OR u.profile_paused = 0)
+                  AND cp.category IN (${categoryPlaceholders})${extraWhere}
         ORDER BY cp.created_at DESC
             `;
 
@@ -4689,12 +4774,16 @@ app.get('/api/reels/category/:category', optionalAuthenticateToken, async (req, 
         FROM reels r
         JOIN users u ON r.user_id = u.id
         LEFT JOIN reel_likes rl ON rl.reel_id = r.id AND rl.user_id = ?
-        WHERE r.category IN (${categoryPlaceholders}) AND (r.is_public = 1 OR r.user_id = ?)
+        WHERE r.category IN (${categoryPlaceholders})
+          AND (r.is_public = 1 OR r.user_id = ?)
+          AND (
+            u.profile_paused IS NULL OR u.profile_paused = 0 OR r.user_id = ?
+          )
         ORDER BY r.created_at DESC
         LIMIT ? OFFSET ?
     `;
 
-    const queryParams = [viewerId, ...categoryVariants, viewerId, limit, offset];
+    const queryParams = [viewerId, ...categoryVariants, viewerId, viewerId, limit, offset];
 
     db.all(query, queryParams, (err, reels) => {
         if (err) {
@@ -4705,10 +4794,15 @@ app.get('/api/reels/category/:category', optionalAuthenticateToken, async (req, 
         const countQuery = `
             SELECT COUNT(*) as total
             FROM reels r
-            WHERE r.category IN (${categoryPlaceholders}) AND (r.is_public = 1 OR r.user_id = ?)
+            JOIN users u ON r.user_id = u.id
+            WHERE r.category IN (${categoryPlaceholders})
+              AND (r.is_public = 1 OR r.user_id = ?)
+              AND (
+                u.profile_paused IS NULL OR u.profile_paused = 0 OR r.user_id = ?
+              )
         `;
 
-        db.get(countQuery, [...categoryVariants, viewerId], (countErr, countResult) => {
+        db.get(countQuery, [...categoryVariants, viewerId, viewerId], (countErr, countResult) => {
             if (countErr) {
                 console.error('❌ Error al contar reels:', countErr);
                 return res.status(500).json({ error: 'Error al contar reels' });
@@ -4762,8 +4856,17 @@ app.get('/api/reels/:reelId', optionalAuthenticateToken, (req, res) => {
             return res.status(403).json({ error: 'No tienes acceso a este reel' });
         }
 
-        const [enriched] = enrichReelsWithMediaUrls([reel], req);
-        res.json({ reel: enriched });
+        db.get('SELECT profile_paused FROM users WHERE id = ?', [reel.user_id], (userErr, owner) => {
+            if (userErr) {
+                return res.status(500).json({ error: 'Error al verificar perfil' });
+            }
+            if (isProfilePausedFlag(owner?.profile_paused) && reel.user_id !== viewerId) {
+                return res.status(404).json({ error: 'Reel no disponible', code: 'PROFILE_PAUSED' });
+            }
+
+            const [enriched] = enrichReelsWithMediaUrls([reel], req);
+            res.json({ reel: enriched });
+        });
     });
 });
 
@@ -5700,6 +5803,7 @@ app.get('/api/search/users', (req, res) => {
             is_verified, followers_count, posts_count
         FROM users
         WHERE (username LIKE ? OR full_name LIKE ? OR bio LIKE ?)
+          AND (profile_paused IS NULL OR profile_paused = 0)
         ORDER BY followers_count DESC, username ASC
         LIMIT ? OFFSET ?
     `;
@@ -5712,7 +5816,9 @@ app.get('/api/search/users', (req, res) => {
         }
 
         db.get(
-            'SELECT COUNT(*) as total FROM users WHERE (username LIKE ? OR full_name LIKE ? OR bio LIKE ?)',
+            `SELECT COUNT(*) as total FROM users
+             WHERE (username LIKE ? OR full_name LIKE ? OR bio LIKE ?)
+               AND (profile_paused IS NULL OR profile_paused = 0)`,
             [searchTerm, searchTerm, searchTerm],
             (err, count) => {
                 if (err) {

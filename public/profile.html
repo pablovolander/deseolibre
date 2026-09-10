@@ -148,6 +148,46 @@
         .profile-footer-actions {
             text-align: center;
             padding: 2rem 20px 3rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.85rem;
+        }
+
+        .btn-pause-profile {
+            background: rgba(240, 180, 41, 0.14);
+            border: 1px solid rgba(240, 180, 41, 0.45);
+            color: #ffd666;
+            padding: 0.7rem 1.15rem;
+            border-radius: 999px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+
+        .btn-pause-profile.is-paused {
+            background: rgba(46, 204, 113, 0.14);
+            border-color: rgba(46, 204, 113, 0.45);
+            color: #7dffa8;
+        }
+
+        .profile-paused-banner {
+            display: none;
+            margin: 0.75rem 1rem 0;
+            padding: 0.85rem 1rem;
+            border-radius: 12px;
+            background: rgba(240, 180, 41, 0.12);
+            border: 1px solid rgba(240, 180, 41, 0.35);
+            color: #ffe09a;
+            font-size: 0.9rem;
+            line-height: 1.45;
+        }
+
+        .profile-paused-banner.show {
+            display: block;
         }
 
         .btn-delete-account-subtle {
@@ -1866,6 +1906,9 @@
         </div>
 
         <div id="profileSetupBanner" class="profile-setup-banner" style="display:none;" role="alert"></div>
+        <div id="profilePausedBanner" class="profile-paused-banner" role="status">
+            Tu perfil está <strong>pausado</strong>. No aparece en el directorio ni en reels. Puedes reactivarlo cuando quieras.
+        </div>
 
         <!-- PROFILE HEADER -->
                 <div class="profile-header">
@@ -2007,6 +2050,9 @@
                 </div>
 
         <footer class="profile-footer-actions" id="profileDangerZone" style="display:none;">
+            <button type="button" class="btn-pause-profile" id="pauseProfileBtn" onclick="toggleProfilePause()">
+                <i class="fas fa-pause-circle"></i> <span id="pauseProfileBtnLabel">Pausar perfil</span>
+            </button>
             <button type="button" class="btn-delete-account-subtle" id="deleteAccountBtn" onclick="openDeleteAccountModal()">
                 Eliminar mi cuenta
             </button>
@@ -2546,7 +2592,70 @@
         function showDeleteAccountLink(visible) {
             const footer = document.getElementById('profileDangerZone');
             if (footer) {
-                footer.style.display = visible ? 'block' : 'none';
+                footer.style.display = visible ? 'flex' : 'none';
+            }
+            if (!visible) {
+                updatePauseProfileUi(false);
+            }
+        }
+
+        function updatePauseProfileUi(paused) {
+            const banner = document.getElementById('profilePausedBanner');
+            const btn = document.getElementById('pauseProfileBtn');
+            const label = document.getElementById('pauseProfileBtnLabel');
+            const isPaused = Boolean(paused);
+            if (banner) {
+                banner.classList.toggle('show', Boolean(isOwnProfile && isPaused));
+            }
+            if (btn) {
+                btn.classList.toggle('is-paused', isPaused);
+                btn.innerHTML = isPaused
+                    ? '<i class="fas fa-play-circle"></i> <span id="pauseProfileBtnLabel">Reactivar perfil</span>'
+                    : '<i class="fas fa-pause-circle"></i> <span id="pauseProfileBtnLabel">Pausar perfil</span>';
+            } else if (label) {
+                label.textContent = isPaused ? 'Reactivar perfil' : 'Pausar perfil';
+            }
+            if (currentUser && isOwnProfile) {
+                currentUser.profile_paused = isPaused;
+            }
+        }
+
+        async function toggleProfilePause() {
+            if (!isOwnProfile || !authToken) {
+                return;
+            }
+            const currentlyPaused = Boolean(currentUser?.profile_paused);
+            const nextPaused = !currentlyPaused;
+            const confirmMsg = nextPaused
+                ? '¿Pausar tu perfil? Dejará de aparecer en el directorio y en reels hasta que lo reactives.'
+                : '¿Reactivar tu perfil? Volverá a ser visible en el directorio.';
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+
+            const btn = document.getElementById('pauseProfileBtn');
+            if (btn) btn.disabled = true;
+            try {
+                const response = await fetch(`${API_URL}/api/user/profile/pause`, {
+                    method: 'PUT',
+                    headers: profileFetchHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ paused: nextPaused })
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(data.error || 'No se pudo actualizar el estado del perfil');
+                }
+                if (data.user) {
+                    currentUser = { ...currentUser, ...data.user };
+                } else {
+                    currentUser.profile_paused = nextPaused;
+                }
+                updatePauseProfileUi(Boolean(currentUser.profile_paused));
+                showNotification(data.message || (nextPaused ? 'Perfil pausado' : 'Perfil reactivado'), 'success');
+            } catch (error) {
+                showNotification(error.message || 'Error al pausar/reactivar', 'error');
+            } finally {
+                if (btn) btn.disabled = false;
             }
         }
 
@@ -2970,6 +3079,8 @@
 
             try {
                 applyProfileDetailsToBio(currentUser);
+                updatePauseProfileUi(Boolean(currentUser.profile_paused));
+                renderProfileSetupBanner();
             } catch (detailsError) {
                 console.error('Error al mostrar detalles del perfil:', detailsError);
             }
@@ -2995,7 +3106,13 @@
                 });
                 const data = await response.json();
                 
-                if (!response.ok) throw new Error(data.error);
+                if (!response.ok) {
+                    if (data.code === 'PROFILE_PAUSED') {
+                        showNotification('Este perfil está pausado temporalmente.', 'error');
+                        return;
+                    }
+                    throw new Error(data.error || 'Error al cargar el perfil público');
+                }
                 
                 const user = data.user;
                 displayProfileUser = user;
