@@ -1,9 +1,11 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-    <title>Reels Mujeres â€” Deseo Libre</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Reels Mujeres — Deseo Libre</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <link href="/css/directory.css" rel="stylesheet">
@@ -16,40 +18,36 @@
     <script src="/js/auth-session.js"></script>
     <script src="/js/age-gate.js"></script>
 </head>
-<body class="directory-page reels-page" data-reels-category="acompaÃ±antes-mujeres">
-    <header class="directory-header">
+<body class="directory-page reels-page reels-immersive" data-reels-category="acompañantes-mujeres">
+    <header class="directory-header reels-topbar">
         <div class="directory-header-inner">
-            <a href="index.html" class="directory-logo">â¤ï¸â€ðŸ”¥ Deseo Libre</a>
-            <div class="header-actions">
-                <a href="index.html" class="btn-link">Inicio</a>
-                <a href="feed-mujeres.html" class="btn-link">Directorio</a>
-                <a href="reels-mujeres.html" class="btn-link btn-reels active"><i class="fas fa-film"></i> Reels</a>
-            </div>
+            <a href="feed-mujeres.html" class="reels-back" aria-label="Volver al directorio"><i class="fas fa-chevron-left"></i></a>
+            <nav class="reels-category-nav" id="reels-category-nav" aria-label="Categorías de reels"></nav>
+            <a href="index.html" class="reels-home" aria-label="Inicio"><i class="fas fa-home"></i></a>
         </div>
     </header>
 
     <main class="reels-main">
-        <section class="reels-hero">
-            <h1>ðŸŽ¬ Reels â€” Mujeres</h1>
-            <p>Videos cortos de acompaÃ±antes. Sube el tuyo y destaca en el directorio.</p>
-            <nav class="reels-category-nav" id="reels-category-nav" aria-label="CategorÃ­as de reels"></nav>
+        <section class="reels-hero reels-hero-desktop">
+            <h1>Reels — Mujeres</h1>
+            <p>Videos cortos. Desliza hacia arriba. Maximizado para celular.</p>
         </section>
 
         <div class="reels-login-gate" id="reels-login-gate">
-            <p><strong>Inicia sesiÃ³n</strong> para subir reels en esta categorÃ­a.</p>
+            <p><strong>Inicia sesión</strong> para subir reels en esta categoría.</p>
             <p><a href="index.html?register=1">Registrarse o entrar</a></p>
         </div>
 
         <details class="reels-upload-panel" id="reels-upload-panel">
-            <summary><i class="fas fa-cloud-upload-alt"></i> Subir reel</summary>
-            <p class="reels-upload-hint">Video vertical corto: máximo 60 s y 4.5 MB (límite del servidor). MP4 o WEBM recomendados. Si pesa más, comprímelo antes.</p>
+            <summary><i class="fas fa-plus"></i><span class="reels-upload-label"> Subir reel</span></summary>
+            <p class="reels-upload-hint">Máximo 60 s y 4.5 MB. MP4 o WEBM. Si pesa más, comprímelo antes.</p>
             <form class="reels-upload-form" id="reel-upload-form">
-                <input type="hidden" name="category" id="reel-category-fixed" value="acompaÃ±antes-mujeres">
-                <label>TÃ­tulo
+                <input type="hidden" name="category" id="reel-category-fixed" value="acompañantes-mujeres">
+                <label>Título
                     <input type="text" name="title" maxlength="120" placeholder="Ej: Disponible en Polanco" required>
                 </label>
-                <label>DescripciÃ³n (opcional)
-                    <textarea name="description" maxlength="500" placeholder="Breve descripciÃ³n"></textarea>
+                <label>Descripción (opcional)
+                    <textarea name="description" maxlength="500" placeholder="Breve descripción"></textarea>
                 </label>
                 <label>Video *
                     <input type="file" name="video" accept="video/mp4,video/webm,video/quicktime,video/*" data-mobile-upload="video" required>
@@ -57,12 +55,12 @@
                 <label>Miniatura (opcional)
                     <input type="file" name="thumbnail" accept="image/*" data-mobile-upload="file">
                 </label>
-                <label>DuraciÃ³n en segundos (opcional)
+                <label>Duración en segundos (opcional)
                     <input type="number" name="duration_seconds" min="1" max="60" placeholder="45">
                 </label>
                 <label class="checkbox-row">
                     <input type="checkbox" name="is_public" id="reel-public" value="true" checked>
-                    <span>PÃºblico (visible para otros usuarios)</span>
+                    <span>Público (visible para otros usuarios)</span>
                 </label>
                 <button type="submit" class="btn-publish-reel"><i class="fas fa-upload"></i> Publicar reel</button>
                 <p class="reels-status" id="reel-upload-status"></p>
@@ -71,7 +69,7 @@
 
         <p class="reels-feed-title">Reels recientes</p>
         <p class="reels-status" id="reels-feed-status"></p>
-        <div class="reels-feed" id="reels-feed"></div>
+        <div class="reels-feed" id="reels-feed" tabindex="0"></div>
     </main>
 
     <script src="/js/reels-page.js"></script>

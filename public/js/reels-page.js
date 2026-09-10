@@ -350,16 +350,95 @@
 
             reels.forEach((reel) => reelsFeed.appendChild(createReelCard(reel)));
             setStatus(feedStatus, `${reels.length} reel${reels.length === 1 ? '' : 's'}`, null);
+            setupVerticalFeedObserver();
+            playActiveReel();
         } catch (err) {
             console.error(err);
             setStatus(feedStatus, err.message || 'Error al cargar reels. Intenta de nuevo.', 'error');
         }
     }
 
+    let feedObserver = null;
+    let globalMuted = true;
+
+    function pauseAllVideos(exceptCard) {
+        reelsFeed?.querySelectorAll('video.reel-video').forEach((video) => {
+            const card = video.closest('.reel-card');
+            if (exceptCard && card === exceptCard) return;
+            video.pause();
+        });
+    }
+
+    function playCardVideo(card) {
+        if (!card) return;
+        const video = card.querySelector('video.reel-video');
+        if (!video) return;
+        pauseAllVideos(card);
+        video.muted = globalMuted;
+        video.playsInline = true;
+        const muteBtn = card.querySelector('.reel-mute-btn');
+        if (muteBtn) {
+            muteBtn.innerHTML = globalMuted
+                ? '<i class="fas fa-volume-mute"></i>'
+                : '<i class="fas fa-volume-up"></i>';
+        }
+        const playPromise = video.play();
+        if (playPromise && typeof playPromise.catch === 'function') {
+            playPromise.catch(() => {});
+        }
+        registerView(reelIdFromCard(card), card);
+    }
+
+    function reelIdFromCard(card) {
+        return Number(card?.dataset?.reelId) || null;
+    }
+
+    function playActiveReel() {
+        if (!reelsFeed) return;
+        const cards = [...reelsFeed.querySelectorAll('.reel-card')];
+        if (!cards.length) return;
+        const feedRect = reelsFeed.getBoundingClientRect();
+        const mid = feedRect.top + feedRect.height / 2;
+        let best = cards[0];
+        let bestDist = Infinity;
+        cards.forEach((card) => {
+            const rect = card.getBoundingClientRect();
+            const center = rect.top + rect.height / 2;
+            const dist = Math.abs(center - mid);
+            if (dist < bestDist) {
+                bestDist = dist;
+                best = card;
+            }
+        });
+        playCardVideo(best);
+    }
+
+    function setupVerticalFeedObserver() {
+        if (!reelsFeed || typeof IntersectionObserver === 'undefined') {
+            return;
+        }
+        if (feedObserver) {
+            feedObserver.disconnect();
+        }
+        feedObserver = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting && entry.intersectionRatio >= 0.65) {
+                        playCardVideo(entry.target);
+                    }
+                });
+            },
+            { root: reelsFeed, threshold: [0.65, 0.85] }
+        );
+        reelsFeed.querySelectorAll('.reel-card').forEach((card) => feedObserver.observe(card));
+    }
+
     function updateCardLikeStats(card, count) {
-        const heartStat = card?.querySelector('.reel-stats [data-stat="likes"]');
-        if (heartStat) {
-            heartStat.innerHTML = `<i class="far fa-heart"></i> ${count}`;
+        const likeBtn = card?.querySelector('.like-btn');
+        if (likeBtn) {
+            const label = likeBtn.querySelector('[data-like-count]');
+            if (label) label.textContent = String(count);
+            likeBtn.dataset.count = String(count);
         }
     }
 
@@ -375,14 +454,29 @@
         const isOwner = currentUser && reel.user_id === currentUser.id;
         const liked = !!reel.is_liked_by_me;
         const sourceAttrs = mime ? `src="${videoUrl}" type="${mime}"` : `src="${videoUrl}"`;
+        const likes = reel.likes_count || 0;
+        const comments = reel.comments_count || 0;
 
         card.innerHTML = `
             <div class="reel-stage">
-                <video class="reel-video" controls playsinline preload="metadata" poster="${reel.thumbnail_url ? mediaUrl(reel.thumbnail_url) : ''}">
+                <video class="reel-video" playsinline muted loop preload="metadata" poster="${reel.thumbnail_url ? mediaUrl(reel.thumbnail_url) : ''}">
                     <source ${sourceAttrs}>
                 </video>
+                <button type="button" class="reel-tap-zone" aria-label="Reproducir o pausar"></button>
+                <button type="button" class="reel-mute-btn" aria-label="Silencio"><i class="fas fa-volume-mute"></i></button>
                 <div class="reel-overlay">
                     <div class="reel-overlay-gradient" aria-hidden="true"></div>
+                    <div class="reel-side-actions">
+                        <button type="button" class="like-btn ${liked ? 'liked' : ''}" data-liked="${liked}" data-count="${likes}" aria-label="Me gusta">
+                            <i class="fas fa-heart"></i>
+                            <span data-like-count>${likes}</span>
+                        </button>
+                        <button type="button" class="comment-toggle-btn" aria-label="Comentar">
+                            <i class="fas fa-comment"></i>
+                            <span data-comment-count>${comments}</span>
+                        </button>
+                        ${isOwner ? '<button type="button" class="delete-reel-btn" aria-label="Eliminar"><i class="fas fa-trash"></i></button>' : ''}
+                    </div>
                     <div class="reel-body">
                         <div class="reel-author">
                             <img src="${avatar}" alt="">
@@ -392,18 +486,6 @@
                         </div>
                         ${reel.title ? `<h3 class="reel-title">${escapeHtml(reel.title)}</h3>` : ''}
                         ${reel.description ? `<p class="reel-desc">${escapeHtml(reel.description)}</p>` : ''}
-                        <div class="reel-stats">
-                            <span data-stat="views"><i class="far fa-eye"></i> ${reel.views_count || 0}</span>
-                            <span data-stat="likes"><i class="far fa-heart"></i> ${reel.likes_count || 0}</span>
-                            <span data-stat="comments"><i class="far fa-comment"></i> ${reel.comments_count || 0}</span>
-                        </div>
-                        <div class="reel-actions">
-                            <button type="button" class="like-btn ${liked ? 'liked' : ''}" data-liked="${liked}" data-count="${reel.likes_count || 0}">
-                                <i class="fas fa-heart"></i> ${liked ? 'Te gusta' : 'Me gusta'}
-                            </button>
-                            <button type="button" class="comment-toggle-btn"><i class="fas fa-comment"></i> Comentar</button>
-                            ${isOwner ? '<button type="button" class="delete-reel-btn"><i class="fas fa-trash"></i> Eliminar</button>' : ''}
-                        </div>
                     </div>
                     <div class="reel-comments" hidden>
                         <div class="comment-list"></div>
@@ -416,13 +498,43 @@
             </div>`;
 
         const video = card.querySelector('video');
-        video?.addEventListener('play', () => registerView(reel.id, card), { once: true });
+        video?.addEventListener(
+            'play',
+            () => {
+                registerView(reel.id, card);
+            },
+            { once: true }
+        );
+
+        card.querySelector('.reel-tap-zone')?.addEventListener('click', () => {
+            if (!video) return;
+            if (video.paused) {
+                playCardVideo(card);
+            } else {
+                video.pause();
+            }
+        });
+
+        card.querySelector('.reel-mute-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            globalMuted = !globalMuted;
+            reelsFeed?.querySelectorAll('video.reel-video').forEach((v) => {
+                v.muted = globalMuted;
+            });
+            reelsFeed?.querySelectorAll('.reel-mute-btn').forEach((btn) => {
+                btn.innerHTML = globalMuted
+                    ? '<i class="fas fa-volume-mute"></i>'
+                    : '<i class="fas fa-volume-up"></i>';
+            });
+        });
 
         card.querySelector('.like-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
             toggleLike(reel.id, e.currentTarget, card);
         });
 
-        card.querySelector('.comment-toggle-btn')?.addEventListener('click', () => {
+        card.querySelector('.comment-toggle-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
             const section = card.querySelector('.reel-comments');
             const hidden = section.hasAttribute('hidden');
             if (hidden) {
@@ -437,7 +549,8 @@
             submitComment(e, reel.id, card);
         });
 
-        card.querySelector('.delete-reel-btn')?.addEventListener('click', () => {
+        card.querySelector('.delete-reel-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
             deleteReel(reel.id);
         });
 
@@ -445,16 +558,13 @@
     }
 
     async function registerView(reelId, card) {
+        if (!reelId || card?.dataset?.viewSent === '1') return;
+        card.dataset.viewSent = '1';
         try {
-            const res = await fetch(`${API_URL}/api/reels/${reelId}/view`, {
+            await fetch(`${API_URL}/api/reels/${reelId}/view`, {
                 method: 'POST',
                 headers: apiFetchHeaders()
             });
-            if (!res.ok || !card) return;
-            const viewsEl = card.querySelector('.reel-stats [data-stat="views"]');
-            if (!viewsEl) return;
-            const current = parseInt(String(viewsEl.textContent || '').replace(/\D/g, ''), 10) || 0;
-            viewsEl.innerHTML = `<i class="far fa-eye"></i> ${current + 1}`;
         } catch (_) {}
     }
 
@@ -471,9 +581,10 @@
             const newLiked = !liked;
             const newCount = newLiked ? count + 1 : Math.max(0, count - 1);
             button.dataset.liked = newLiked ? 'true' : 'false';
-            button.dataset.count = newCount;
+            button.dataset.count = String(newCount);
             button.classList.toggle('liked', newLiked);
-            button.innerHTML = `<i class="fas fa-heart"></i> ${newLiked ? 'Te gusta' : 'Me gusta'}`;
+            const label = button.querySelector('[data-like-count]');
+            if (label) label.textContent = String(newCount);
             updateCardLikeStats(card, newCount);
         } catch {
             alert('No se pudo actualizar el like');
@@ -525,10 +636,10 @@
             const list = card.querySelector('.comment-list');
             list.dataset.loaded = 'false';
             loadComments(reelId, list);
-            const commentsEl = card.querySelector('.reel-stats [data-stat="comments"]');
+            const commentsEl = card.querySelector('[data-comment-count]');
             if (commentsEl) {
-                const current = parseInt(String(commentsEl.textContent || '').replace(/\D/g, ''), 10) || 0;
-                commentsEl.innerHTML = `<i class="far fa-comment"></i> ${current + 1}`;
+                const current = parseInt(commentsEl.textContent, 10) || 0;
+                commentsEl.textContent = String(current + 1);
             }
         } catch {
             alert('No se pudo enviar el comentario');

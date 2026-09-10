@@ -365,10 +365,10 @@ body.dl-mobile-nav:not(.directory-page):not(.home-page) {
     }
 }
 
-/* Reels */
+/* Reels immersive overrides — layout handled by reels.css */
 @media (max-width: 768px) {
-    .reels-page .reels-main {
-        padding: 1rem 1rem calc(1rem + var(--mobile-nav-height));
+    .reels-page.reels-immersive .reels-main {
+        padding: 0;
     }
 
     .reels-page .reels-upload-panel summary,
@@ -381,24 +381,5 @@ body.dl-mobile-nav:not(.directory-page):not(.home-page) {
     .reels-page .reels-upload-form textarea {
         min-height: var(--mobile-touch-min);
         font-size: 1rem;
-    }
-
-    .reels-page .reels-category-nav {
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        padding-bottom: 0.25rem;
-    }
-
-    .reels-page .reels-category-nav a {
-        flex: 0 0 auto;
-        white-space: nowrap;
-        min-height: var(--mobile-touch-min);
-        display: inline-flex;
-        align-items: center;
-    }
-
-    .reels-page .reels-feed {
-        gap: 1rem;
     }
 }
