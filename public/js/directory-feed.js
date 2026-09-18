@@ -282,15 +282,11 @@
             : 'https://via.placeholder.com/400x300?text=Sin+foto';
         const location = listing ? listing.getLocation(post) : (post.location || 'Ubicación no indicada');
         const price = listing ? listing.getPrice(post) : 'Consultar';
-        const contactHtml = listing
-            ? listing.getMessagingLinksHtml(post, { stopPropagation: true })
-            : '';
-        const servicesHtml = listing ? listing.getServiceChipsHtml(post, { max: 3 }) : '';
         const verified = post.is_verified
             ? '<span class="badge-verified"><i class="fas fa-check-circle"></i> Verificado</span>'
             : '';
 
-        const mediaHtml = `<img src="${imageUrl}" alt="${escapeHtml(name)}" loading="lazy" onerror="this.src='https://via.placeholder.com/400x300?text=Sin+foto'">`;
+        const mediaHtml = `<img src="${imageUrl}" alt="${escapeHtml(name)}" loading="lazy" onerror="this.src='https://via.placeholder.com/400x520?text=Sin+foto'">`;
 
         return `
         <article class="profile-card" onclick="window.location.href='profile.html?user=${post.user_id}'">
@@ -301,11 +297,9 @@
             <div class="profile-card-body">
                 <h3>${escapeHtml(name)}</h3>
                 <div class="profile-location"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(location)}</div>
-                ${servicesHtml}
                 <div class="profile-price-block">
                     <span class="profile-price">${escapeHtml(price)}</span>
                 </div>
-                <div class="profile-contact-row">${contactHtml}</div>
             </div>
         </article>`;
     }

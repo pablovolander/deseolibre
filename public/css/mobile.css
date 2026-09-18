@@ -316,6 +316,15 @@ body.dl-mobile-nav:not(.directory-page):not(.home-page) {
         max-width: 100%;
     }
 
+    .directory-page .profile-card-media {
+        min-height: 340px;
+        aspect-ratio: 3 / 4;
+    }
+
+    .directory-page .profile-card-body {
+        padding: 0.75rem 0.9rem 0.95rem;
+    }
+
     .directory-page .directory-hero {
         padding: 1.25rem 1rem 1rem;
     }
