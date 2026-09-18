@@ -69,33 +69,14 @@
             url.searchParams.delete('zona');
         }
         window.history.replaceState({}, '', url);
-        document.querySelectorAll('#popularZones .city-chip').forEach((chip) => {
-            const chipZone = chip.dataset.zone || '';
-            chip.classList.toggle('active', chipZone === activeZona);
-        });
     }
 
     async function refreshZoneUiForCity(cityName, selectedZone) {
         const zoneSelect = document.getElementById('searchZone');
-        const chips = document.getElementById('popularZones');
         if (typeof DeseoLocationSearch === 'undefined') {
             return;
         }
         await DeseoLocationSearch.fillZoneSelect(zoneSelect, cityName, selectedZone || '');
-        if (chips && cityName) {
-            await DeseoLocationSearch.fetchZones(cityName);
-            DeseoLocationSearch.renderZoneChips(
-                chips,
-                cityName,
-                (zone) => {
-                    setActiveZone(zone);
-                    loadDirectory();
-                },
-                selectedZone || activeZona || ''
-            );
-        } else if (chips) {
-            chips.innerHTML = '';
-        }
     }
     async function ensureProfileCompleteForPublish() {
         let user = typeof DeseoAuth !== 'undefined' ? DeseoAuth.getCachedUser() : null;
