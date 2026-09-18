@@ -68,7 +68,7 @@ window.DeseoContact = (function () {
             </a>`);
         }
         if (tg) {
-            const tgLabel = userCheckLabel(telegramUsername);
+            const tgLabel = options.shortLabels ? '' : userCheckLabel(telegramUsername);
             parts.push(`<a class="contact-link contact-telegram" href="${tg}" target="_blank" rel="noopener noreferrer" title="Telegram" ${stop}>
                 <i class="fab fa-telegram"></i> Telegram${tgLabel}
             </a>`);
