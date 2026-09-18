@@ -238,6 +238,50 @@
             overflow: hidden;
         }
 
+        .profile-banner-actions {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            z-index: 6;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .profile-banner-actions.is-visible {
+            display: flex;
+        }
+
+        .profile-banner-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            background: rgba(12, 14, 22, 0.62);
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+            transition: transform 0.15s, background 0.15s;
+            padding: 0;
+            font-size: 0.95rem;
+        }
+
+        .profile-banner-btn:hover {
+            transform: scale(1.06);
+            background: rgba(20, 22, 32, 0.82);
+        }
+
+        .profile-banner-btn.is-following {
+            background: rgba(37, 211, 102, 0.35);
+            border-color: rgba(125, 255, 168, 0.55);
+            color: #7dffa8;
+        }
+
         .cover-photo {
             width: 100%;
             height: 100%;
@@ -1489,6 +1533,18 @@
                 height: 200px;
             }
 
+            .profile-banner-actions {
+                top: 10px;
+                right: 10px;
+                gap: 6px;
+            }
+
+            .profile-banner-btn {
+                width: 36px;
+                height: 36px;
+                font-size: 0.88rem;
+            }
+
             .profile-info-row {
                 flex-direction: column;
                 align-items: center;
@@ -2010,6 +2066,7 @@
                     <i class="fas fa-camera"></i> Cambiar Foto de Portada
                 </button>
             </div>
+            <div class="profile-banner-actions" id="profileBannerActions" aria-label="Acciones del perfil"></div>
         </div>
 
         <div id="profileSetupBanner" class="profile-setup-banner" style="display:none;" role="alert"></div>
@@ -4425,18 +4482,28 @@
 
         async function loadProfileActions(userId, isOwn) {
             const actionsContainer = document.getElementById('profileActions');
+            const bannerActions = document.getElementById('profileBannerActions');
             
             if (isOwn) {
+                if (bannerActions) {
+                    bannerActions.classList.remove('is-visible');
+                    bannerActions.innerHTML = `
+                        <button type="button" class="profile-banner-btn" onclick="shareProfile()" title="Compartir" aria-label="Compartir">
+                            <i class="fas fa-share"></i>
+                        </button>
+                    `;
+                    bannerActions.classList.add('is-visible');
+                }
                 actionsContainer.style.display = 'flex';
                 updateProfileContactSticky(null);
                 const adminButtons = isAdminUser(currentUser) ? `
-                    <a href="admin-usuarios.html" class="btn-action btn-admin" id="adminPanelBtn" style="text-decoration:none;">
-                        <i class="fas fa-users-cog"></i> Panel Admin
+                    <a href="admin-usuarios.html" class="btn-action btn-admin btn-compact" id="adminPanelBtn" style="text-decoration:none;">
+                        <i class="fas fa-users-cog"></i> Admin
                     </a>
-                    <a href="admin-verificaciones.html" class="btn-action btn-admin" id="adminVerifyBtn" style="text-decoration:none;">
-                        <i class="fas fa-shield-alt"></i> Verificaciones
+                    <a href="admin-verificaciones.html" class="btn-action btn-admin btn-compact" id="adminVerifyBtn" style="text-decoration:none;">
+                        <i class="fas fa-shield-alt"></i> Verif.
                     </a>
-                    <a href="admin-reportes.html" class="btn-action btn-admin" id="adminReportsBtn" style="text-decoration:none;">
+                    <a href="admin-reportes.html" class="btn-action btn-admin btn-compact" id="adminReportsBtn" style="text-decoration:none;">
                         <i class="fas fa-flag"></i> Reportes
                     </a>
                 ` : '';
@@ -4448,31 +4515,33 @@
                         <i class="fas fa-edit"></i> Editar
                     </button>
                     ${adminButtons}
-                    <button class="btn-action btn-secondary btn-icon-only" onclick="shareProfile()" title="Compartir" aria-label="Compartir">
-                        <i class="fas fa-share"></i>
-                    </button>
                 `;
                 showDeleteAccountLink(!isAdminUser(currentUser));
                 updateAdminAccessUI(currentUser);
             } else {
-                actionsContainer.style.display = 'flex';
+                actionsContainer.style.display = 'none';
+                actionsContainer.innerHTML = '';
                 showDeleteAccountLink(false);
-                // Other user's profile - show follow + report
                 const isFollowing = await checkIfFollowing(userId);
-                actionsContainer.innerHTML = `
-                    <button class="btn-action ${isFollowing ? 'btn-secondary' : 'btn-primary'} btn-compact" 
-                            id="followBtn" 
-                            onclick="toggleFollow(${userId})">
-                        <i class="fas ${isFollowing ? 'fa-user-check' : 'fa-user-plus'}"></i> 
-                        ${isFollowing ? 'Siguiendo' : 'Seguir'}
-                    </button>
-                    <button type="button" class="btn-action btn-secondary btn-icon-only" onclick="openReportProfile(${userId})" title="Reportar" aria-label="Reportar">
-                        <i class="fas fa-flag"></i>
-                    </button>
-                    <button class="btn-action btn-secondary btn-icon-only" onclick="shareProfile()" title="Compartir" aria-label="Compartir">
-                        <i class="fas fa-share"></i>
-                    </button>
-                `;
+                if (bannerActions) {
+                    bannerActions.innerHTML = `
+                        <button type="button" class="profile-banner-btn ${isFollowing ? 'is-following' : ''}"
+                                id="followBtn"
+                                data-following="${isFollowing ? '1' : '0'}"
+                                onclick="toggleFollow(${userId})"
+                                title="${isFollowing ? 'Siguiendo' : 'Seguir'}"
+                                aria-label="${isFollowing ? 'Siguiendo' : 'Seguir'}">
+                            <i class="fas ${isFollowing ? 'fa-user-check' : 'fa-user-plus'}"></i>
+                        </button>
+                        <button type="button" class="profile-banner-btn" onclick="openReportProfile(${userId})" title="Reportar" aria-label="Reportar">
+                            <i class="fas fa-flag"></i>
+                        </button>
+                        <button type="button" class="profile-banner-btn" onclick="shareProfile()" title="Compartir" aria-label="Compartir">
+                            <i class="fas fa-share"></i>
+                        </button>
+                    `;
+                    bannerActions.classList.add('is-visible');
+                }
             }
         }
 
@@ -4513,7 +4582,10 @@
             }
 
             const btn = document.getElementById('followBtn');
-            const isFollowing = btn.textContent.includes('Siguiendo');
+            if (!btn) {
+                return;
+            }
+            const isFollowing = btn.dataset.following === '1';
             
             try {
                 const method = isFollowing ? 'DELETE' : 'POST';
@@ -4525,12 +4597,14 @@
                 });
 
                 if (response.ok) {
-                    btn.className = isFollowing
-                        ? 'btn-action btn-primary btn-compact'
-                        : 'btn-action btn-secondary btn-compact';
-                    btn.innerHTML = isFollowing 
-                        ? '<i class="fas fa-user-plus"></i> Seguir'
-                        : '<i class="fas fa-user-check"></i> Siguiendo';
+                    const nowFollowing = !isFollowing;
+                    btn.dataset.following = nowFollowing ? '1' : '0';
+                    btn.classList.toggle('is-following', nowFollowing);
+                    btn.title = nowFollowing ? 'Siguiendo' : 'Seguir';
+                    btn.setAttribute('aria-label', nowFollowing ? 'Siguiendo' : 'Seguir');
+                    btn.innerHTML = nowFollowing
+                        ? '<i class="fas fa-user-check"></i>'
+                        : '<i class="fas fa-user-plus"></i>';
                     
                     // Update follower count
                     const currentCount = parseInt(document.getElementById('followersCount').textContent);
