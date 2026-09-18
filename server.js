@@ -3112,7 +3112,7 @@ app.get('/api/content/category/:category', async (req, res) => {
         let source = 'blob_index';
         const indexPosts = await getPostsFromFeedIndex(categoryVariants);
 
-        if (!ciudad && indexPosts.length) {
+        if (indexPosts.length) {
             posts = dedupePostsByUser(filterPosts(indexPosts));
             source = 'blob_index';
         } else {

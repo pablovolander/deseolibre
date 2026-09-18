@@ -74,23 +74,23 @@ window.DeseoLocationSearch = (function () {
         return { ok: false, error: 'Selecciona una zona de la lista' };
     }
 
-    function renderPopular(container, onPick) {
+    function renderPopular(container, onPick, activeCity) {
         if (!container || !citiesCache) {
             return;
         }
         const picks = ['Ciudad de México', 'Guadalajara', 'Monterrey'];
         container.innerHTML = picks
-            .map(
-                (name) =>
-                    `<button type="button" class="city-chip" data-city="${name}">${name}</button>`
-            )
+            .map((name) => {
+                const active = activeCity && activeCity === name ? ' active' : '';
+                return `<button type="button" class="city-chip${active}" data-city="${name}">${name}</button>`;
+            })
             .join('');
         container.querySelectorAll('.city-chip').forEach((btn) => {
             btn.addEventListener('click', () => onPick(btn.dataset.city));
         });
     }
 
-    function renderZoneChips(container, cityName, onPick) {
+    function renderZoneChips(container, cityName, onPick, activeZone) {
         if (!container || !cityName || !zonesCache[cityName]) {
             if (container) {
                 container.innerHTML = '';
@@ -98,13 +98,14 @@ window.DeseoLocationSearch = (function () {
             return;
         }
         const top = zonesCache[cityName].filter((z) => !z.isOther).slice(0, 10);
+        const selected = String(activeZone || '');
         container.innerHTML =
-            `<button type="button" class="city-chip" data-zone="">Toda la ciudad</button>` +
+            `<button type="button" class="city-chip${!selected ? ' active' : ''}" data-zone="">Toda la ciudad</button>` +
             top
-                .map(
-                    (z) =>
-                        `<button type="button" class="city-chip" data-zone="${z.name.replace(/"/g, '&quot;')}">${z.name}</button>`
-                )
+                .map((z) => {
+                    const active = selected === z.name ? ' active' : '';
+                    return `<button type="button" class="city-chip${active}" data-zone="${z.name.replace(/"/g, '&quot;')}">${z.name}</button>`;
+                })
                 .join('');
         container.querySelectorAll('.city-chip').forEach((btn) => {
             btn.addEventListener('click', () => onPick(btn.dataset.zone || ''));

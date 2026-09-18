@@ -91,9 +91,15 @@
     cursor: pointer;
 }
 
-.city-chip:hover {
+.city-chip:hover,
+.city-chip.active {
     border-color: rgba(255, 107, 157, 0.55);
     background: rgba(255, 107, 157, 0.12);
+}
+
+.city-chip.active {
+    color: #fff;
+    font-weight: 600;
 }
 
 .service-filter-row {

@@ -79,16 +79,18 @@ window.DeseoCitySearch = (function () {
         };
     }
 
-    function renderPopular(container, onPick) {
-        if (!container || !citiesCache) {
+    function renderPopular(container, onPick, activeCity) {
+        if (!container) {
             return;
         }
         const picks = ['Ciudad de México', 'Guadalajara', 'Monterrey'];
+        const available = new Set(citiesList().map((c) => c.name));
         container.innerHTML = picks
-            .map(
-                (name) =>
-                    `<button type="button" class="city-chip" data-city="${name}">${name}</button>`
-            )
+            .filter((name) => available.has(name) || !citiesCache)
+            .map((name) => {
+                const active = activeCity && activeCity === name ? ' active' : '';
+                return `<button type="button" class="city-chip${active}" data-city="${name}">${name}</button>`;
+            })
             .join('');
         container.querySelectorAll('.city-chip').forEach((btn) => {
             btn.addEventListener('click', () => onPick(btn.dataset.city));
@@ -118,12 +120,16 @@ window.DeseoCitySearch = (function () {
         countrySelect?.addEventListener('change', () => fillDatalist(countrySelect.value));
 
         if (options.popularContainerId) {
-            renderPopular(document.getElementById(options.popularContainerId), (city) => {
-                if (input) {
-                    input.value = city;
-                }
-                options.onSearch?.(city);
-            });
+            renderPopular(
+                document.getElementById(options.popularContainerId),
+                (city) => {
+                    if (input) {
+                        input.value = city;
+                    }
+                    options.onSearch?.(city);
+                },
+                options.activeCity || input?.value || ''
+            );
         }
 
         return {

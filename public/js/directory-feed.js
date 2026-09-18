@@ -8,7 +8,6 @@
     let authToken = localStorage.getItem('authToken');
     let activeCiudad = '';
     let activeZona = '';
-    let activeServicio = '';
     let citySearchApi = null;
 
     const CATEGORY_PAGES = {
@@ -29,54 +28,75 @@
         return LEGACY_CATEGORY[raw] || raw;
     }
 
-    function setActiveServicio(serviceId) {
-        activeServicio = serviceId || '';
-        const select = document.getElementById('searchService');
-        if (select) {
-            select.value = activeServicio;
-        }
-        document.querySelectorAll('#popularServices .service-filter-chip').forEach((chip) => {
-            chip.classList.toggle('active', chip.dataset.serviceId === activeServicio);
+    function highlightCityChips() {
+        document.querySelectorAll('#popularCities .city-chip').forEach((chip) => {
+            chip.classList.toggle('active', Boolean(activeCiudad) && chip.dataset.city === activeCiudad);
         });
+    }
+
+    function setActiveCity(cityName) {
+        activeCiudad = cityName || '';
+        const cityInput = document.getElementById('searchCity');
+        if (cityInput) {
+            cityInput.value = activeCiudad;
+        }
+        localStorage.setItem('deseo_search_city', activeCiudad);
         const url = new URL(window.location.href);
-        if (activeServicio) {
-            url.searchParams.set('servicio', activeServicio);
+        if (activeCiudad) {
+            url.searchParams.set('ciudad', activeCiudad);
         } else {
-            url.searchParams.delete('servicio');
-            url.searchParams.delete('service');
+            url.searchParams.delete('ciudad');
+            url.searchParams.delete('zona');
+        }
+        if (!activeCiudad) {
+            setActiveZone('');
         }
         window.history.replaceState({}, '', url);
+        highlightCityChips();
     }
 
-    async function mountServiceFilter() {
-        const select = document.getElementById('searchService');
-        const chips = document.getElementById('popularServices');
-        if (!select || typeof DeseoServiceCatalog === 'undefined') {
+    function setActiveZone(zoneName) {
+        activeZona = zoneName || '';
+        const zoneSelect = document.getElementById('searchZone');
+        if (zoneSelect) {
+            zoneSelect.value = activeZona;
+        }
+        localStorage.setItem('deseo_search_zone', activeZona);
+        const url = new URL(window.location.href);
+        if (activeZona) {
+            url.searchParams.set('zona', activeZona);
+        } else {
+            url.searchParams.delete('zona');
+        }
+        window.history.replaceState({}, '', url);
+        document.querySelectorAll('#popularZones .city-chip').forEach((chip) => {
+            const chipZone = chip.dataset.zone || '';
+            chip.classList.toggle('active', chipZone === activeZona);
+        });
+    }
+
+    async function refreshZoneUiForCity(cityName, selectedZone) {
+        const zoneSelect = document.getElementById('searchZone');
+        const chips = document.getElementById('popularZones');
+        if (typeof DeseoLocationSearch === 'undefined') {
             return;
         }
-
-        try {
-            const catalog = await DeseoServiceCatalog.fetchCatalog(CATEGORY);
-            select.innerHTML = DeseoServiceCatalog.renderFilterSelectHtml(catalog, activeServicio);
-            if (chips) {
-                chips.innerHTML = DeseoServiceCatalog.renderPopularFilterChips(
-                    catalog,
-                    'modality',
-                    activeServicio,
-                    6
-                );
-                chips.querySelectorAll('.service-filter-chip').forEach((chip) => {
-                    chip.addEventListener('click', () => {
-                        setActiveServicio(chip.dataset.serviceId || '');
-                        loadDirectory();
-                    });
-                });
-            }
-        } catch (error) {
-            console.warn('No se pudo cargar filtro de servicios:', error.message);
+        await DeseoLocationSearch.fillZoneSelect(zoneSelect, cityName, selectedZone || '');
+        if (chips && cityName) {
+            await DeseoLocationSearch.fetchZones(cityName);
+            DeseoLocationSearch.renderZoneChips(
+                chips,
+                cityName,
+                (zone) => {
+                    setActiveZone(zone);
+                    loadDirectory();
+                },
+                selectedZone || activeZona || ''
+            );
+        } else if (chips) {
+            chips.innerHTML = '';
         }
     }
-
     async function ensureProfileCompleteForPublish() {
         let user = typeof DeseoAuth !== 'undefined' ? DeseoAuth.getCachedUser() : null;
         if (authToken && (!user || user.profile_complete === undefined)) {
@@ -119,60 +139,6 @@
             return false;
         }
         return true;
-    }
-
-    function setActiveCity(cityName) {
-        activeCiudad = cityName || '';
-        const cityInput = document.getElementById('searchCity');
-        if (cityInput) {
-            cityInput.value = activeCiudad;
-        }
-        localStorage.setItem('deseo_search_city', activeCiudad);
-        const url = new URL(window.location.href);
-        if (activeCiudad) {
-            url.searchParams.set('ciudad', activeCiudad);
-        } else {
-            url.searchParams.delete('ciudad');
-            url.searchParams.delete('zona');
-        }
-        if (!activeCiudad) {
-            setActiveZone('');
-        }
-        window.history.replaceState({}, '', url);
-    }
-
-    function setActiveZone(zoneName) {
-        activeZona = zoneName || '';
-        const zoneSelect = document.getElementById('searchZone');
-        if (zoneSelect) {
-            zoneSelect.value = activeZona;
-        }
-        localStorage.setItem('deseo_search_zone', activeZona);
-        const url = new URL(window.location.href);
-        if (activeZona) {
-            url.searchParams.set('zona', activeZona);
-        } else {
-            url.searchParams.delete('zona');
-        }
-        window.history.replaceState({}, '', url);
-    }
-
-    async function refreshZoneUiForCity(cityName, selectedZone) {
-        const zoneSelect = document.getElementById('searchZone');
-        const chips = document.getElementById('popularZones');
-        if (typeof DeseoLocationSearch === 'undefined') {
-            return;
-        }
-        await DeseoLocationSearch.fillZoneSelect(zoneSelect, cityName, selectedZone || '');
-        if (chips && cityName) {
-            await DeseoLocationSearch.fetchZones(cityName);
-            DeseoLocationSearch.renderZoneChips(chips, cityName, (zone) => {
-                setActiveZone(zone);
-                loadDirectory();
-            });
-        } else if (chips) {
-            chips.innerHTML = '';
-        }
     }
 
     async function performCitySearch() {
@@ -235,11 +201,6 @@
     function getZonaFromUrl() {
         const params = new URLSearchParams(window.location.search);
         return (params.get('zona') || '').trim();
-    }
-
-    function getServicioFromUrl() {
-        const params = new URLSearchParams(window.location.search);
-        return (params.get('servicio') || params.get('service') || '').trim();
     }
 
     function updateUI() {
@@ -321,9 +282,6 @@
         if (activeZona) {
             params.set('zona', activeZona);
         }
-        if (activeServicio) {
-            params.set('servicio', activeServicio);
-        }
 
         try {
             const url = `${API_URL}/api/content/category/${encodeURIComponent(CATEGORY)}?${params}`;
@@ -400,7 +358,6 @@
             }
         }
         activeZona = getZonaFromUrl() || localStorage.getItem('deseo_search_zone') || '';
-        activeServicio = getServicioFromUrl() || '';
 
         if (typeof DeseoLocationSearch !== 'undefined') {
             DeseoLocationSearch.getCities('MX').then(() => {
@@ -410,6 +367,7 @@
                         datalistId: 'citiesDatalist',
                         countrySelectId: 'searchCountry',
                         popularContainerId: 'popularCities',
+                        activeCity: activeCiudad,
                         onSearch: async (city) => {
                             setActiveCity(city);
                             setActiveZone('');
@@ -420,6 +378,7 @@
                 }
             }).then((api) => {
                 citySearchApi = api;
+                highlightCityChips();
                 if (activeCiudad) {
                     refreshZoneUiForCity(activeCiudad, activeZona).then(() => loadDirectory());
                 }
@@ -430,12 +389,14 @@
                 datalistId: 'citiesDatalist',
                 countrySelectId: 'searchCountry',
                 popularContainerId: 'popularCities',
+                activeCity: activeCiudad,
                 onSearch: (city) => {
                     setActiveCity(city);
                     loadDirectory();
                 }
             }).then((api) => {
                 citySearchApi = api;
+                highlightCityChips();
             }).catch(() => { });
         }
 
@@ -443,17 +404,6 @@
             setActiveZone(zoneSelect.value);
             loadDirectory();
         });
-
-        document.getElementById('searchService')?.addEventListener('change', (event) => {
-            setActiveServicio(event.target.value);
-            loadDirectory();
-        });
-
-        mountServiceFilter().then(() => {
-            if (activeServicio) {
-                setActiveServicio(activeServicio);
-            }
-        }).catch(() => { });
 
         document.getElementById('searchBtn')?.addEventListener('click', () => {
             performCitySearch();
