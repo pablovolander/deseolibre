@@ -8,7 +8,6 @@
     let authToken = localStorage.getItem('authToken');
     let activeCiudad = '';
     let activeZona = '';
-    let citySearchApi = null;
 
     const CATEGORY_PAGES = {
         'acompañantes-mujeres': 'feed-mujeres.html',
@@ -36,10 +35,6 @@
 
     function setActiveCity(cityName) {
         activeCiudad = cityName || '';
-        const cityInput = document.getElementById('searchCity');
-        if (cityInput) {
-            cityInput.value = activeCiudad;
-        }
         localStorage.setItem('deseo_search_city', activeCiudad);
         const url = new URL(window.location.href);
         if (activeCiudad) {
@@ -122,38 +117,55 @@
         return true;
     }
 
-    async function performCitySearch() {
-        const raw = (document.getElementById('searchCity')?.value || '').trim();
-        if (!raw) {
+    async function selectCityFromChip(city) {
+        if (activeCiudad === city) {
             setActiveCity('');
             setActiveZone('');
             await refreshZoneUiForCity('', '');
             loadDirectory();
             return;
         }
-        if (typeof DeseoLocationSearch !== 'undefined') {
-            await DeseoLocationSearch.getCities('MX');
-        }
-        if (typeof DeseoCitySearch !== 'undefined') {
-            if (DeseoCitySearch.ensureLoaded) {
-                await DeseoCitySearch.ensureLoaded('MX');
-            } else {
-                await DeseoCitySearch.getCities('MX');
-            }
-            const resolved = DeseoCitySearch.resolveLocal(raw);
-            if (!resolved.ok) {
-                showMessage(resolved.error, 'error');
-                return;
-            }
-            setActiveCity(resolved.city);
-            await refreshZoneUiForCity(resolved.city, '');
-            setActiveZone('');
-        } else {
-            setActiveCity(raw);
-            await refreshZoneUiForCity(raw, '');
-            setActiveZone('');
-        }
+        setActiveCity(city);
+        setActiveZone('');
+        await refreshZoneUiForCity(city, '');
         loadDirectory();
+    }
+
+    function mountCityChips() {
+        const container = document.getElementById('popularCities');
+        if (!container) {
+            return Promise.resolve();
+        }
+
+        const render = () => {
+            if (typeof DeseoCitySearch !== 'undefined' && DeseoCitySearch.renderPopular) {
+                DeseoCitySearch.renderPopular(container, (city) => {
+                    selectCityFromChip(city);
+                }, activeCiudad);
+            } else if (typeof DeseoLocationSearch !== 'undefined' && DeseoLocationSearch.renderPopular) {
+                DeseoLocationSearch.renderPopular(container, (city) => {
+                    selectCityFromChip(city);
+                }, activeCiudad);
+            }
+            highlightCityChips();
+        };
+
+        if (typeof DeseoLocationSearch !== 'undefined') {
+            return DeseoLocationSearch.getCities('MX')
+                .then(render)
+                .catch(() => {
+                    render();
+                });
+        }
+        if (typeof DeseoCitySearch !== 'undefined' && DeseoCitySearch.ensureLoaded) {
+            return DeseoCitySearch.ensureLoaded('MX')
+                .then(render)
+                .catch(() => {
+                    render();
+                });
+        }
+        render();
+        return Promise.resolve();
     }
 
     function escapeHtml(text) {
@@ -327,74 +339,23 @@
         const toolbar = document.querySelector('.directory-toolbar');
         if (toolbar) toolbar.style.display = 'none';
 
-        const cityInput = document.getElementById('searchCity');
         const zoneSelect = document.getElementById('searchZone');
-        if (cityInput) {
-            const fromUrl = getCiudadFromUrl();
-            const fromPage = (document.body?.dataset?.city || '').trim();
-            const saved = localStorage.getItem('deseo_search_city') || '';
-            activeCiudad = fromUrl || fromPage || saved;
-            if (activeCiudad) {
-                cityInput.value = activeCiudad;
-            }
-        }
+        const fromUrl = getCiudadFromUrl();
+        const fromPage = (document.body?.dataset?.city || '').trim();
+        const saved = localStorage.getItem('deseo_search_city') || '';
+        activeCiudad = fromUrl || fromPage || saved;
         activeZona = getZonaFromUrl() || localStorage.getItem('deseo_search_zone') || '';
 
-        if (typeof DeseoLocationSearch !== 'undefined') {
-            DeseoLocationSearch.getCities('MX').then(() => {
-                if (typeof DeseoCitySearch !== 'undefined') {
-                    return DeseoCitySearch.bindInput({
-                        inputId: 'searchCity',
-                        datalistId: 'citiesDatalist',
-                        countrySelectId: 'searchCountry',
-                        popularContainerId: 'popularCities',
-                        activeCity: activeCiudad,
-                        onSearch: async (city) => {
-                            setActiveCity(city);
-                            setActiveZone('');
-                            await refreshZoneUiForCity(city, '');
-                            loadDirectory();
-                        }
-                    });
-                }
-            }).then((api) => {
-                citySearchApi = api;
-                highlightCityChips();
-                if (activeCiudad) {
-                    refreshZoneUiForCity(activeCiudad, activeZona).then(() => loadDirectory());
-                }
-            }).catch(() => { });
-        } else if (typeof DeseoCitySearch !== 'undefined') {
-            DeseoCitySearch.bindInput({
-                inputId: 'searchCity',
-                datalistId: 'citiesDatalist',
-                countrySelectId: 'searchCountry',
-                popularContainerId: 'popularCities',
-                activeCity: activeCiudad,
-                onSearch: (city) => {
-                    setActiveCity(city);
-                    loadDirectory();
-                }
-            }).then((api) => {
-                citySearchApi = api;
-                highlightCityChips();
-            }).catch(() => { });
-        }
+        mountCityChips().then(() => {
+            if (activeCiudad) {
+                return refreshZoneUiForCity(activeCiudad, activeZona);
+            }
+            return refreshZoneUiForCity('', '');
+        }).catch(() => { });
 
         zoneSelect?.addEventListener('change', () => {
             setActiveZone(zoneSelect.value);
             loadDirectory();
-        });
-
-        document.getElementById('searchBtn')?.addEventListener('click', () => {
-            performCitySearch();
-        });
-
-        document.getElementById('searchCity')?.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                performCitySearch();
-            }
         });
 
         if (typeof DeseoAgeGate !== 'undefined' && DeseoAgeGate.mountBlockingGate(function () {

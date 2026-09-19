@@ -62,6 +62,17 @@
     margin-bottom: 1.25rem;
 }
 
+.directory-search-zone-only {
+    margin-top: -0.35rem;
+    margin-bottom: 1rem;
+}
+
+.directory-search-zone-only .directory-zone-select {
+    flex: 1;
+    min-width: min(100%, 220px);
+    max-width: 420px;
+}
+
 .directory-search select,
 .directory-zone-select,
 .hero-zone-select {
