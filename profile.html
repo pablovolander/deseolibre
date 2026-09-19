@@ -353,7 +353,7 @@
 
         /* PROFILE HEADER - ESTILO INSTAGRAM */
         .profile-header {
-            padding: 0 20px 20px;
+            padding: 0 20px 12px;
             position: relative;
             margin-top: -60px;
         }
@@ -362,7 +362,7 @@
             display: flex;
             gap: 30px;
             align-items: flex-end;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
         }
 
         .profile-avatar-container {
@@ -409,20 +409,24 @@
 
         .profile-main-info {
             flex: 1;
-            padding-top: 20px;
+            padding-top: 12px;
+            min-width: 0;
         }
 
         .profile-name-row {
             display: flex;
             align-items: center;
-            gap: 15px;
-            margin-bottom: 10px;
+            gap: 10px;
+            margin-bottom: 4px;
+            flex-wrap: wrap;
         }
 
         .profile-name {
             font-size: 1.8rem;
             font-weight: 700;
             color: var(--text-dark);
+            margin: 0;
+            line-height: 1.15;
         }
 
         .verified-badge {
@@ -431,9 +435,62 @@
         }
 
         .profile-username {
-            font-size: 1rem;
+            font-size: 0.92rem;
             color: var(--medium-gray);
-            margin-bottom: 15px;
+            margin: 0 0 0.55rem;
+        }
+
+        .profile-highlights {
+            display: flex;
+            flex-direction: column;
+            gap: 0.45rem;
+            margin-bottom: 0.65rem;
+        }
+
+        .profile-meta-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+        }
+
+        .profile-meta-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.28rem 0.65rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            color: rgba(255, 255, 255, 0.92);
+            font-size: 0.78rem;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+
+        .profile-meta-pill i {
+            font-size: 0.72rem;
+            opacity: 0.9;
+        }
+
+        .profile-meta-pill.price {
+            background: rgba(125, 255, 168, 0.14);
+            border-color: rgba(125, 255, 168, 0.35);
+            color: #7dffa8;
+        }
+
+        .profile-lead-bio {
+            margin: 0;
+            color: rgba(255, 255, 255, 0.82);
+            font-size: 0.92rem;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .profile-lead-bio.is-empty {
+            display: none;
         }
 
         .profile-actions {
@@ -504,9 +561,10 @@
         /* STATS ROW - ESTILO INSTAGRAM */
         .profile-stats {
             display: flex;
-            gap: 40px;
-            padding: 20px 0;
-            border-bottom: 1px solid #dbdbdb;
+            gap: 28px;
+            padding: 10px 0 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 4px;
         }
 
         .stat-item {
@@ -522,20 +580,25 @@
         }
 
         .stat-number {
-            font-size: 1.4rem;
+            font-size: 1.15rem;
             font-weight: 700;
             color: var(--text-dark);
+            line-height: 1.1;
         }
 
         .stat-label {
-            font-size: 0.9rem;
+            font-size: 0.78rem;
             color: var(--medium-gray);
         }
 
         /* BIO SECTION */
         .profile-bio {
-            padding: 20px 0;
-            border-bottom: 1px solid #dbdbdb;
+            padding: 10px 0 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .profile-bio .bio-text {
+            display: none;
         }
 
         .verification-card {
@@ -1530,7 +1593,7 @@
 
         @media (max-width: 768px) {
             .cover-photo-section {
-                height: 200px;
+                height: 180px;
             }
 
             .profile-banner-actions {
@@ -1545,16 +1608,61 @@
                 font-size: 0.88rem;
             }
 
+            .profile-header {
+                margin-top: -48px;
+                padding: 0 12px 8px;
+            }
+
             .profile-info-row {
                 flex-direction: column;
                 align-items: center;
                 text-align: center;
-                padding: 0 15px;
+                padding: 0 8px;
+                gap: 0.35rem;
+                margin-bottom: 6px;
             }
 
             .profile-avatar {
-                width: 120px;
-                height: 120px;
+                width: 104px;
+                height: 104px;
+                border-width: 3px;
+            }
+
+            .avatar-badge {
+                width: 30px;
+                height: 30px;
+                bottom: 4px;
+                right: 4px;
+                border-width: 2px;
+            }
+
+            .profile-main-info {
+                padding-top: 0.15rem;
+                width: 100%;
+            }
+
+            .profile-name {
+                font-size: 1.35rem;
+            }
+
+            .profile-username {
+                margin-bottom: 0.4rem;
+                font-size: 0.85rem;
+            }
+
+            .profile-highlights {
+                align-items: center;
+                margin-bottom: 0.45rem;
+            }
+
+            .profile-meta-pills {
+                justify-content: center;
+            }
+
+            .profile-lead-bio {
+                font-size: 0.88rem;
+                max-width: 34rem;
+                text-align: center;
             }
 
             .profile-actions {
@@ -1583,13 +1691,21 @@
 
             .profile-stats {
                 justify-content: space-around;
-                gap: 15px;
-                padding: 12px 15px;
+                gap: 8px;
+                padding: 8px 8px 10px;
             }
 
             .stat-item {
                 flex-direction: column;
-                gap: 5px;
+                gap: 2px;
+            }
+
+            .stat-number {
+                font-size: 1.05rem;
+            }
+
+            .stat-label {
+                font-size: 0.72rem;
             }
 
             .posts-grid {
@@ -1617,7 +1733,7 @@
             }
 
             .profile-bio {
-                padding: 12px 14px 8px;
+                padding: 8px 12px 10px;
             }
 
             .services-chips {
@@ -1662,25 +1778,25 @@
 
         @media (max-width: 480px) {
             .cover-photo-section {
-                height: 180px;
+                height: 160px;
             }
 
             .profile-avatar {
-                width: 100px;
-                height: 100px;
+                width: 96px;
+                height: 96px;
             }
 
             .profile-stats {
-                gap: 10px;
-                padding: 12px;
+                gap: 6px;
+                padding: 6px 6px 8px;
             }
 
             .stat-number {
-                font-size: 1.2rem;
+                font-size: 1rem;
             }
 
             .stat-label {
-                font-size: 0.8rem;
+                font-size: 0.68rem;
             }
 
             .posts-grid {
@@ -2089,6 +2205,10 @@
                         <i class="fas fa-check-circle verified-badge" id="verifiedBadge" style="display:none;"></i>
                     </div>
                     <p class="profile-username" id="profileUsername">@username</p>
+                    <div class="profile-highlights" id="profileHighlights">
+                        <div class="profile-meta-pills" id="profileMetaPills"></div>
+                        <p class="profile-lead-bio is-empty" id="profileLeadBio"></p>
+                    </div>
                     <div class="profile-actions" id="profileActions" style="display:none;">
                         <button type="button" class="btn-action btn-primary create-post-btn" onclick="openCreatePostModal()">
                             <i class="fas fa-plus"></i> Crear Publicación
@@ -2109,15 +2229,15 @@
                             <i class="fas fa-share"></i>
                         </button>
                     </div>
-                            </div>
-                        </div>
+                </div>
+            </div>
                         
             <!-- STATS -->
             <div class="profile-stats">
                 <div class="stat-item" onclick="showFollowersModal()" style="cursor: pointer;">
                     <span class="stat-number" id="followersCount">0</span>
                     <span class="stat-label">Seguidores</span>
-                        </div>
+                </div>
                 <div class="stat-item" onclick="showFollowingModal()" style="cursor: pointer;">
                     <span class="stat-number" id="followingCount">0</span>
                     <span class="stat-label">Siguiendo</span>
@@ -2125,15 +2245,15 @@
                 <div class="stat-item">
                     <span class="stat-number" id="postsCount">0</span>
                     <span class="stat-label">Publicaciones</span>
-                    </div>
                 </div>
+            </div>
 
             <!-- BIO -->
             <div class="profile-bio">
                 <div class="bio-content">
-                    <p class="bio-text" id="bioText">Sin descripción</p>
+                    <p class="bio-text" id="bioText" hidden>Sin descripción</p>
                     <div class="bio-details">
-                        <div class="bio-detail-item" id="locationDetail" style="display:none;">
+                        <div class="bio-detail-item" id="locationDetail" style="display:none;" hidden>
                             <i class="fas fa-map-marker-alt"></i>
                             <span id="locationText"></span>
                         </div>
@@ -2141,7 +2261,7 @@
                             <i class="fas fa-phone"></i>
                             <div id="phoneContactLinks"></div>
                         </div>
-                        <div class="bio-detail-item" id="priceDetail" style="display:none;">
+                        <div class="bio-detail-item" id="priceDetail" style="display:none;" hidden>
                             <i class="fas fa-tag"></i>
                             <span id="priceText"></span>
                         </div>
@@ -2153,9 +2273,9 @@
                             <i class="fas fa-tag"></i>
                             <span id="categoryText"></span>
                         </div>
-                        </div>
-                        </div>
-                        </div>
+                    </div>
+                </div>
+            </div>
 
             <!-- BODY VERIFICATION VIDEO SECTION -->
             <div class="body-verification-section" id="bodyVerificationSection" style="display:none;">
@@ -3237,10 +3357,6 @@
             }
 
             // Load bio and details
-            if (currentUser.bio) {
-                document.getElementById('bioText').textContent = currentUser.bio;
-            }
-
             try {
                 applyProfileDetailsToBio(currentUser);
                 updatePauseProfileUi(Boolean(currentUser.profile_paused));
@@ -3309,10 +3425,6 @@
                 }
 
                 // Load bio and details
-                if (user.bio) {
-                    document.getElementById('bioText').textContent = user.bio;
-                }
-
                 applyProfileDetailsToBio(user);
 
                 displayBodyVerificationVideo(user);
@@ -3673,7 +3785,61 @@
             document.body.classList.add('has-profile-contact-sticky');
         }
 
+        function escapeProfileHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function updateProfileHighlights(user) {
+            const pillsEl = document.getElementById('profileMetaPills');
+            const leadBioEl = document.getElementById('profileLeadBio');
+            const bioTextEl = document.getElementById('bioText');
+            if (!pillsEl) {
+                return;
+            }
+
+            const pills = [];
+            const ageNum = Number.parseInt(String(user?.age ?? ''), 10);
+            if (Number.isFinite(ageNum) && ageNum >= 18) {
+                pills.push(`<span class="profile-meta-pill"><i class="fas fa-birthday-cake"></i> ${ageNum} años</span>`);
+            }
+
+            const location = typeof DeseoListing !== 'undefined'
+                ? DeseoListing.getLocation(user)
+                : (user?.location || '');
+            if (location && location !== 'Ubicación no indicada') {
+                pills.push(`<span class="profile-meta-pill"><i class="fas fa-map-marker-alt"></i> ${escapeProfileHtml(location)}</span>`);
+            }
+
+            const price = typeof DeseoListing !== 'undefined'
+                ? DeseoListing.getPrice(user)
+                : '';
+            if (price && price !== 'Consultar') {
+                pills.push(`<span class="profile-meta-pill price"><i class="fas fa-tag"></i> ${escapeProfileHtml(price)}</span>`);
+            }
+
+            pillsEl.innerHTML = pills.join('');
+
+            const bio = String(user?.bio || '').trim();
+            if (leadBioEl) {
+                if (bio) {
+                    leadBioEl.textContent = bio;
+                    leadBioEl.classList.remove('is-empty');
+                } else {
+                    leadBioEl.textContent = '';
+                    leadBioEl.classList.add('is-empty');
+                }
+            }
+            if (bioTextEl) {
+                bioTextEl.textContent = bio || 'Sin descripción';
+            }
+        }
+
         function applyProfileDetailsToBio(user) {
+            updateProfileHighlights(user);
+
             const locEl = document.getElementById('locationDetail');
             const locText = document.getElementById('locationText');
             const phoneEl = document.getElementById('phoneDetail');
@@ -3685,7 +3851,7 @@
                 ? DeseoListing.getLocation(user)
                 : (user.location || '');
             if (locEl && locText && location && location !== 'Ubicación no indicada') {
-                locEl.style.display = 'flex';
+                locEl.style.display = 'none';
                 locText.textContent = location;
             } else if (locEl) {
                 locEl.style.display = 'none';
@@ -3714,7 +3880,7 @@
                 ? DeseoListing.getPrice(user)
                 : '';
             if (priceEl && priceText && price && price !== 'Consultar') {
-                priceEl.style.display = 'flex';
+                priceEl.style.display = 'none';
                 priceText.textContent = price;
             } else if (priceEl) {
                 priceEl.style.display = 'none';

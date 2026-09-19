@@ -1213,7 +1213,7 @@ function getAuthUserId(req) {
 async function findUserRecordById(userId) {
     return runDbGet(
         `SELECT id, username, email, full_name, bio, location, country, city, zone, zone_detail,
-                phone, telegram_username, service_price, service_price_unit, category,
+                phone, telegram_username, service_price, service_price_unit, category, age,
                 offered_services, profile_picture, cover_photo, is_verified, verification_status,
                 age_verified, is_admin, profile_paused, profile_paused_at, created_at
          FROM users WHERE id = ?`,
@@ -1246,6 +1246,7 @@ function mapUserForClient(user) {
         service_price: enriched.service_price,
         service_price_unit: enriched.service_price_unit,
         category: enriched.category,
+        age: enriched.age != null ? Number(enriched.age) : null,
         offered_services: enriched.offered_services,
         offered_services_labels: enriched.offered_services_labels,
         profile_picture: enriched.profile_picture,
@@ -1968,7 +1969,7 @@ app.get('/api/user/public/:userId', optionalAuthenticateToken, async (req, res) 
 
         const row = await runDbGet(
             `SELECT u.id, u.username, u.full_name, u.bio, u.location, u.country, u.city, u.zone, u.zone_detail,
-                    u.phone, u.telegram_username, u.service_price, u.service_price_unit, u.category,
+                    u.phone, u.telegram_username, u.service_price, u.service_price_unit, u.category, u.age,
                     u.offered_services, u.profile_picture, u.cover_photo, u.is_verified, u.created_at,
                     u.followers_count, u.following_count, u.posts_count, u.profile_paused, u.profile_paused_at,
                     up.public_body_video_url, up.body_verification_video_url, up.face_obscured
