@@ -395,7 +395,7 @@ body.dl-mobile-nav:not(.directory-page):not(.home-page) {
         bottom: var(--mobile-nav-height);
         z-index: 8500;
         gap: 0.5rem;
-        padding: 0.65rem 0.85rem;
+        padding: 0.55rem 0.85rem;
         background: rgba(15, 17, 24, 0.97);
         border-top: 1px solid rgba(255, 255, 255, 0.12);
         backdrop-filter: blur(12px);
@@ -404,12 +404,26 @@ body.dl-mobile-nav:not(.directory-page):not(.home-page) {
     }
 
     body.has-profile-contact-sticky.dl-mobile-nav {
-        padding-bottom: calc(var(--mobile-nav-height) + 4.25rem);
+        --profile-contact-sticky-height: 4.75rem;
+        padding-bottom: calc(var(--mobile-nav-height) + var(--profile-contact-sticky-height) + 0.75rem);
+    }
+
+    body.has-profile-contact-sticky.dl-mobile-nav .profile-container {
+        padding-bottom: calc(var(--profile-contact-sticky-height) + 1.25rem);
+    }
+
+    body.has-profile-contact-sticky.dl-mobile-nav .posts-grid {
+        padding-bottom: calc(var(--profile-contact-sticky-height) + 1.5rem) !important;
+    }
+
+    body.has-profile-contact-sticky.dl-mobile-nav .profile-posts,
+    body.has-profile-contact-sticky.dl-mobile-nav .posts-section {
+        padding-bottom: 1rem;
     }
 
     body.dl-modal-hides-nav .profile-contact-sticky {
         bottom: 0;
-        padding-bottom: calc(0.65rem + env(safe-area-inset-bottom, 0px));
+        padding-bottom: calc(0.55rem + env(safe-area-inset-bottom, 0px));
     }
 
     .profile-contact-sticky .contact-links-sticky {
@@ -426,9 +440,9 @@ body.dl-mobile-nav:not(.directory-page):not(.home-page) {
         align-items: center;
         justify-content: center;
         gap: 0.4rem;
-        min-height: 48px;
-        padding: 0.7rem 0.85rem;
-        font-size: 0.95rem;
+        min-height: 44px;
+        padding: 0.65rem 0.85rem;
+        font-size: 0.92rem;
         font-weight: 700;
         border-radius: 12px;
         text-decoration: none;
