@@ -4,7 +4,7 @@
 (function (global) {
     let currentStep = 1;
     const TOTAL_STEPS = 4;
-    let limits = { min_video_duration_sec: 8, max_video_duration_sec: 60, max_video_bytes: 4194304 };
+        let limits = { min_video_duration_sec: 8, max_video_duration_sec: 45, max_video_bytes: 4194304 };
     let measuredVideoDuration = 0;
     let faceMatchResult = null;
     let faceLibsPromise = null;

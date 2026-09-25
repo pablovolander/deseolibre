@@ -176,7 +176,7 @@ window.DeseoPublicBodyVideo = (function () {
         }
         const duration = await measureVideoDuration(videoFile);
         const min = challenge.min_video_duration_sec || 8;
-        const max = challenge.max_video_duration_sec || 60;
+        const max = challenge.max_video_duration_sec || 45;
         if (duration < min) {
             throw new Error(`El video debe durar al menos ${min} segundos`);
         }

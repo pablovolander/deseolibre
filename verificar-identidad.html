@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -112,7 +112,7 @@
                 <div class="verify-card">
                     <h2><i class="fas fa-video"></i> Video corporal (obligatorio)</h2>
                     <p class="tips" style="margin-bottom:0.75rem;">
-                        Graba un video de <strong id="minDurLabel">8</strong> a <strong id="maxDurLabel">60</strong> segundos mostrando tu cuerpo completo con rostro visible.
+                        Graba un video de <strong id="minDurLabel">8</strong> a <strong id="maxDurLabel">45</strong> segundos mostrando tu cuerpo completo con rostro visible.
                         Este video es <strong>privado</strong> (solo verificación). Después subirás otro video público en tu perfil.
                     </p>
                     <div class="form-row">
@@ -165,7 +165,7 @@
             location.href = 'index.html';
         }
 
-        let limits = { min_video_duration_sec: 8, max_video_duration_sec: 60, max_video_bytes: 4194304, min_face_match_score: 0.35 };
+        let limits = { min_video_duration_sec: 8, max_video_duration_sec: 45, max_video_bytes: 4194304, min_face_match_score: 0.35 };
         let measuredVideoDuration = 0;
         let faceMatchResult = null;
 

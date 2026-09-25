@@ -3,7 +3,7 @@
  */
 (function () {
     const MAX_REEL_BYTES = 4.5 * 1024 * 1024;
-    const MAX_REEL_DURATION_SEC = 60;
+    const MAX_REEL_DURATION_SEC = 45;
 
     const CATEGORIES = [
         {

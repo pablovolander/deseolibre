@@ -17,7 +17,7 @@ test('parseReelDurationSeconds accepts empty and valid values', () => {
 test('parseReelDurationSeconds rejects over limit', () => {
     const result = parseReelDurationSeconds(MAX_REEL_DURATION_SEC + 1);
     assert.equal(result.ok, false);
-    assert.match(result.error, /60/);
+    assert.match(result.error, /45/);
 });
 
 test('buildReelTooLargeError mentions limit', () => {

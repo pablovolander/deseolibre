@@ -2628,7 +2628,7 @@ app.post('/api/user/public-body-video/challenge', authenticateToken, async (req,
             max_video_duration_sec: PUBLIC_MAX_VIDEO_SEC,
             max_video_bytes: getMaxVideoBytes(isServerless),
             instructions:
-                'Graba un video de 8 a 60 s mostrando tu cuerpo y este código en papel o pantalla. Puedes ocultar tu rostro.'
+                'Graba un video de 8 a 45 s mostrando tu cuerpo y este código en papel o pantalla. Puedes ocultar tu rostro.'
         });
     } catch (error) {
         console.error('Error creating public video challenge:', error);
