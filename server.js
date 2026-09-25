@@ -133,6 +133,21 @@ const isServerless =
     Boolean(process.env.VERCEL_ENV) ||
     __dirname.includes('/var/task');
 const isVercel = isServerless;
+const isProdLike = isServerless || process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL);
+
+/** Bloquea atajos de verificación solo válidos en desarrollo local. */
+function rejectDevOnlyVerification(res) {
+    if (!isProdLike) {
+        return false;
+    }
+    res.status(403).json({
+        error: 'Verificación de desarrollo deshabilitada',
+        message: 'En producción completá la verificación en verificar-identidad.html (documento, selfie y video).',
+        requiresVerification: true
+    });
+    return true;
+}
+
 if (isVercel) {
     app.set('trust proxy', 1);
 }
@@ -1776,8 +1791,11 @@ app.post('/api/auth/verify-age', authenticateToken, async (req, res) => {
 });
 
 // User verification endpoints
-// Start verification process
+// Start verification process (atajo de desarrollo; producción usa /api/verification/upload)
 app.post('/api/auth/start-verification', authenticateToken, (req, res) => {
+    if (rejectDevOnlyVerification(res)) {
+        return;
+    }
     const userId = req.user.userId;
     const { verificationType, verificationData } = req.body;
 
@@ -1814,8 +1832,11 @@ app.post('/api/auth/start-verification', authenticateToken, (req, res) => {
     });
 });
 
-// Complete verification (simulated API call)
+// Complete verification (código VERIFY123 solo en desarrollo local)
 app.post('/api/auth/complete-verification', authenticateToken, (req, res) => {
+    if (rejectDevOnlyVerification(res)) {
+        return;
+    }
     const userId = req.user.userId;
     const { verificationId, verificationCode } = req.body;
 
@@ -1913,12 +1934,8 @@ app.get('/api/auth/verification-status', authenticateToken, (req, res) => {
 
 // Quick verification — solo desarrollo local (deshabilitado en Vercel/producción)
 app.post('/api/auth/quick-verify', authenticateToken, (req, res) => {
-    if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
-        return res.status(403).json({
-            error: 'Verificación manual requerida',
-            message: 'En producción debes completar la verificación de identidad en verificar-identidad.html',
-            requiresVerification: true
-        });
+    if (rejectDevOnlyVerification(res)) {
+        return;
     }
     const userId = req.user.userId;
     

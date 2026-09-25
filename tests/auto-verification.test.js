@@ -21,6 +21,11 @@ test('validateFaceMatchScore rejects low score', () => {
     assert.equal(result.ok, false);
 });
 
+test('validateFaceMatchScore rejects score below hardened threshold', () => {
+    const result = validateFaceMatchScore(0.4);
+    assert.equal(result.ok, false);
+});
+
 test('validateFaceMatchScore accepts valid score', () => {
     const result = validateFaceMatchScore(0.55);
     assert.equal(result.ok, true);

@@ -5,7 +5,7 @@
 window.DeseoFaceMatch = (function () {
     const MODEL_BASE = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
     const MIN_SCORE = 0.45;
-    const MAX_DISTANCE = 0.55;
+    const MAX_DISTANCE = 0.5;
 
     let modelsLoaded = false;
     let modelsLoading = null;
