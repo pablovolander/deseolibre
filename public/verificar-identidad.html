@@ -96,15 +96,15 @@
                         </select>
                     </div>
                     <div class="form-row">
-                        <label for="id_front">Frente del documento *</label>
+                        <label for="id_front">Foto del frente del documento (solo cámara) *</label>
                         <input type="file" id="id_front" accept="image/*" data-mobile-upload="document" required>
                     </div>
                     <div class="form-row" id="idBackRow">
-                        <label for="id_back">Reverso del documento *</label>
+                        <label for="id_back">Foto del reverso (solo cámara) *</label>
                         <input type="file" id="id_back" accept="image/*" data-mobile-upload="document">
                     </div>
                     <div class="form-row">
-                        <label for="selfie">Selfie sosteniendo el documento junto al rostro *</label>
+                        <label for="selfie">Selfie con el documento (solo cámara frontal) *</label>
                         <input type="file" id="selfie" accept="image/*" data-mobile-upload="selfie" required>
                     </div>
                 </div>
@@ -157,6 +157,7 @@
     <script src="/js/auth-session.js"></script>
     <script src="/js/face-match.js"></script>
     <script src="/js/video-compress.js"></script>
+    <script src="/js/blob-direct-upload.js"></script>
     <script src="/js/api-errors.js"></script>
     <script src="/js/verification-gate.js"></script>
     <script>
@@ -198,7 +199,7 @@
                     document.getElementById('minDurLabel').textContent = limits.min_video_duration_sec;
                     document.getElementById('maxDurLabel').textContent = limits.max_video_duration_sec;
                     document.getElementById('videoSizeHint').textContent =
-                        'Podés subir el video de la cámara tal cual: lo comprimimos automáticamente si hace falta.';
+                        'Subí el video de la cámara tal cual (mín. 8 s). Lo enviamos directo a la nube.';
                 }
             } catch (_) {}
         }
@@ -207,8 +208,14 @@
             return (Number(bytes) / (1024 * 1024)).toFixed(1);
         }
 
+        function canDirectBlobUpload() {
+            return typeof DeseoBlobUpload !== 'undefined' && typeof DeseoBlobUpload.uploadFile === 'function';
+        }
+
         function videoSizeOk(file) {
-            return Boolean(file) && file.size <= verificationVideoMaxBytes();
+            if (!file) return false;
+            if (canDirectBlobUpload()) return true;
+            return file.size <= verificationVideoMaxBytes();
         }
 
         function videoDurationOk() {
@@ -218,9 +225,6 @@
 
         function videoRejectReason(file) {
             if (!file) return 'El video corporal es obligatorio.';
-            if (!videoSizeOk(file)) {
-                return `El video sigue pesando ${formatMb(file.size)} MB tras comprimir (objetivo ~${formatMb(verificationVideoMaxBytes())} MB). Probá un clip un poco más corto.`;
-            }
             if (measuredVideoDuration > 0 && measuredVideoDuration < limits.min_video_duration_sec) {
                 return `El video debe durar al menos ${limits.min_video_duration_sec} segundos (ahora: ${measuredVideoDuration.toFixed(1)}s).`;
             }
@@ -230,14 +234,17 @@
             if (!measuredVideoDuration) {
                 return 'Esperá a que se procese el video.';
             }
+            if (!canDirectBlobUpload() && !videoSizeOk(file)) {
+                return `El video pesa ${formatMb(file.size)} MB. Recargá la página para habilitar subida directa.`;
+            }
             return null;
         }
 
-        function applyVideoMetaLabel(file) {
+            function applyVideoMetaLabel(file) {
             const label = document.getElementById('videoDurationLabel');
             if (!file || !label) return;
             const parts = [`${formatMb(file.size)} MB`];
-            if (!videoSizeOk(file)) {
+            if (!canDirectBlobUpload() && !videoSizeOk(file)) {
                 parts.push(`sigue por encima del límite (~${formatMb(verificationVideoMaxBytes())} MB)`);
             }
             if (measuredVideoDuration > 0) {
@@ -247,13 +254,11 @@
                     parts.push(`${measuredVideoDuration.toFixed(1)}s (mín. ${min}s)`);
                 } else if (measuredVideoDuration > max) {
                     parts.push(`${measuredVideoDuration.toFixed(1)}s (máx. ${max}s)`);
-                } else if (videoSizeOk(file)) {
-                    parts.push(`duración OK ${measuredVideoDuration.toFixed(1)}s`);
                 } else {
-                    parts.push(`${measuredVideoDuration.toFixed(1)}s`);
+                    parts.push(`duración OK ${measuredVideoDuration.toFixed(1)}s`);
                 }
             }
-            const ok = videoSizeOk(file) && videoDurationOk();
+            const ok = videoDurationOk() && (canDirectBlobUpload() || videoSizeOk(file));
             label.textContent = parts.join(' · ');
             label.style.color = ok ? '#7dffa8' : '#ff8a9b';
         }
@@ -297,34 +302,15 @@
                 return;
             }
 
-            if (typeof DeseoVideoCompress === 'undefined') {
-                preparedVideoFile = original;
-                measurePreparedVideo(original);
-                return;
-            }
-
-            label.style.color = 'rgba(255,255,255,0.75)';
-            label.textContent = original.size > verificationVideoMaxBytes()
-                ? `Comprimiendo video automáticamente (${formatMb(original.size)} MB)...`
-                : 'Preparando video...';
-
-            try {
-                const result = await DeseoVideoCompress.compressIfNeeded(original, {
-                    maxBytes: verificationVideoMaxBytes(),
-                    maxDurationSec: limits.max_video_duration_sec,
-                    onProgress: ({ phase, progress }) => {
-                        if (phase !== 'compress') return;
-                        label.textContent = `Comprimiendo video… ${Math.round((progress || 0) * 100)}%`;
-                        label.style.color = 'rgba(255,255,255,0.75)';
+            preparedVideoFile = original;
+            measurePreparedVideo(original);
+            if (canDirectBlobUpload()) {
+                setTimeout(() => {
+                    if (videoDurationOk() && label.textContent && !label.textContent.includes('nube')) {
+                        label.textContent = `${label.textContent} · se subirá directo a la nube`;
+                        label.style.color = '#7dffa8';
                     }
-                });
-                preparedVideoFile = result.file;
-                DeseoVideoCompress.assignFileToInput(input, result.file);
-                measurePreparedVideo(result.file);
-            } catch (err) {
-                preparedVideoFile = null;
-                label.style.color = '#ff8a9b';
-                label.textContent = err.message || 'No se pudo preparar el video';
+                }, 450);
             }
         });
 
@@ -440,20 +426,38 @@
             msg.className = '';
             msg.textContent = 'Procesando verificación automática...';
 
-            const fd = new FormData();
-            fd.append('verification_type', document.getElementById('verification_type').value);
-            fd.append('country', document.getElementById('country').value);
-            fd.append('additional_info', document.getElementById('additional_info').value);
-            fd.append('body_video_duration_sec', String(measuredVideoDuration));
-            fd.append('face_match_score', String(match.score));
-            fd.append('id_front', document.getElementById('id_front').files[0]);
-            if (document.getElementById('id_back').files[0]) {
-                fd.append('id_back', document.getElementById('id_back').files[0]);
-            }
-            fd.append('selfie', document.getElementById('selfie').files[0]);
-            fd.append('body_video', videoFile);
-
             try {
+                let directVideoUrl = '';
+                if (canDirectBlobUpload()) {
+                    msg.textContent = 'Subiendo video a la nube...';
+                    const uploaded = await DeseoBlobUpload.uploadFile(videoFile, {
+                        authToken,
+                        folder: 'uploads/verification',
+                        onProgress: ({ progress }) => {
+                            msg.textContent = `Subiendo video… ${Math.round((progress || 0) * 100)}%`;
+                        }
+                    });
+                    directVideoUrl = uploaded.url;
+                }
+
+                const fd = new FormData();
+                fd.append('verification_type', document.getElementById('verification_type').value);
+                fd.append('country', document.getElementById('country').value);
+                fd.append('additional_info', document.getElementById('additional_info').value);
+                fd.append('body_video_duration_sec', String(measuredVideoDuration));
+                fd.append('face_match_score', String(match.score));
+                fd.append('id_front', document.getElementById('id_front').files[0]);
+                if (document.getElementById('id_back').files[0]) {
+                    fd.append('id_back', document.getElementById('id_back').files[0]);
+                }
+                fd.append('selfie', document.getElementById('selfie').files[0]);
+                if (directVideoUrl) {
+                    fd.append('body_video_url', directVideoUrl);
+                } else {
+                    fd.append('body_video', videoFile);
+                }
+
+                msg.textContent = 'Enviando documentos...';
                 const res = await fetch(`${API_URL}/api/verification/upload`, {
                     method: 'POST',
                     headers: { Authorization: `Bearer ${authToken}` },

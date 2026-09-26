@@ -28,6 +28,7 @@
     <script src="/js/age-gate.js"></script>
     <script src="/js/face-match.js"></script>
     <script src="/js/video-compress.js"></script>
+    <script src="/js/blob-direct-upload.js"></script>
     <script src="/js/register-wizard.js"></script>
 </head>
 <body class="home-page">
@@ -385,15 +386,16 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="regIdFront">Frente del documento *</label>
+                        <label for="regIdFront">Foto del frente del documento (solo cámara) *</label>
                         <input type="file" id="regIdFront" accept="image/*" data-mobile-upload="document" required>
+                        <small>En el celular se abre la cámara trasera. No hace falta elegir un archivo.</small>
                     </div>
                     <div class="form-group" id="regIdBackRow">
-                        <label for="regIdBack">Reverso del documento *</label>
+                        <label for="regIdBack">Foto del reverso del documento (solo cámara) *</label>
                         <input type="file" id="regIdBack" accept="image/*" data-mobile-upload="document">
                     </div>
                     <div class="form-group">
-                        <label for="regSelfie">Selfie sosteniendo el documento *</label>
+                        <label for="regSelfie">Selfie con el documento (solo cámara frontal) *</label>
                         <input type="file" id="regSelfie" accept="image/*" data-mobile-upload="selfie" required>
                     </div>
                 </div>

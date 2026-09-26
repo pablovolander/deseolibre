@@ -3708,6 +3708,60 @@ app.get('/api/policies', (req, res) => {
 
 // ==================== IDENTITY VERIFICATION SYSTEM ====================
 
+// Token para subida directa del cliente a Vercel Blob (evita el tope ~4.5 MB de la función)
+app.post('/api/blob/client-upload', authenticateToken, async (req, res) => {
+    try {
+        if (!process.env.BLOB_READ_WRITE_TOKEN) {
+            return res.status(503).json({
+                error: 'Almacenamiento no configurado',
+                message: 'Falta BLOB_READ_WRITE_TOKEN en Vercel.'
+            });
+        }
+
+        const { handleUpload } = require('@vercel/blob/client');
+        const access = typeof getBlobAccess === 'function'
+            ? getBlobAccess()
+            : (process.env.BLOB_STORE_ACCESS || 'private');
+
+        const jsonResponse = await handleUpload({
+            body: req.body,
+            request: req,
+            onBeforeGenerateToken: async (pathname) => {
+                const normalized = String(pathname || '').replace(/^\/+/, '');
+                if (!normalized.startsWith('uploads/')) {
+                    throw new Error('Ruta de subida no permitida');
+                }
+                return {
+                    allowedContentTypes: [
+                        'video/mp4',
+                        'video/webm',
+                        'video/quicktime',
+                        'video/x-msvideo',
+                        'image/jpeg',
+                        'image/png',
+                        'image/webp'
+                    ],
+                    maximumSizeInBytes: 50 * 1024 * 1024,
+                    allowOverwrite: true,
+                    addRandomSuffix: false,
+                    tokenPayload: JSON.stringify({
+                        userId: req.user.userId,
+                        access
+                    })
+                };
+            },
+            onUploadCompleted: async () => {}
+        });
+
+        return res.json(jsonResponse);
+    } catch (error) {
+        console.error('blob client-upload error:', error);
+        return res.status(400).json({
+            error: error.message || 'No se pudo autorizar la subida'
+        });
+    }
+});
+
 // Upload verification documents + video corporal → aprobación automática (sin costo)
 app.post('/api/verification/upload', authenticateToken, upload.fields([
     { name: 'id_front', maxCount: 1 },
@@ -3725,8 +3779,16 @@ app.post('/api/verification/upload', authenticateToken, upload.fields([
         }
         const userId = authUser.id;
 
-        const { verification_type, additional_info, country, body_video_duration_sec, face_match_score } = req.body;
+        const {
+            verification_type,
+            additional_info,
+            country,
+            body_video_duration_sec,
+            face_match_score,
+            body_video_url: bodyVideoUrlFromClient
+        } = req.body;
         const files = req.files || {};
+        const directVideoUrl = String(bodyVideoUrlFromClient || '').trim();
 
         const existingUser = await runDbGet(
             'SELECT is_verified FROM users WHERE id = ?',
@@ -3754,6 +3816,7 @@ app.post('/api/verification/upload', authenticateToken, upload.fields([
             id_back: files.id_back?.[0],
             selfie: files.selfie?.[0],
             body_video: files.body_video?.[0],
+            body_video_url: directVideoUrl || null,
             body_video_duration_sec,
             face_match_score,
             isVercel: isServerless
@@ -3765,7 +3828,10 @@ app.post('/api/verification/upload', authenticateToken, upload.fields([
 
         const idFrontUrl = await persistUploadedFile(files.id_front[0], isVercel, localUploadsDir);
         const selfieUrl = await persistUploadedFile(files.selfie[0], isVercel, localUploadsDir);
-        const bodyVideoUrl = await persistUploadedFile(files.body_video[0], isVercel, localUploadsDir);
+        let bodyVideoUrl = directVideoUrl;
+        if (!bodyVideoUrl) {
+            bodyVideoUrl = await persistUploadedFile(files.body_video[0], isVercel, localUploadsDir);
+        }
         let idBackUrl = null;
         if (verification_type !== 'passport' && files.id_back?.[0]) {
             idBackUrl = await persistUploadedFile(files.id_back[0], isVercel, localUploadsDir);
@@ -3784,7 +3850,8 @@ app.post('/api/verification/upload', authenticateToken, upload.fields([
             submitted_at: new Date().toISOString(),
             auto_verified: true,
             auto_method: autoEval.method,
-            auto_checks: autoEval.checks_passed
+            auto_checks: autoEval.checks_passed,
+            video_via_direct_blob: Boolean(directVideoUrl)
         };
 
         const now = new Date().toISOString();

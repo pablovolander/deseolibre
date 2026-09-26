@@ -55,6 +55,23 @@ test('evaluateAutoVerification requires face match score', () => {
     assert.ok(withFace.checks_passed.includes('face_match_browser'));
 });
 
+test('evaluateAutoVerification accepts direct blob video URL', () => {
+    const payload = {
+        verification_type: 'id_card',
+        country: 'MX',
+        id_front: mockFile('front.jpg', 'image/jpeg', 20000),
+        id_back: mockFile('back.jpg', 'image/jpeg', 20000),
+        selfie: mockFile('selfie.jpg', 'image/jpeg', 20000),
+        body_video_url: '/api/media/uploads/verification/clip.mp4',
+        body_video_duration_sec: 10,
+        face_match_score: MIN_FACE_MATCH_SCORE + 0.1,
+        isVercel: true
+    };
+    const result = evaluateAutoVerification(payload);
+    assert.equal(result.approved, true);
+    assert.ok(result.checks_passed.includes('body_video_direct_url'));
+});
+
 test('validateUploadedFile rejects tiny image', () => {
     const file = mockFile('x.jpg', 'image/jpeg', 100);
     const result = validateUploadedFile(file, { kind: 'image', isVercel: false });

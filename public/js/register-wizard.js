@@ -20,9 +20,12 @@
     }
 
     function verificationVideoMaxBytes() {
-        // Deja margen para documento + selfie en el mismo FormData (tope Vercel ~4.5 MB).
         const cap = Number(limits.max_video_bytes) || (4 * 1024 * 1024);
         return Math.min(cap, 2.8 * 1024 * 1024);
+    }
+
+    function canDirectBlobUpload() {
+        return typeof DeseoBlobUpload !== 'undefined' && typeof DeseoBlobUpload.uploadFile === 'function';
     }
 
     function getBodyVideoFile() {
@@ -30,7 +33,9 @@
     }
 
     function videoSizeOk(file) {
-        return Boolean(file) && file.size <= verificationVideoMaxBytes();
+        if (!file) return false;
+        if (canDirectBlobUpload()) return true;
+        return file.size <= verificationVideoMaxBytes();
     }
 
     function videoDurationOk() {
@@ -39,14 +44,11 @@
     }
 
     function videoReadyForFaceMatch(file) {
-        return videoSizeOk(file) && videoDurationOk();
+        return Boolean(file) && videoDurationOk();
     }
 
     function videoRejectReason(file) {
         if (!file) return 'El video corporal es obligatorio.';
-        if (!videoSizeOk(file)) {
-            return `El video sigue pesando ${formatMb(file.size)} MB tras comprimir (objetivo ~${formatMb(verificationVideoMaxBytes())} MB). Probá un clip un poco más corto.`;
-        }
         if (measuredVideoDuration > 0 && measuredVideoDuration < limits.min_video_duration_sec) {
             return `El video debe durar al menos ${limits.min_video_duration_sec} segundos (ahora: ${measuredVideoDuration.toFixed(1)}s).`;
         }
@@ -55,6 +57,9 @@
         }
         if (!measuredVideoDuration) {
             return 'Esperá a que se procese el video.';
+        }
+        if (!canDirectBlobUpload() && !videoSizeOk(file)) {
+            return `El video pesa ${formatMb(file.size)} MB y no se pudo preparar la subida directa. Recargá la página e intentá de nuevo.`;
         }
         return null;
     }
@@ -128,7 +133,9 @@
                 if (minEl) minEl.textContent = limits.min_video_duration_sec;
                 if (maxEl) maxEl.textContent = limits.max_video_duration_sec;
                 if (hint) {
-                    hint.textContent = 'Podés subir el video de la cámara tal cual: lo comprimimos automáticamente si hace falta.';
+                    hint.textContent = canDirectBlobUpload()
+                        ? 'Subí el video de la cámara tal cual (mín. 8 s). Lo enviamos directo a la nube, sin pelear con el límite de 4 MB.'
+                        : 'Podés subir el video de la cámara; si pesa mucho lo comprimimos automáticamente.';
                 }
             }
         } catch (_) {}
@@ -194,7 +201,7 @@
 
         const applyLabel = () => {
             const parts = [`${formatMb(file.size)} MB`];
-            if (!videoSizeOk(file)) {
+            if (!canDirectBlobUpload() && !videoSizeOk(file)) {
                 parts.push(`sigue por encima del límite (~${formatMb(verificationVideoMaxBytes())} MB)`);
             }
             if (measuredVideoDuration > 0) {
@@ -204,13 +211,11 @@
                     parts.push(`${measuredVideoDuration.toFixed(1)}s (mín. ${min}s)`);
                 } else if (measuredVideoDuration > max) {
                     parts.push(`${measuredVideoDuration.toFixed(1)}s (máx. ${max}s)`);
-                } else if (videoSizeOk(file)) {
-                    parts.push(`duración OK ${measuredVideoDuration.toFixed(1)}s`);
                 } else {
-                    parts.push(`${measuredVideoDuration.toFixed(1)}s`);
+                    parts.push(`duración OK ${measuredVideoDuration.toFixed(1)}s`);
                 }
             }
-            const ok = videoReadyForFaceMatch(file);
+            const ok = videoReadyForFaceMatch(file) && (canDirectBlobUpload() || videoSizeOk(file));
             label.textContent = parts.join(' · ');
             label.style.color = ok ? '#7dffa8' : '#ff8a9b';
         };
@@ -245,6 +250,20 @@
             return null;
         }
 
+        // Con subida directa a Blob no hace falta comprimir: medimos duración y listo.
+        if (canDirectBlobUpload()) {
+            preparedVideoFile = original;
+            measureVideoFile(original);
+            if (label) {
+                setTimeout(() => {
+                    if (label.textContent && !label.textContent.includes('nube')) {
+                        label.textContent = `${label.textContent} · se subirá directo a la nube`;
+                    }
+                }, 450);
+            }
+            return original;
+        }
+
         if (typeof DeseoVideoCompress === 'undefined') {
             preparedVideoFile = original;
             measureVideoFile(original);
@@ -272,15 +291,6 @@
             preparedVideoFile = result.file;
             DeseoVideoCompress.assignFileToInput(input, result.file);
             measureVideoFile(result.file);
-            if (label && result.compressed) {
-                const note = `Optimizado: ${formatMb(result.originalBytes)} → ${formatMb(result.outputBytes)} MB`;
-                // measureVideoFile overwrites label; append after metadata loads
-                setTimeout(() => {
-                    if (label.textContent && !label.textContent.includes('Optimizado')) {
-                        label.textContent = `${label.textContent} · ${note}`;
-                    }
-                }, 400);
-            }
             return result.file;
         } catch (err) {
             preparedVideoFile = null;
@@ -395,6 +405,22 @@
             }
 
             const token = regData.token;
+            const videoFile = getBodyVideoFile();
+            let directVideoUrl = '';
+
+            if (canDirectBlobUpload()) {
+                setStatus('Subiendo video a la nube (puede tardar un poco)...', 'info');
+                const uploaded = await DeseoBlobUpload.uploadFile(videoFile, {
+                    authToken: token,
+                    folder: `uploads/verification/${regData.user?.id || 'user'}`,
+                    onProgress: ({ progress }) => {
+                        setStatus(`Subiendo video… ${Math.round((progress || 0) * 100)}%`, 'info');
+                    }
+                });
+                directVideoUrl = uploaded.url;
+            }
+
+            setStatus('Enviando documentos y completando verificación...', 'info');
             const fd = new FormData();
             fd.append('verification_type', $('regVerificationType').value);
             fd.append('country', $('regVerifyCountry').value);
@@ -404,7 +430,11 @@
             fd.append('id_front', $('regIdFront').files[0]);
             if ($('regIdBack')?.files?.[0]) fd.append('id_back', $('regIdBack').files[0]);
             fd.append('selfie', $('regSelfie').files[0]);
-            fd.append('body_video', getBodyVideoFile());
+            if (directVideoUrl) {
+                fd.append('body_video_url', directVideoUrl);
+            } else {
+                fd.append('body_video', videoFile);
+            }
 
             const verifyRes = await fetch(`${API_URL}/api/verification/upload`, {
                 method: 'POST',
