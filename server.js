@@ -3708,7 +3708,60 @@ app.get('/api/policies', (req, res) => {
 
 // ==================== IDENTITY VERIFICATION SYSTEM ====================
 
-// Token para subida directa del cliente a Vercel Blob (evita el tope ~4.5 MB de la función)
+// Token simple para subida directa del cliente a Vercel Blob (sin SDK en el navegador)
+app.post('/api/blob/client-token', authenticateToken, async (req, res) => {
+    try {
+        if (!process.env.BLOB_READ_WRITE_TOKEN) {
+            return res.status(503).json({
+                error: 'Almacenamiento no configurado',
+                message: 'Falta BLOB_READ_WRITE_TOKEN en Vercel.'
+            });
+        }
+
+        const { generateClientTokenFromReadWriteToken } = require('@vercel/blob/client');
+        let pathname = String(req.body?.pathname || '').replace(/^\/+/, '');
+        if (!pathname.startsWith('uploads/')) {
+            return res.status(400).json({ error: 'Ruta de subida no permitida' });
+        }
+        // Evitar path traversal
+        if (pathname.includes('..') || pathname.includes('\\')) {
+            return res.status(400).json({ error: 'Ruta de subida inválida' });
+        }
+
+        const clientToken = await generateClientTokenFromReadWriteToken({
+            pathname,
+            token: process.env.BLOB_READ_WRITE_TOKEN,
+            allowedContentTypes: [
+                'video/mp4',
+                'video/webm',
+                'video/quicktime',
+                'video/x-msvideo',
+                'image/jpeg',
+                'image/png',
+                'image/webp',
+                'application/octet-stream'
+            ],
+            maximumSizeInBytes: 50 * 1024 * 1024,
+            allowOverwrite: true,
+            addRandomSuffix: false
+        });
+
+        return res.json({
+            clientToken,
+            pathname,
+            access: getBlobAccess(),
+            apiUrl: 'https://vercel.com/api/blob',
+            apiVersion: '12'
+        });
+    } catch (error) {
+        console.error('blob client-token error:', error);
+        return res.status(400).json({
+            error: error.message || 'No se pudo autorizar la subida'
+        });
+    }
+});
+
+// Token/handler legacy (SDK client upload) — se mantiene por compatibilidad
 app.post('/api/blob/client-upload', authenticateToken, async (req, res) => {
     try {
         if (!process.env.BLOB_READ_WRITE_TOKEN) {
@@ -3888,11 +3941,13 @@ app.get('/api/verification/limits', (req, res) => {
     res.json({
         min_video_duration_sec: MIN_VIDEO_DURATION_SEC,
         max_video_duration_sec: MAX_VIDEO_DURATION_SEC,
-        max_video_bytes: getMaxVideoBytes(isServerless),
+        // Subida directa a Blob: el tope real es ~50 MB (no el de la función serverless)
+        max_video_bytes: 50 * 1024 * 1024,
         min_face_match_score: MIN_FACE_MATCH_SCORE,
         face_match_required: true,
         auto_verification: true,
-        body_video_required: true
+        body_video_required: true,
+        direct_blob_upload: true
     });
 });
 

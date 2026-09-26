@@ -155,9 +155,9 @@
     <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/dist/face-api.js"></script>
     <script src="/js/api-config.js"></script>
     <script src="/js/auth-session.js"></script>
-    <script src="/js/face-match.js"></script>
-    <script src="/js/video-compress.js"></script>
-    <script src="/js/blob-direct-upload.js"></script>
+    <script src="/js/face-match.js?v=20260926b"></script>
+    <script src="/js/video-compress.js?v=20260926b"></script>
+    <script src="/js/blob-direct-upload.js?v=20260926b"></script>
     <script src="/js/api-errors.js"></script>
     <script src="/js/verification-gate.js"></script>
     <script>
@@ -167,19 +167,10 @@
             location.href = 'index.html';
         }
 
-        let limits = { min_video_duration_sec: 8, max_video_duration_sec: 45, max_video_bytes: 4194304, min_face_match_score: 0.45 };
+        let limits = { min_video_duration_sec: 8, max_video_duration_sec: 45, max_video_bytes: 50 * 1024 * 1024, min_face_match_score: 0.45 };
         let measuredVideoDuration = 0;
         let faceMatchResult = null;
         let preparedVideoFile = null;
-
-        function verificationVideoMaxBytes() {
-            const cap = Number(limits.max_video_bytes) || (4 * 1024 * 1024);
-            return Math.min(cap, 2.8 * 1024 * 1024);
-        }
-
-        function getBodyVideoFile() {
-            return preparedVideoFile || document.getElementById('body_video')?.files?.[0] || null;
-        }
 
         const flash = sessionStorage.getItem('deseo_verify_message');
         if (flash) {
@@ -191,31 +182,16 @@
         const statusPanel = document.getElementById('statusPanel');
         const uploadPanel = document.getElementById('uploadPanel');
 
-        async function loadLimits() {
-            try {
-                const res = await fetch(`${API_URL}/api/verification/limits`);
-                if (res.ok) {
-                    limits = await res.json();
-                    document.getElementById('minDurLabel').textContent = limits.min_video_duration_sec;
-                    document.getElementById('maxDurLabel').textContent = limits.max_video_duration_sec;
-                    document.getElementById('videoSizeHint').textContent =
-                        'Subí el video de la cámara tal cual (mín. 8 s). Lo enviamos directo a la nube.';
-                }
-            } catch (_) {}
-        }
-
-        function formatMb(bytes) {
-            return (Number(bytes) / (1024 * 1024)).toFixed(1);
+        function getBodyVideoFile() {
+            return preparedVideoFile || document.getElementById('body_video')?.files?.[0] || null;
         }
 
         function canDirectBlobUpload() {
             return typeof DeseoBlobUpload !== 'undefined' && typeof DeseoBlobUpload.uploadFile === 'function';
         }
 
-        function videoSizeOk(file) {
-            if (!file) return false;
-            if (canDirectBlobUpload()) return true;
-            return file.size <= verificationVideoMaxBytes();
+        function formatMb(bytes) {
+            return (Number(bytes) / (1024 * 1024)).toFixed(1);
         }
 
         function videoDurationOk() {
@@ -232,21 +208,28 @@
                 return `El video no puede superar ${limits.max_video_duration_sec} segundos.`;
             }
             if (!measuredVideoDuration) {
-                return 'Esperá a que se procese el video.';
-            }
-            if (!canDirectBlobUpload() && !videoSizeOk(file)) {
-                return `El video pesa ${formatMb(file.size)} MB. Recargá la página para habilitar subida directa.`;
+                return 'Esperá a que se lea la duración del video.';
             }
             return null;
         }
 
-            function applyVideoMetaLabel(file) {
+        async function loadLimits() {
+            try {
+                const res = await fetch(`${API_URL}/api/verification/limits`);
+                if (res.ok) {
+                    limits = await res.json();
+                    document.getElementById('minDurLabel').textContent = limits.min_video_duration_sec;
+                    document.getElementById('maxDurLabel').textContent = limits.max_video_duration_sec;
+                    document.getElementById('videoSizeHint').textContent =
+                        'Grabá al menos 8 s con la cámara. El video se sube a la nube (hasta ~50 MB).';
+                }
+            } catch (_) {}
+        }
+
+        function applyVideoMetaLabel(file) {
             const label = document.getElementById('videoDurationLabel');
             if (!file || !label) return;
             const parts = [`${formatMb(file.size)} MB`];
-            if (!canDirectBlobUpload() && !videoSizeOk(file)) {
-                parts.push(`sigue por encima del límite (~${formatMb(verificationVideoMaxBytes())} MB)`);
-            }
             if (measuredVideoDuration > 0) {
                 const min = limits.min_video_duration_sec;
                 const max = limits.max_video_duration_sec;
@@ -255,12 +238,11 @@
                 } else if (measuredVideoDuration > max) {
                     parts.push(`${measuredVideoDuration.toFixed(1)}s (máx. ${max}s)`);
                 } else {
-                    parts.push(`duración OK ${measuredVideoDuration.toFixed(1)}s`);
+                    parts.push(`duración OK ${measuredVideoDuration.toFixed(1)}s · se subirá a la nube`);
                 }
             }
-            const ok = videoDurationOk() && (canDirectBlobUpload() || videoSizeOk(file));
             label.textContent = parts.join(' · ');
-            label.style.color = ok ? '#7dffa8' : '#ff8a9b';
+            label.style.color = videoDurationOk() ? '#7dffa8' : '#ff8a9b';
         }
 
         function measurePreparedVideo(file) {
@@ -289,29 +271,19 @@
         });
 
         document.getElementById('selfie').addEventListener('change', () => { faceMatchResult = null; });
-        document.getElementById('body_video').addEventListener('change', async function () {
+        document.getElementById('body_video').addEventListener('change', function () {
             faceMatchResult = null;
             document.getElementById('faceMatchLabel').textContent = '';
             preparedVideoFile = null;
             measuredVideoDuration = 0;
-            const input = this;
-            const original = input.files[0];
+            const original = this.files[0];
             const label = document.getElementById('videoDurationLabel');
             if (!original) {
                 label.textContent = '';
                 return;
             }
-
             preparedVideoFile = original;
             measurePreparedVideo(original);
-            if (canDirectBlobUpload()) {
-                setTimeout(() => {
-                    if (videoDurationOk() && label.textContent && !label.textContent.includes('nube')) {
-                        label.textContent = `${label.textContent} · se subirá directo a la nube`;
-                        label.style.color = '#7dffa8';
-                    }
-                }, 450);
-            }
         });
 
         async function runFaceMatch() {
@@ -422,23 +394,24 @@
                 }
             }
 
+            if (!canDirectBlobUpload()) {
+                msg.className = 'error';
+                msg.textContent = 'No se pudo iniciar la subida del video. Recargá la página e intentá de nuevo.';
+                return;
+            }
+
             btn.disabled = true;
             msg.className = '';
-            msg.textContent = 'Procesando verificación automática...';
+            msg.textContent = 'Subiendo video a la nube...';
 
             try {
-                let directVideoUrl = '';
-                if (canDirectBlobUpload()) {
-                    msg.textContent = 'Subiendo video a la nube...';
-                    const uploaded = await DeseoBlobUpload.uploadFile(videoFile, {
-                        authToken,
-                        folder: 'uploads/verification',
-                        onProgress: ({ progress }) => {
-                            msg.textContent = `Subiendo video… ${Math.round((progress || 0) * 100)}%`;
-                        }
-                    });
-                    directVideoUrl = uploaded.url;
-                }
+                const uploaded = await DeseoBlobUpload.uploadFile(videoFile, {
+                    authToken,
+                    folder: 'uploads/verification',
+                    onProgress: ({ progress }) => {
+                        msg.textContent = `Subiendo video… ${Math.round((progress || 0) * 100)}%`;
+                    }
+                });
 
                 const fd = new FormData();
                 fd.append('verification_type', document.getElementById('verification_type').value);
@@ -451,11 +424,7 @@
                     fd.append('id_back', document.getElementById('id_back').files[0]);
                 }
                 fd.append('selfie', document.getElementById('selfie').files[0]);
-                if (directVideoUrl) {
-                    fd.append('body_video_url', directVideoUrl);
-                } else {
-                    fd.append('body_video', videoFile);
-                }
+                fd.append('body_video_url', uploaded.url);
 
                 msg.textContent = 'Enviando documentos...';
                 const res = await fetch(`${API_URL}/api/verification/upload`, {
@@ -486,7 +455,7 @@
             msg.textContent = e.message;
         });
     </script>
-    <script src="/js/upload-mobile.js"></script>
+    <script src="/js/upload-mobile.js?v=20260926b"></script>
     <script src="/js/mobile-shell.js"></script>
 </body>
 </html>
