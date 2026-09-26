@@ -51,15 +51,72 @@ window.DeseoPublicBodyVideo = (function () {
             const url = URL.createObjectURL(file);
             const video = document.createElement('video');
             video.preload = 'metadata';
-            video.onloadedmetadata = () => {
-                const duration = video.duration || 0;
-                URL.revokeObjectURL(url);
+            video.muted = true;
+            video.playsInline = true;
+            video.setAttribute('playsinline', '');
+
+            let settled = false;
+            const cleanup = () => {
+                try {
+                    URL.revokeObjectURL(url);
+                } catch (_) {}
+                try {
+                    video.removeAttribute('src');
+                    video.load();
+                } catch (_) {}
+            };
+
+            const finish = (duration) => {
+                if (settled) return;
+                settled = true;
+                cleanup();
+                if (!Number.isFinite(duration) || duration <= 0) {
+                    reject(new Error('No se pudo leer la duración del video. Probá grabar de nuevo en MP4.'));
+                    return;
+                }
                 resolve(duration);
             };
+
+            video.onloadedmetadata = () => {
+                if (Number.isFinite(video.duration) && video.duration > 0 && video.duration !== Infinity) {
+                    finish(video.duration);
+                    return;
+                }
+
+                // En Android a veces duration = Infinity hasta forzar un seek
+                const onDurationChange = () => {
+                    if (Number.isFinite(video.duration) && video.duration > 0 && video.duration < 1e6) {
+                        video.removeEventListener('durationchange', onDurationChange);
+                        finish(video.duration);
+                    }
+                };
+                video.addEventListener('durationchange', onDurationChange);
+
+                try {
+                    video.currentTime = 1e101;
+                } catch (_) {}
+
+                setTimeout(() => {
+                    if (settled) return;
+                    if (video.seekable && video.seekable.length > 0) {
+                        finish(video.seekable.end(video.seekable.length - 1));
+                        return;
+                    }
+                    if (Number.isFinite(video.duration) && video.duration > 0 && video.duration < 1e6) {
+                        finish(video.duration);
+                        return;
+                    }
+                    finish(NaN);
+                }, 1800);
+            };
+
             video.onerror = () => {
-                URL.revokeObjectURL(url);
+                if (settled) return;
+                settled = true;
+                cleanup();
                 reject(new Error('No se pudo leer la duración del video'));
             };
+
             video.src = url;
         });
     }
@@ -171,37 +228,22 @@ window.DeseoPublicBodyVideo = (function () {
             throw new Error('Solicita un código de verificación antes de subir');
         }
 
-        let file = videoFile;
-        const maxBytes = challenge.max_video_bytes || 4 * 1024 * 1024;
+        const file = videoFile;
         const maxDur = challenge.max_video_duration_sec || 45;
-
-        if (typeof DeseoVideoCompress !== 'undefined') {
-            if (onProgress) onProgress('Comprimiendo video automáticamente...');
-            const result = await DeseoVideoCompress.compressIfNeeded(file, {
-                maxBytes,
-                maxDurationSec: maxDur,
-                onProgress: ({ phase, progress }) => {
-                    if (onProgress && phase === 'compress') {
-                        onProgress(`Comprimiendo video… ${Math.round((progress || 0) * 100)}%`);
-                    }
-                }
-            });
-            file = result.file;
-        }
+        const min = challenge.min_video_duration_sec || 8;
 
         if (onProgress) {
             onProgress('Comprobando duración del video...');
         }
         const duration = await measureVideoDuration(file);
-        const min = challenge.min_video_duration_sec || 8;
+        if (!Number.isFinite(duration) || duration <= 0) {
+            throw new Error('No se pudo leer la duración del video. Probá grabar de nuevo en MP4.');
+        }
         if (duration < min) {
-            throw new Error(`El video debe durar al menos ${min} segundos`);
+            throw new Error(`El video debe durar al menos ${min} segundos (ahora: ${duration.toFixed(1)}s)`);
         }
-        if (duration > maxDur) {
-            throw new Error(`El video no puede superar ${maxDur} segundos`);
-        }
-        if (file.size > maxBytes) {
-            throw new Error('El video supera el tamaño máximo tras comprimir. Probá un clip más corto.');
+        if (duration > maxDur + 0.75) {
+            throw new Error(`El video dura ${duration.toFixed(1)}s. Máximo ${maxDur}s.`);
         }
 
         if (onProgress) {
@@ -212,12 +254,31 @@ window.DeseoPublicBodyVideo = (function () {
             throw new Error(scan.error);
         }
 
+        let bodyVideoUrl = '';
+        if (typeof DeseoBlobUpload !== 'undefined' && DeseoBlobUpload.uploadFile) {
+            if (onProgress) onProgress('Subiendo video a la nube...');
+            const uploaded = await DeseoBlobUpload.uploadFile(file, {
+                authToken,
+                folder: 'uploads/public-body',
+                onProgress: ({ progress }) => {
+                    if (onProgress) {
+                        onProgress(`Subiendo video… ${Math.round((progress || 0) * 100)}%`);
+                    }
+                }
+            });
+            bodyVideoUrl = uploaded.url;
+        }
+
         if (onProgress) {
-            onProgress('Subiendo video verificado...');
+            onProgress(bodyVideoUrl ? 'Confirmando verificación...' : 'Subiendo video verificado...');
         }
 
         const formData = new FormData();
-        formData.append('body_video', file);
+        if (bodyVideoUrl) {
+            formData.append('body_video_url', bodyVideoUrl);
+        } else {
+            formData.append('body_video', file);
+        }
         formData.append('challenge_id', challenge.challenge_id);
         formData.append('detected_code', scan.detected_code);
         formData.append('video_duration_sec', String(duration));

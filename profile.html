@@ -2437,10 +2437,10 @@
                     <div class="form-group">
                         <div class="file-upload-area" onclick="document.getElementById('bodyVideoFile').click()">
                             <i class="fas fa-video"></i>
-                            <p>Selecciona el video grabado</p>
+                            <p>Grabar o elegir el video</p>
                             <small id="bodyVideoFileInfo">Ningún archivo seleccionado</small>
                         </div>
-                        <input type="file" id="bodyVideoFile" accept="video/mp4,video/webm,video/quicktime" data-mobile-capture="video" style="display:none;" onchange="updateBodyVideoFileInfo(this)">
+                        <input type="file" id="bodyVideoFile" accept="video/*" data-mobile-upload="video-pick" style="display:none;" onchange="updateBodyVideoFileInfo(this)">
                     </div>
                     <div class="form-group">
                         <div class="checkbox-group">
@@ -2809,11 +2809,12 @@
     <script src="/js/contact-links.js"></script>
     <script src="/js/listing-card.js"></script>
     <script src="/js/video-compress.js"></script>
-    <script src="/js/public-body-video.js"></script>
+    <script src="/js/blob-direct-upload.js?v=20260926c"></script>
+    <script src="/js/public-body-video.js?v=20260926c"></script>
     <script src="/js/service-catalog-ui.js"></script>
     <script src="/js/service-pricing.js"></script>
     <script src="/js/components.js"></script>
-    <script src="/js/upload-mobile.js"></script>
+    <script src="/js/upload-mobile.js?v=20260926c"></script>
     <script src="/js/mobile-shell.js"></script>
     <script>
         // Global variables

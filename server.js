@@ -2662,7 +2662,7 @@ app.post('/api/user/public-body-video/challenge', authenticateToken, async (req,
             expires_in_sec: Math.floor(CHALLENGE_TTL_MS / 1000),
             min_video_duration_sec: PUBLIC_MIN_VIDEO_SEC,
             max_video_duration_sec: PUBLIC_MAX_VIDEO_SEC,
-            max_video_bytes: getMaxVideoBytes(isServerless),
+            max_video_bytes: 50 * 1024 * 1024,
             instructions:
                 'Graba un video de 8 a 45 s mostrando tu cuerpo y este código en papel o pantalla. Puedes ocultar tu rostro.'
         });
@@ -2685,8 +2685,19 @@ app.post('/api/user/public-body-video', authenticateToken, uploadLimiter, upload
             });
         }
 
-        if (!req.file) {
+        const directVideoUrl = String(req.body?.body_video_url || '').trim();
+        if (!req.file && !directVideoUrl) {
             return res.status(400).json({ error: 'No se proporcionó ningún video' });
+        }
+        if (directVideoUrl) {
+            const okUrl =
+                directVideoUrl.startsWith('/api/media/')
+                || directVideoUrl.startsWith('/uploads/')
+                || directVideoUrl.includes('blob.vercel-storage.com')
+                || directVideoUrl.includes('.public.blob.vercel-storage.com');
+            if (!okUrl) {
+                return res.status(400).json({ error: 'URL de video inválida' });
+            }
         }
 
         const {
@@ -2715,7 +2726,8 @@ app.post('/api/user/public-body-video', authenticateToken, uploadLimiter, upload
         }
 
         const validation = validatePublicBodyVideoUpload({
-            file: req.file,
+            file: req.file || null,
+            bodyVideoUrl: directVideoUrl || null,
             durationSec: videoDurationSec,
             detectedCode,
             expectedCode: challenge.code,
@@ -2726,7 +2738,8 @@ app.post('/api/user/public-body-video', authenticateToken, uploadLimiter, upload
             return res.status(400).json({ error: validation.error });
         }
 
-        const videoPath = await persistUploadedFile(req.file, isVercel, localUploadsDir);
+        const videoPath = directVideoUrl
+            || await persistUploadedFile(req.file, isVercel, localUploadsDir);
         const faceObscured = req.body.face_obscured === 'true' || req.body.face_obscured === true;
         const faceObscuredValue = faceObscured ? 1 : 0;
         const now = new Date().toISOString();
