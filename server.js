@@ -1494,12 +1494,31 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
             }
         }
 
-        const existing = await runDbGet(
-            'SELECT id FROM users WHERE email = ? OR username = ?',
-            [email, username]
+        const normalizedEmail = String(email).trim().toLowerCase();
+        const normalizedUsername = String(username).trim();
+
+        const existingEmail = await runDbGet(
+            'SELECT id, username, email FROM users WHERE lower(email) = ?',
+            [normalizedEmail]
         );
-        if (existing) {
-            return res.status(400).json({ error: 'El usuario o email ya existe' });
+        if (existingEmail) {
+            return res.status(400).json({
+                error: 'Ese email ya está registrado',
+                code: 'EMAIL_EXISTS',
+                field: 'email'
+            });
+        }
+
+        const existingUsername = await runDbGet(
+            'SELECT id, username FROM users WHERE lower(username) = lower(?)',
+            [normalizedUsername]
+        );
+        if (existingUsername) {
+            return res.status(400).json({
+                error: `El usuario "${normalizedUsername}" ya existe. Probá otro nombre de usuario.`,
+                code: 'USERNAME_EXISTS',
+                field: 'username'
+            });
         }
 
         const passwordHash = await bcrypt.hash(password, 10);
@@ -1509,8 +1528,8 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
                 phone, telegram_username, service_price, service_price_unit, category
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                username,
-                email,
+                normalizedUsername,
+                normalizedEmail,
                 passwordHash,
                 profileCheck.full_name,
                 profileCheck.country,
