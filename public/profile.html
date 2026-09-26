@@ -2422,8 +2422,8 @@
                     <div class="form-group">
                         <label>Verificación en vivo</label>
                         <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">
-                            1) Anotá el código en un papel y sacá una foto nítida (o escribilo abajo).<br>
-                            2) Grabá un video de 8 a 45 s mostrando tu cuerpo (el código en el video es opcional).
+                            1) Confirmá el código: escribilo abajo <strong>o</strong> sacá una foto del papel (con una sola alcanza).<br>
+                            2) Video de 8 a 45 s mostrando tu cuerpo: grabá con la cámara o elegí uno de la galería.
                         </p>
                         <div id="publicVideoChallengeBox" style="text-align:center;padding:1rem 1.25rem;border-radius:12px;background:rgba(108,92,231,0.15);border:1px dashed rgba(255,255,255,0.25);margin-bottom:12px;">
                             <div style="font-size:0.8rem;opacity:0.8;margin-bottom:6px;">Tu código (válido ~20 min)</div>
@@ -2435,26 +2435,35 @@
                         <p id="publicVideoUploadStatus" style="font-size:0.85rem;color:var(--text-muted);min-height:1.2em;"></p>
                     </div>
                     <div class="form-group">
-                        <label for="bodyVideoCodeFile">Foto del código (recomendado)</label>
+                        <label for="bodyVideoCodeTyped">Escribí el código</label>
+                        <input type="text" id="bodyVideoCodeTyped" placeholder="Ej: DL-MFHY" autocomplete="off" style="text-transform:uppercase;letter-spacing:0.08em;">
+                    </div>
+                    <div class="form-group">
+                        <label for="bodyVideoCodeFile">O foto del papel con el código</label>
                         <div class="file-upload-area" onclick="document.getElementById('bodyVideoCodeFile').click()">
                             <i class="fas fa-camera"></i>
-                            <p>Foto del papel con el código</p>
+                            <p>Foto del código (opcional si ya lo escribiste)</p>
                             <small id="bodyVideoCodeFileInfo">Ninguna foto</small>
                         </div>
                         <input type="file" id="bodyVideoCodeFile" accept="image/*" data-mobile-upload="document" style="display:none;" onchange="updateBodyVideoCodeFileInfo(this)">
                     </div>
                     <div class="form-group">
-                        <label for="bodyVideoCodeTyped">O escribí el código aquí</label>
-                        <input type="text" id="bodyVideoCodeTyped" placeholder="Ej: DL-MFHY" autocomplete="off" style="text-transform:uppercase;letter-spacing:0.08em;">
-                    </div>
-                    <div class="form-group">
                         <label>Video corporal</label>
-                        <div class="file-upload-area" onclick="document.getElementById('bodyVideoFile').click()">
-                            <i class="fas fa-video"></i>
-                            <p>Grabar o elegir el video</p>
-                            <small id="bodyVideoFileInfo">Ningún archivo seleccionado</small>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                            <div class="file-upload-area" onclick="document.getElementById('bodyVideoFile').click()" style="margin:0;">
+                                <i class="fas fa-video"></i>
+                                <p>Grabar</p>
+                                <small>Abre la cámara</small>
+                            </div>
+                            <div class="file-upload-area" onclick="document.getElementById('bodyVideoFileGallery').click()" style="margin:0;">
+                                <i class="fas fa-images"></i>
+                                <p>Galería</p>
+                                <small>Elegir archivo</small>
+                            </div>
                         </div>
-                        <input type="file" id="bodyVideoFile" accept="video/*" data-mobile-upload="video-pick" style="display:none;" onchange="updateBodyVideoFileInfo(this)">
+                        <small id="bodyVideoFileInfo" style="display:block;margin-top:8px;color:var(--text-muted);">Ningún video seleccionado</small>
+                        <input type="file" id="bodyVideoFile" accept="video/*" data-mobile-upload="video" style="display:none;" onchange="updateBodyVideoFileInfo(this, 'camera')">
+                        <input type="file" id="bodyVideoFileGallery" accept="video/*" data-mobile-upload="video-pick" style="display:none;" onchange="updateBodyVideoFileInfo(this, 'gallery')">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -2815,12 +2824,12 @@
     <script src="/js/contact-links.js"></script>
     <script src="/js/listing-card.js"></script>
     <script src="/js/video-compress.js"></script>
-    <script src="/js/blob-direct-upload.js?v=20260926d"></script>
-    <script src="/js/public-body-video.js?v=20260926d"></script>
+    <script src="/js/blob-direct-upload.js?v=20260926e"></script>
+    <script src="/js/public-body-video.js?v=20260926e"></script>
     <script src="/js/service-catalog-ui.js"></script>
     <script src="/js/service-pricing.js"></script>
     <script src="/js/components.js"></script>
-    <script src="/js/upload-mobile.js?v=20260926d"></script>
+    <script src="/js/upload-mobile.js?v=20260926e"></script>
     <script src="/js/mobile-shell.js"></script>
     <script>
         // Global variables
@@ -4422,20 +4431,31 @@
         function closeBodyVideoModal() {
             document.getElementById('bodyVideoModal').classList.remove('active');
             document.getElementById('bodyVideoForm').reset();
-            document.getElementById('bodyVideoFileInfo').textContent = 'Ningún archivo seleccionado';
+            document.getElementById('bodyVideoFileInfo').textContent = 'Ningún video seleccionado';
             const codeInfo = document.getElementById('bodyVideoCodeFileInfo');
             if (codeInfo) codeInfo.textContent = 'Ninguna foto';
             document.getElementById('publicVideoUploadStatus').textContent = '';
         }
 
-        function updateBodyVideoFileInfo(input) {
+        function updateBodyVideoFileInfo(input, source) {
             const fileInfo = document.getElementById('bodyVideoFileInfo');
+            const otherId = source === 'gallery' ? 'bodyVideoFile' : 'bodyVideoFileGallery';
+            const other = document.getElementById(otherId);
+            if (other) other.value = '';
+
             if (input.files.length > 0) {
                 const file = input.files[0];
-                fileInfo.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+                const via = source === 'gallery' ? 'galería' : 'cámara';
+                fileInfo.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB) · ${via}`;
             } else {
-                fileInfo.textContent = 'Ningún archivo seleccionado';
+                fileInfo.textContent = 'Ningún video seleccionado';
             }
+        }
+
+        function getSelectedBodyVideoFile() {
+            const camera = document.getElementById('bodyVideoFile');
+            const gallery = document.getElementById('bodyVideoFileGallery');
+            return (camera?.files?.[0]) || (gallery?.files?.[0]) || null;
         }
 
         function updateBodyVideoCodeFileInfo(input) {
@@ -4452,14 +4472,14 @@
         async function uploadBodyVideo(event) {
             event.preventDefault();
 
-            const fileInput = document.getElementById('bodyVideoFile');
+            const videoFile = getSelectedBodyVideoFile();
             const codeInput = document.getElementById('bodyVideoCodeFile');
             const typedInput = document.getElementById('bodyVideoCodeTyped');
             const statusEl = document.getElementById('publicVideoUploadStatus');
             const submitBtn = document.getElementById('bodyVideoSubmitBtn');
 
-            if (!fileInput.files.length) {
-                showNotification('Seleccioná o grabá el video corporal', 'error');
+            if (!videoFile) {
+                showNotification('Grabá o elegí el video corporal', 'error');
                 return;
             }
             if (typeof DeseoPublicBodyVideo === 'undefined') {
@@ -4472,7 +4492,7 @@
                 const data = await DeseoPublicBodyVideo.uploadPublicVideo({
                     apiUrl: API_URL,
                     authToken,
-                    videoFile: fileInput.files[0],
+                    videoFile,
                     codeImageFile: codeInput?.files?.[0] || null,
                     typedCode: typedInput?.value || '',
                     onProgress: (msg) => {

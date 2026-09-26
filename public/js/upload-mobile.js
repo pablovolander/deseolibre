@@ -123,7 +123,9 @@ window.DeseoUploadMobile = (function () {
         if (id === 'postFile' && typeof window.updateFileInfo === 'function') {
             window.updateFileInfo(input);
         } else if (id === 'bodyVideoFile' && typeof window.updateBodyVideoFileInfo === 'function') {
-            window.updateBodyVideoFileInfo(input);
+            window.updateBodyVideoFileInfo(input, 'camera');
+        } else if (id === 'bodyVideoFileGallery' && typeof window.updateBodyVideoFileInfo === 'function') {
+            window.updateBodyVideoFileInfo(input, 'gallery');
         } else if (id === 'avatarFile' && typeof window.updateAvatarFileInfo === 'function') {
             window.updateAvatarFileInfo(input);
         } else if (id === 'coverFile' && typeof window.updateCoverFileInfo === 'function') {
