@@ -156,6 +156,7 @@
     <script src="/js/api-config.js"></script>
     <script src="/js/auth-session.js"></script>
     <script src="/js/face-match.js"></script>
+    <script src="/js/video-compress.js"></script>
     <script src="/js/api-errors.js"></script>
     <script src="/js/verification-gate.js"></script>
     <script>
@@ -168,6 +169,16 @@
         let limits = { min_video_duration_sec: 8, max_video_duration_sec: 45, max_video_bytes: 4194304, min_face_match_score: 0.45 };
         let measuredVideoDuration = 0;
         let faceMatchResult = null;
+        let preparedVideoFile = null;
+
+        function verificationVideoMaxBytes() {
+            const cap = Number(limits.max_video_bytes) || (4 * 1024 * 1024);
+            return Math.min(cap, 2.8 * 1024 * 1024);
+        }
+
+        function getBodyVideoFile() {
+            return preparedVideoFile || document.getElementById('body_video')?.files?.[0] || null;
+        }
 
         const flash = sessionStorage.getItem('deseo_verify_message');
         if (flash) {
@@ -186,9 +197,8 @@
                     limits = await res.json();
                     document.getElementById('minDurLabel').textContent = limits.min_video_duration_sec;
                     document.getElementById('maxDurLabel').textContent = limits.max_video_duration_sec;
-                    const mb = (limits.max_video_bytes / (1024 * 1024)).toFixed(1);
                     document.getElementById('videoSizeHint').textContent =
-                        `Máx. ~${mb} MB (un video corto también puede pasarse en 1080p/4K). Preferí 720p.`;
+                        'Podés subir el video de la cámara tal cual: lo comprimimos automáticamente si hace falta.';
                 }
             } catch (_) {}
         }
@@ -198,7 +208,7 @@
         }
 
         function videoSizeOk(file) {
-            return Boolean(file) && file.size <= limits.max_video_bytes;
+            return Boolean(file) && file.size <= verificationVideoMaxBytes();
         }
 
         function videoDurationOk() {
@@ -209,7 +219,7 @@
         function videoRejectReason(file) {
             if (!file) return 'El video corporal es obligatorio.';
             if (!videoSizeOk(file)) {
-                return `Tu video pesa ${formatMb(file.size)} MB (máx. ~${formatMb(limits.max_video_bytes)} MB). Aunque dure poco, el celular suele grabar pesado: usá 720p o comprimí.`;
+                return `El video sigue pesando ${formatMb(file.size)} MB tras comprimir (objetivo ~${formatMb(verificationVideoMaxBytes())} MB). Probá un clip un poco más corto.`;
             }
             if (measuredVideoDuration > 0 && measuredVideoDuration < limits.min_video_duration_sec) {
                 return `El video debe durar al menos ${limits.min_video_duration_sec} segundos (ahora: ${measuredVideoDuration.toFixed(1)}s).`;
@@ -218,9 +228,53 @@
                 return `El video no puede superar ${limits.max_video_duration_sec} segundos.`;
             }
             if (!measuredVideoDuration) {
-                return 'Esperá a que se lea la duración del video.';
+                return 'Esperá a que se procese el video.';
             }
             return null;
+        }
+
+        function applyVideoMetaLabel(file) {
+            const label = document.getElementById('videoDurationLabel');
+            if (!file || !label) return;
+            const parts = [`${formatMb(file.size)} MB`];
+            if (!videoSizeOk(file)) {
+                parts.push(`sigue por encima del límite (~${formatMb(verificationVideoMaxBytes())} MB)`);
+            }
+            if (measuredVideoDuration > 0) {
+                const min = limits.min_video_duration_sec;
+                const max = limits.max_video_duration_sec;
+                if (measuredVideoDuration < min) {
+                    parts.push(`${measuredVideoDuration.toFixed(1)}s (mín. ${min}s)`);
+                } else if (measuredVideoDuration > max) {
+                    parts.push(`${measuredVideoDuration.toFixed(1)}s (máx. ${max}s)`);
+                } else if (videoSizeOk(file)) {
+                    parts.push(`duración OK ${measuredVideoDuration.toFixed(1)}s`);
+                } else {
+                    parts.push(`${measuredVideoDuration.toFixed(1)}s`);
+                }
+            }
+            const ok = videoSizeOk(file) && videoDurationOk();
+            label.textContent = parts.join(' · ');
+            label.style.color = ok ? '#7dffa8' : '#ff8a9b';
+        }
+
+        function measurePreparedVideo(file) {
+            measuredVideoDuration = 0;
+            applyVideoMetaLabel(file);
+            const url = URL.createObjectURL(file);
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.onloadedmetadata = function () {
+                URL.revokeObjectURL(url);
+                measuredVideoDuration = video.duration || 0;
+                applyVideoMetaLabel(file);
+            };
+            video.onerror = function () {
+                const label = document.getElementById('videoDurationLabel');
+                label.textContent = 'No se pudo leer el video. Usa MP4 si falla.';
+                label.style.color = '#ff8a9b';
+            };
+            video.src = url;
         }
 
         document.getElementById('verification_type').addEventListener('change', function () {
@@ -230,60 +284,53 @@
         });
 
         document.getElementById('selfie').addEventListener('change', () => { faceMatchResult = null; });
-        document.getElementById('body_video').addEventListener('change', function () {
+        document.getElementById('body_video').addEventListener('change', async function () {
             faceMatchResult = null;
             document.getElementById('faceMatchLabel').textContent = '';
-            const file = this.files[0];
-            const label = document.getElementById('videoDurationLabel');
+            preparedVideoFile = null;
             measuredVideoDuration = 0;
-            if (!file) {
+            const input = this;
+            const original = input.files[0];
+            const label = document.getElementById('videoDurationLabel');
+            if (!original) {
                 label.textContent = '';
                 return;
             }
 
-            const applyLabel = () => {
-                const parts = [`${formatMb(file.size)} MB`];
-                if (!videoSizeOk(file)) {
-                    parts.push(`supera el máx. ~${formatMb(limits.max_video_bytes)} MB — grabá en 720p o comprimí`);
-                }
-                if (measuredVideoDuration > 0) {
-                    const min = limits.min_video_duration_sec;
-                    const max = limits.max_video_duration_sec;
-                    if (measuredVideoDuration < min) {
-                        parts.push(`${measuredVideoDuration.toFixed(1)}s (mín. ${min}s)`);
-                    } else if (measuredVideoDuration > max) {
-                        parts.push(`${measuredVideoDuration.toFixed(1)}s (máx. ${max}s)`);
-                    } else if (videoSizeOk(file)) {
-                        parts.push(`duración OK ${measuredVideoDuration.toFixed(1)}s`);
-                    } else {
-                        parts.push(`${measuredVideoDuration.toFixed(1)}s`);
+            if (typeof DeseoVideoCompress === 'undefined') {
+                preparedVideoFile = original;
+                measurePreparedVideo(original);
+                return;
+            }
+
+            label.style.color = 'rgba(255,255,255,0.75)';
+            label.textContent = original.size > verificationVideoMaxBytes()
+                ? `Comprimiendo video automáticamente (${formatMb(original.size)} MB)...`
+                : 'Preparando video...';
+
+            try {
+                const result = await DeseoVideoCompress.compressIfNeeded(original, {
+                    maxBytes: verificationVideoMaxBytes(),
+                    maxDurationSec: limits.max_video_duration_sec,
+                    onProgress: ({ phase, progress }) => {
+                        if (phase !== 'compress') return;
+                        label.textContent = `Comprimiendo video… ${Math.round((progress || 0) * 100)}%`;
+                        label.style.color = 'rgba(255,255,255,0.75)';
                     }
-                }
-                const ok = videoSizeOk(file) && videoDurationOk();
-                label.textContent = parts.join(' · ');
-                label.style.color = ok ? '#7dffa8' : '#ff8a9b';
-            };
-
-            applyLabel();
-
-            const url = URL.createObjectURL(file);
-            const video = document.createElement('video');
-            video.preload = 'metadata';
-            video.onloadedmetadata = function () {
-                URL.revokeObjectURL(url);
-                measuredVideoDuration = video.duration || 0;
-                applyLabel();
-            };
-            video.onerror = function () {
-                label.textContent = 'No se pudo leer el video. Usa MP4 si falla.';
+                });
+                preparedVideoFile = result.file;
+                DeseoVideoCompress.assignFileToInput(input, result.file);
+                measurePreparedVideo(result.file);
+            } catch (err) {
+                preparedVideoFile = null;
                 label.style.color = '#ff8a9b';
-            };
-            video.src = url;
+                label.textContent = err.message || 'No se pudo preparar el video';
+            }
         });
 
         async function runFaceMatch() {
             const selfieFile = document.getElementById('selfie').files[0];
-            const videoFile = document.getElementById('body_video').files[0];
+            const videoFile = getBodyVideoFile();
             const label = document.getElementById('faceMatchLabel');
             const btn = document.getElementById('faceMatchBtn');
 
@@ -361,7 +408,7 @@
         document.getElementById('verifyForm').addEventListener('submit', async function (e) {
             e.preventDefault();
             const btn = document.getElementById('submitBtn');
-            const videoFile = document.getElementById('body_video').files[0];
+            const videoFile = getBodyVideoFile();
 
             if (!videoFile) {
                 msg.className = 'error';

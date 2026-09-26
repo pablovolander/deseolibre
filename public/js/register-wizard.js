@@ -8,6 +8,8 @@
     let measuredVideoDuration = 0;
     let faceMatchResult = null;
     let faceLibsPromise = null;
+    /** Video listo para subir (posible versión comprimida). */
+    let preparedVideoFile = null;
 
     function $(id) {
         return global.document.getElementById(id);
@@ -17,8 +19,18 @@
         return (Number(bytes) / (1024 * 1024)).toFixed(1);
     }
 
+    function verificationVideoMaxBytes() {
+        // Deja margen para documento + selfie en el mismo FormData (tope Vercel ~4.5 MB).
+        const cap = Number(limits.max_video_bytes) || (4 * 1024 * 1024);
+        return Math.min(cap, 2.8 * 1024 * 1024);
+    }
+
+    function getBodyVideoFile() {
+        return preparedVideoFile || $('regBodyVideo')?.files?.[0] || null;
+    }
+
     function videoSizeOk(file) {
-        return Boolean(file) && file.size <= limits.max_video_bytes;
+        return Boolean(file) && file.size <= verificationVideoMaxBytes();
     }
 
     function videoDurationOk() {
@@ -33,7 +45,7 @@
     function videoRejectReason(file) {
         if (!file) return 'El video corporal es obligatorio.';
         if (!videoSizeOk(file)) {
-            return `Tu video pesa ${formatMb(file.size)} MB (máx. ~${formatMb(limits.max_video_bytes)} MB). Aunque dure pocos segundos, el celular suele grabar en alta calidad: grabá en 720p o comprimí el archivo.`;
+            return `El video sigue pesando ${formatMb(file.size)} MB tras comprimir (objetivo ~${formatMb(verificationVideoMaxBytes())} MB). Probá un clip un poco más corto.`;
         }
         if (measuredVideoDuration > 0 && measuredVideoDuration < limits.min_video_duration_sec) {
             return `El video debe durar al menos ${limits.min_video_duration_sec} segundos (ahora: ${measuredVideoDuration.toFixed(1)}s).`;
@@ -42,7 +54,7 @@
             return `El video no puede superar ${limits.max_video_duration_sec} segundos.`;
         }
         if (!measuredVideoDuration) {
-            return 'Esperá a que se lea la duración del video.';
+            return 'Esperá a que se procese el video.';
         }
         return null;
     }
@@ -116,8 +128,7 @@
                 if (minEl) minEl.textContent = limits.min_video_duration_sec;
                 if (maxEl) maxEl.textContent = limits.max_video_duration_sec;
                 if (hint) {
-                    const mb = formatMb(limits.max_video_bytes);
-                    hint.textContent = `Máx. ~${mb} MB (un video corto también puede pasarse si el celular graba en 1080p/4K). Preferí 720p.`;
+                    hint.textContent = 'Podés subir el video de la cámara tal cual: lo comprimimos automáticamente si hace falta.';
                 }
             }
         } catch (_) {}
@@ -156,7 +167,7 @@
             return null;
         }
         if (step === 4) {
-            const video = $('regBodyVideo')?.files?.[0];
+            const video = getBodyVideoFile();
             const sizeOrDuration = videoRejectReason(video);
             if (sizeOrDuration) return sizeOrDuration;
             if (!faceMatchResult?.match) return 'Completa la comparación facial (selfie vs video).';
@@ -182,10 +193,9 @@
         if (!file || !label) return;
 
         const applyLabel = () => {
-            const parts = [];
-            parts.push(`${formatMb(file.size)} MB`);
+            const parts = [`${formatMb(file.size)} MB`];
             if (!videoSizeOk(file)) {
-                parts.push(`supera el máx. ~${formatMb(limits.max_video_bytes)} MB — grabá en 720p o comprimí`);
+                parts.push(`sigue por encima del límite (~${formatMb(verificationVideoMaxBytes())} MB)`);
             }
             if (measuredVideoDuration > 0) {
                 const min = limits.min_video_duration_sec;
@@ -222,9 +232,69 @@
         video.src = url;
     }
 
+    async function prepareBodyVideoFromInput(input) {
+        const original = input?.files?.[0];
+        preparedVideoFile = null;
+        faceMatchResult = null;
+        measuredVideoDuration = 0;
+        const label = $('regVideoDurationLabel');
+        const matchLabel = $('regFaceMatchLabel');
+        if (matchLabel) matchLabel.textContent = '';
+        if (!original) {
+            if (label) label.textContent = '';
+            return null;
+        }
+
+        if (typeof DeseoVideoCompress === 'undefined') {
+            preparedVideoFile = original;
+            measureVideoFile(original);
+            return original;
+        }
+
+        if (label) {
+            label.style.color = 'rgba(255,255,255,0.75)';
+            label.textContent = original.size > verificationVideoMaxBytes()
+                ? `Comprimiendo video automáticamente (${formatMb(original.size)} MB)...`
+                : 'Preparando video...';
+        }
+
+        try {
+            const result = await DeseoVideoCompress.compressIfNeeded(original, {
+                maxBytes: verificationVideoMaxBytes(),
+                maxDurationSec: limits.max_video_duration_sec,
+                onProgress: ({ phase, progress }) => {
+                    if (!label || phase !== 'compress') return;
+                    const pct = Math.round((progress || 0) * 100);
+                    label.textContent = `Comprimiendo video… ${pct}%`;
+                    label.style.color = 'rgba(255,255,255,0.75)';
+                }
+            });
+            preparedVideoFile = result.file;
+            DeseoVideoCompress.assignFileToInput(input, result.file);
+            measureVideoFile(result.file);
+            if (label && result.compressed) {
+                const note = `Optimizado: ${formatMb(result.originalBytes)} → ${formatMb(result.outputBytes)} MB`;
+                // measureVideoFile overwrites label; append after metadata loads
+                setTimeout(() => {
+                    if (label.textContent && !label.textContent.includes('Optimizado')) {
+                        label.textContent = `${label.textContent} · ${note}`;
+                    }
+                }, 400);
+            }
+            return result.file;
+        } catch (err) {
+            preparedVideoFile = null;
+            if (label) {
+                label.style.color = '#ff8a9b';
+                label.textContent = err.message || 'No se pudo preparar el video';
+            }
+            return null;
+        }
+    }
+
     async function runFaceMatch() {
         const selfieFile = $('regSelfie')?.files?.[0];
-        const videoFile = $('regBodyVideo')?.files?.[0];
+        const videoFile = getBodyVideoFile();
         const label = $('regFaceMatchLabel');
         const btn = $('regFaceMatchBtn');
         if (!selfieFile || !videoFile) {
@@ -334,7 +404,7 @@
             fd.append('id_front', $('regIdFront').files[0]);
             if ($('regIdBack')?.files?.[0]) fd.append('id_back', $('regIdBack').files[0]);
             fd.append('selfie', $('regSelfie').files[0]);
-            fd.append('body_video', $('regBodyVideo').files[0]);
+            fd.append('body_video', getBodyVideoFile());
 
             const verifyRes = await fetch(`${API_URL}/api/verification/upload`, {
                 method: 'POST',
@@ -385,6 +455,7 @@
         currentStep = 1;
         measuredVideoDuration = 0;
         faceMatchResult = null;
+        preparedVideoFile = null;
         $('registerForm')?.reset();
         onVerificationTypeChange();
         showStep(1);
@@ -407,7 +478,7 @@
             faceMatchResult = null;
         });
         $('regBodyVideo')?.addEventListener('change', function () {
-            measureVideoFile(this.files?.[0]);
+            prepareBodyVideoFromInput(this);
         });
         $('regFaceMatchBtn')?.addEventListener('click', runFaceMatch);
         $('registerForm')?.addEventListener('submit', (e) => e.preventDefault());

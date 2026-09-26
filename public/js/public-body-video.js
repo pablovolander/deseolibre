@@ -171,26 +171,43 @@ window.DeseoPublicBodyVideo = (function () {
             throw new Error('Solicita un código de verificación antes de subir');
         }
 
+        let file = videoFile;
+        const maxBytes = challenge.max_video_bytes || 4 * 1024 * 1024;
+        const maxDur = challenge.max_video_duration_sec || 45;
+
+        if (typeof DeseoVideoCompress !== 'undefined') {
+            if (onProgress) onProgress('Comprimiendo video automáticamente...');
+            const result = await DeseoVideoCompress.compressIfNeeded(file, {
+                maxBytes,
+                maxDurationSec: maxDur,
+                onProgress: ({ phase, progress }) => {
+                    if (onProgress && phase === 'compress') {
+                        onProgress(`Comprimiendo video… ${Math.round((progress || 0) * 100)}%`);
+                    }
+                }
+            });
+            file = result.file;
+        }
+
         if (onProgress) {
             onProgress('Comprobando duración del video...');
         }
-        const duration = await measureVideoDuration(videoFile);
+        const duration = await measureVideoDuration(file);
         const min = challenge.min_video_duration_sec || 8;
-        const max = challenge.max_video_duration_sec || 45;
         if (duration < min) {
             throw new Error(`El video debe durar al menos ${min} segundos`);
         }
-        if (duration > max) {
-            throw new Error(`El video no puede superar ${max} segundos`);
+        if (duration > maxDur) {
+            throw new Error(`El video no puede superar ${maxDur} segundos`);
         }
-        if (videoFile.size > (challenge.max_video_bytes || 4 * 1024 * 1024)) {
-            throw new Error('El video supera el tamaño máximo. Comprime el archivo.');
+        if (file.size > maxBytes) {
+            throw new Error('El video supera el tamaño máximo tras comprimir. Probá un clip más corto.');
         }
 
         if (onProgress) {
             onProgress('Buscando el código en el video...');
         }
-        const scan = await scanVideoForCode(videoFile, challenge.code);
+        const scan = await scanVideoForCode(file, challenge.code);
         if (!scan.ok) {
             throw new Error(scan.error);
         }
@@ -200,7 +217,7 @@ window.DeseoPublicBodyVideo = (function () {
         }
 
         const formData = new FormData();
-        formData.append('body_video', videoFile);
+        formData.append('body_video', file);
         formData.append('challenge_id', challenge.challenge_id);
         formData.append('detected_code', scan.detected_code);
         formData.append('video_duration_sec', String(duration));

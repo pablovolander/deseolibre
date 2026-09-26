@@ -40,6 +40,8 @@
     let authToken = typeof DeseoAuth !== 'undefined' ? DeseoAuth.getToken() : localStorage.getItem('authToken');
     let currentUser = null;
 
+    let preparedReelFile = null;
+
     function setStatus(el, message, type) {
         if (!el) return;
         el.textContent = message || '';
@@ -48,6 +50,10 @@
 
     function formatMb(bytes) {
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    function getReelVideoFile(input) {
+        return preparedReelFile || (input?.files && input.files[0]) || null;
     }
 
     function mediaUrl(path) {
@@ -250,7 +256,7 @@
         if (file.size > MAX_REEL_BYTES) {
             return {
                 ok: false,
-                error: `El video pesa ${formatMb(file.size)}. Máximo ${formatMb(MAX_REEL_BYTES)}. Usa un clip más corto o comprímelo.`
+                error: `El video sigue pesando ${formatMb(file.size)} tras comprimir (máx. ${formatMb(MAX_REEL_BYTES)}). Probá un clip más corto.`
             };
         }
         const meta = await probeVideoFile(file);
@@ -264,6 +270,42 @@
             ok: true,
             durationSeconds: meta.duration != null ? Math.max(1, Math.round(meta.duration)) : null
         };
+    }
+
+    async function prepareReelVideo(input) {
+        const original = input?.files && input.files[0];
+        preparedReelFile = null;
+        if (!original) {
+            return null;
+        }
+        if (typeof DeseoVideoCompress === 'undefined') {
+            preparedReelFile = original;
+            return original;
+        }
+        setStatus(
+            uploadStatus,
+            original.size > MAX_REEL_BYTES
+                ? `Comprimiendo video automáticamente (${formatMb(original.size)})...`
+                : 'Preparando video...',
+            null
+        );
+        try {
+            const result = await DeseoVideoCompress.compressIfNeeded(original, {
+                maxBytes: MAX_REEL_BYTES,
+                maxDurationSec: MAX_REEL_DURATION_SEC,
+                onProgress: ({ phase, progress }) => {
+                    if (phase !== 'compress') return;
+                    setStatus(uploadStatus, `Comprimiendo video… ${Math.round((progress || 0) * 100)}%`, null);
+                }
+            });
+            preparedReelFile = result.file;
+            DeseoVideoCompress.assignFileToInput(input, result.file);
+            return result.file;
+        } catch (err) {
+            preparedReelFile = null;
+            setStatus(uploadStatus, err.message || 'No se pudo preparar el video', 'error');
+            return null;
+        }
     }
 
     async function handleReelsApiError(res, data) {
@@ -668,15 +710,21 @@
         if (!videoInput) return;
 
         videoInput.addEventListener('change', async () => {
-            const file = videoInput.files && videoInput.files[0];
-            if (!file) {
+            const original = videoInput.files && videoInput.files[0];
+            if (!original) {
+                preparedReelFile = null;
                 setStatus(uploadStatus, '', null);
                 return;
             }
-            setStatus(uploadStatus, 'Revisando video...', null);
+            const file = await prepareReelVideo(videoInput);
+            if (!file) {
+                videoInput.value = '';
+                return;
+            }
             const check = await validateReelVideoFile(file);
             if (!check.ok) {
                 setStatus(uploadStatus, check.error, 'error');
+                preparedReelFile = null;
                 videoInput.value = '';
                 return;
             }
@@ -707,7 +755,10 @@
             }
 
             const videoInput = uploadForm.querySelector('input[name="video"]');
-            const file = videoInput?.files && videoInput.files[0];
+            let file = getReelVideoFile(videoInput);
+            if (!file && videoInput?.files?.[0]) {
+                file = await prepareReelVideo(videoInput);
+            }
             const check = await validateReelVideoFile(file);
             if (!check.ok) {
                 setStatus(uploadStatus, check.error, 'error');
@@ -716,6 +767,7 @@
 
             const formData = new FormData(uploadForm);
             formData.set('category', categoryId);
+            formData.set('video', file);
             if (!formData.get('is_public')) formData.set('is_public', 'false');
             if (check.durationSeconds != null) {
                 formData.set('duration_seconds', String(check.durationSeconds));
@@ -751,6 +803,7 @@
                 if (!res.ok) throw new Error(data.error || 'No se pudo subir el reel');
                 setStatus(uploadStatus, 'Reel publicado correctamente', 'success');
                 uploadForm.reset();
+                preparedReelFile = null;
                 const pub = document.getElementById('reel-public');
                 if (pub) pub.checked = true;
                 loadReels();
