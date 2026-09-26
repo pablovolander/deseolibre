@@ -162,6 +162,95 @@ window.DeseoPublicBodyVideo = (function () {
         });
     }
 
+    function preprocessForOcr(sourceCanvas) {
+        const scale = 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(2, (sourceCanvas.width || 640) * scale);
+        canvas.height = Math.max(2, (sourceCanvas.height || 480) * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(sourceCanvas, 0, 0, canvas.width, canvas.height);
+        const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = image.data;
+        for (let i = 0; i < data.length; i += 4) {
+            const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+            const contrast = gray > 140 ? 255 : 0;
+            data[i] = contrast;
+            data[i + 1] = contrast;
+            data[i + 2] = contrast;
+        }
+        ctx.putImageData(image, 0, 0);
+        return canvas;
+    }
+
+    function textLooksLikeCode(text, expected, expectedCompact) {
+        const normalized = normalizeCode(text);
+        const compact = normalized.replace(/-/g, '');
+        if (normalized.includes(expected) || compact.includes(expectedCompact)) {
+            return true;
+        }
+        // OCR a menudo confunde caracteres cercanos
+        const fuzzy = compact
+            .replace(/O/g, '0')
+            .replace(/I/g, '1')
+            .replace(/Z/g, '2');
+        const expectedFuzzy = expectedCompact
+            .replace(/O/g, '0')
+            .replace(/I/g, '1');
+        return fuzzy.includes(expectedFuzzy);
+    }
+
+    async function recognizeOnCanvas(worker, canvas, expected, expectedCompact) {
+        const variants = [canvas, preprocessForOcr(canvas)];
+        for (const variant of variants) {
+            const { data } = await worker.recognize(variant);
+            if (textLooksLikeCode(data.text || '', expected, expectedCompact)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    async function scanImageForCode(imageFile, expectedCode) {
+        const expected = normalizeCode(expectedCode);
+        const expectedCompact = expected.replace(/-/g, '');
+        if (!expected) {
+            return { ok: false, error: 'No hay código de verificación activo' };
+        }
+
+        const url = URL.createObjectURL(imageFile);
+        const Tesseract = await loadTesseract();
+        const worker = await Tesseract.createWorker('eng', 1, { logger: () => {} });
+        try {
+            await worker.setParameters({
+                tessedit_char_whitelist: 'DL-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZdl'
+            });
+            const img = await new Promise((resolve, reject) => {
+                const el = new Image();
+                el.onload = () => resolve(el);
+                el.onerror = () => reject(new Error('No se pudo leer la foto del código'));
+                el.src = url;
+            });
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth || img.width || 640;
+            canvas.height = img.naturalHeight || img.height || 480;
+            canvas.getContext('2d').drawImage(img, 0, 0);
+            const ok = await recognizeOnCanvas(worker, canvas, expected, expectedCompact);
+            if (ok) {
+                return { ok: true, detected_code: expected };
+            }
+            return {
+                ok: false,
+                error: 'No se leyó el código en la foto. Escribilo más grande o ingresalo abajo.'
+            };
+        } finally {
+            URL.revokeObjectURL(url);
+            await worker.terminate();
+        }
+    }
+
     async function scanVideoForCode(videoFile, expectedCode) {
         const expected = normalizeCode(expectedCode);
         const expectedCompact = expected.replace(/-/g, '');
@@ -170,30 +259,26 @@ window.DeseoPublicBodyVideo = (function () {
         }
 
         const Tesseract = await loadTesseract();
-        const worker = await Tesseract.createWorker('eng', 1, {
-            logger: () => {}
-        });
-
+        const worker = await Tesseract.createWorker('eng', 1, { logger: () => {} });
         try {
             await worker.setParameters({
-                tessedit_char_whitelist: 'DL-23456789ABCDEFGHJKLMNPQRSTUVWXYZdl'
+                tessedit_char_whitelist: 'DL-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZdl'
             });
-
-            const ratios = [0.12, 0.28, 0.45, 0.62, 0.78];
+            const ratios = [0.1, 0.25, 0.4, 0.55, 0.7];
             for (const ratio of ratios) {
-                const canvas = await captureVideoFrame(videoFile, ratio);
-                const { data } = await worker.recognize(canvas);
-                const text = normalizeCode(data.text || '');
-                const compact = text.replace(/-/g, '');
-                if (text.includes(expected) || compact.includes(expectedCompact)) {
-                    return { ok: true, detected_code: expected, frame_ratio: ratio };
+                try {
+                    const canvas = await captureVideoFrame(videoFile, ratio);
+                    const ok = await recognizeOnCanvas(worker, canvas, expected, expectedCompact);
+                    if (ok) {
+                        return { ok: true, detected_code: expected, frame_ratio: ratio };
+                    }
+                } catch (_) {
+                    // siguiente frame
                 }
             }
-
             return {
                 ok: false,
-                error:
-                    'No se detectó el código en el video. Escríbelo grande en papel o muéstralo en pantalla, con buena luz.'
+                error: 'No se detectó el código en el video. Usá una foto clara del papel con el código.'
             };
         } finally {
             await worker.terminate();
@@ -223,7 +308,14 @@ window.DeseoPublicBodyVideo = (function () {
         return challenge;
     }
 
-    async function uploadPublicVideo({ apiUrl, authToken, videoFile, faceObscured, onProgress }) {
+    async function uploadPublicVideo({
+        apiUrl,
+        authToken,
+        videoFile,
+        codeImageFile,
+        typedCode,
+        onProgress
+    }) {
         if (!challenge?.challenge_id) {
             throw new Error('Solicita un código de verificación antes de subir');
         }
@@ -231,6 +323,7 @@ window.DeseoPublicBodyVideo = (function () {
         const file = videoFile;
         const maxDur = challenge.max_video_duration_sec || 45;
         const min = challenge.min_video_duration_sec || 8;
+        const expected = normalizeCode(challenge.code);
 
         if (onProgress) {
             onProgress('Comprobando duración del video...');
@@ -246,12 +339,30 @@ window.DeseoPublicBodyVideo = (function () {
             throw new Error(`El video dura ${duration.toFixed(1)}s. Máximo ${maxDur}s.`);
         }
 
-        if (onProgress) {
-            onProgress('Buscando el código en el video...');
+        let detectedCode = '';
+        const typed = normalizeCode(typedCode);
+        if (typed && (typed === expected || typed.replace(/-/g, '') === expected.replace(/-/g, ''))) {
+            detectedCode = expected;
+        } else if (codeImageFile) {
+            if (onProgress) onProgress('Leyendo el código en la foto...');
+            const photoScan = await scanImageForCode(codeImageFile, challenge.code);
+            if (photoScan.ok) {
+                detectedCode = photoScan.detected_code;
+            }
         }
-        const scan = await scanVideoForCode(file, challenge.code);
-        if (!scan.ok) {
-            throw new Error(scan.error);
+
+        if (!detectedCode) {
+            if (onProgress) onProgress('Buscando el código en el video...');
+            const scan = await scanVideoForCode(file, challenge.code);
+            if (scan.ok) {
+                detectedCode = scan.detected_code;
+            }
+        }
+
+        if (!detectedCode) {
+            throw new Error(
+                'No pudimos validar el código. Tomá una foto nítida del papel con el código, o escribilo en el campo de confirmación.'
+            );
         }
 
         let bodyVideoUrl = '';
@@ -280,9 +391,9 @@ window.DeseoPublicBodyVideo = (function () {
             formData.append('body_video', file);
         }
         formData.append('challenge_id', challenge.challenge_id);
-        formData.append('detected_code', scan.detected_code);
+        formData.append('detected_code', detectedCode);
         formData.append('video_duration_sec', String(duration));
-        formData.append('face_obscured', faceObscured ? 'true' : 'false');
+        formData.append('face_obscured', 'false');
 
         const res = await fetch(`${apiUrl}/api/user/public-body-video`, {
             method: 'POST',
@@ -303,6 +414,7 @@ window.DeseoPublicBodyVideo = (function () {
         getChallenge,
         measureVideoDuration,
         scanVideoForCode,
+        scanImageForCode,
         uploadPublicVideo,
         normalizeCode
     };

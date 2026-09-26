@@ -2422,8 +2422,8 @@
                     <div class="form-group">
                         <label>Verificación en vivo</label>
                         <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">
-                            Graba un video de 8 a 45 s mostrando tu cuerpo. Debes mostrar este código en papel o en pantalla.
-                            Si querés privacidad, podés taparte la cara vos (mano, papel u otra app). La plataforma no pixela el rostro.
+                            1) Anotá el código en un papel y sacá una foto nítida (o escribilo abajo).<br>
+                            2) Grabá un video de 8 a 45 s mostrando tu cuerpo (el código en el video es opcional).
                         </p>
                         <div id="publicVideoChallengeBox" style="text-align:center;padding:1rem 1.25rem;border-radius:12px;background:rgba(108,92,231,0.15);border:1px dashed rgba(255,255,255,0.25);margin-bottom:12px;">
                             <div style="font-size:0.8rem;opacity:0.8;margin-bottom:6px;">Tu código (válido ~20 min)</div>
@@ -2435,20 +2435,26 @@
                         <p id="publicVideoUploadStatus" style="font-size:0.85rem;color:var(--text-muted);min-height:1.2em;"></p>
                     </div>
                     <div class="form-group">
+                        <label for="bodyVideoCodeFile">Foto del código (recomendado)</label>
+                        <div class="file-upload-area" onclick="document.getElementById('bodyVideoCodeFile').click()">
+                            <i class="fas fa-camera"></i>
+                            <p>Foto del papel con el código</p>
+                            <small id="bodyVideoCodeFileInfo">Ninguna foto</small>
+                        </div>
+                        <input type="file" id="bodyVideoCodeFile" accept="image/*" data-mobile-upload="document" style="display:none;" onchange="updateBodyVideoCodeFileInfo(this)">
+                    </div>
+                    <div class="form-group">
+                        <label for="bodyVideoCodeTyped">O escribí el código aquí</label>
+                        <input type="text" id="bodyVideoCodeTyped" placeholder="Ej: DL-MFHY" autocomplete="off" style="text-transform:uppercase;letter-spacing:0.08em;">
+                    </div>
+                    <div class="form-group">
+                        <label>Video corporal</label>
                         <div class="file-upload-area" onclick="document.getElementById('bodyVideoFile').click()">
                             <i class="fas fa-video"></i>
                             <p>Grabar o elegir el video</p>
                             <small id="bodyVideoFileInfo">Ningún archivo seleccionado</small>
                         </div>
                         <input type="file" id="bodyVideoFile" accept="video/*" data-mobile-upload="video-pick" style="display:none;" onchange="updateBodyVideoFileInfo(this)">
-                    </div>
-                    <div class="form-group">
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="faceObscuredCheckbox">
-                            <label for="faceObscuredCheckbox" style="margin: 0; cursor: pointer;">
-                                Opcional: en este video ya oculté mi rostro yo mismo/a (no es un filtro de la app)
-                            </label>
-                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -2809,12 +2815,12 @@
     <script src="/js/contact-links.js"></script>
     <script src="/js/listing-card.js"></script>
     <script src="/js/video-compress.js"></script>
-    <script src="/js/blob-direct-upload.js?v=20260926c"></script>
-    <script src="/js/public-body-video.js?v=20260926c"></script>
+    <script src="/js/blob-direct-upload.js?v=20260926d"></script>
+    <script src="/js/public-body-video.js?v=20260926d"></script>
     <script src="/js/service-catalog-ui.js"></script>
     <script src="/js/service-pricing.js"></script>
     <script src="/js/components.js"></script>
-    <script src="/js/upload-mobile.js?v=20260926c"></script>
+    <script src="/js/upload-mobile.js?v=20260926d"></script>
     <script src="/js/mobile-shell.js"></script>
     <script>
         // Global variables
@@ -4417,7 +4423,8 @@
             document.getElementById('bodyVideoModal').classList.remove('active');
             document.getElementById('bodyVideoForm').reset();
             document.getElementById('bodyVideoFileInfo').textContent = 'Ningún archivo seleccionado';
-            document.getElementById('faceObscuredCheckbox').checked = false;
+            const codeInfo = document.getElementById('bodyVideoCodeFileInfo');
+            if (codeInfo) codeInfo.textContent = 'Ninguna foto';
             document.getElementById('publicVideoUploadStatus').textContent = '';
         }
 
@@ -4431,16 +4438,28 @@
             }
         }
 
+        function updateBodyVideoCodeFileInfo(input) {
+            const fileInfo = document.getElementById('bodyVideoCodeFileInfo');
+            if (!fileInfo) return;
+            if (input.files.length > 0) {
+                const file = input.files[0];
+                fileInfo.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+            } else {
+                fileInfo.textContent = 'Ninguna foto';
+            }
+        }
+
         async function uploadBodyVideo(event) {
             event.preventDefault();
 
             const fileInput = document.getElementById('bodyVideoFile');
-            const faceObscured = document.getElementById('faceObscuredCheckbox').checked;
+            const codeInput = document.getElementById('bodyVideoCodeFile');
+            const typedInput = document.getElementById('bodyVideoCodeTyped');
             const statusEl = document.getElementById('publicVideoUploadStatus');
             const submitBtn = document.getElementById('bodyVideoSubmitBtn');
 
             if (!fileInput.files.length) {
-                showNotification('Selecciona el video grabado', 'error');
+                showNotification('Seleccioná o grabá el video corporal', 'error');
                 return;
             }
             if (typeof DeseoPublicBodyVideo === 'undefined') {
@@ -4454,7 +4473,8 @@
                     apiUrl: API_URL,
                     authToken,
                     videoFile: fileInput.files[0],
-                    faceObscured,
+                    codeImageFile: codeInput?.files?.[0] || null,
+                    typedCode: typedInput?.value || '',
                     onProgress: (msg) => {
                         if (statusEl) statusEl.textContent = msg;
                     }
