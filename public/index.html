@@ -402,8 +402,9 @@
                 <div class="reg-wizard-step-panel" data-step="4">
                     <p class="reg-wizard-hint">Video privado de <span id="regMinDurLabel">8</span> a <span id="regMaxDurLabel">60</span> s (rostro visible para verificación). Luego subirás el video público en tu perfil.</p>
                     <div class="form-group">
-                        <label for="regBodyVideo">Video corporal *</label>
-                        <input type="file" id="regBodyVideo" accept="video/mp4,video/webm,video/quicktime" data-mobile-upload="video" required>
+                        <label for="regBodyVideo">Video corporal (solo cámara) *</label>
+                        <input type="file" id="regBodyVideo" accept="video/*" data-mobile-upload="video" required>
+                        <small>En el celular se abre la cámara para grabar. Mínimo 8 segundos.</small>
                         <p class="reg-wizard-video-meta" id="regVideoSizeHint"></p>
                         <p class="reg-wizard-video-meta" id="regVideoDurationLabel"></p>
                         <p class="reg-wizard-video-meta" id="regFaceMatchLabel"></p>
