@@ -4,13 +4,47 @@
 (function (global) {
     let currentStep = 1;
     const TOTAL_STEPS = 4;
-        let limits = { min_video_duration_sec: 8, max_video_duration_sec: 45, max_video_bytes: 4194304 };
+    let limits = { min_video_duration_sec: 8, max_video_duration_sec: 45, max_video_bytes: 4194304 };
     let measuredVideoDuration = 0;
     let faceMatchResult = null;
     let faceLibsPromise = null;
 
     function $(id) {
         return global.document.getElementById(id);
+    }
+
+    function formatMb(bytes) {
+        return (Number(bytes) / (1024 * 1024)).toFixed(1);
+    }
+
+    function videoSizeOk(file) {
+        return Boolean(file) && file.size <= limits.max_video_bytes;
+    }
+
+    function videoDurationOk() {
+        return measuredVideoDuration >= limits.min_video_duration_sec
+            && measuredVideoDuration <= limits.max_video_duration_sec;
+    }
+
+    function videoReadyForFaceMatch(file) {
+        return videoSizeOk(file) && videoDurationOk();
+    }
+
+    function videoRejectReason(file) {
+        if (!file) return 'El video corporal es obligatorio.';
+        if (!videoSizeOk(file)) {
+            return `Tu video pesa ${formatMb(file.size)} MB (máx. ~${formatMb(limits.max_video_bytes)} MB). Aunque dure pocos segundos, el celular suele grabar en alta calidad: grabá en 720p o comprimí el archivo.`;
+        }
+        if (measuredVideoDuration > 0 && measuredVideoDuration < limits.min_video_duration_sec) {
+            return `El video debe durar al menos ${limits.min_video_duration_sec} segundos (ahora: ${measuredVideoDuration.toFixed(1)}s).`;
+        }
+        if (measuredVideoDuration > limits.max_video_duration_sec) {
+            return `El video no puede superar ${limits.max_video_duration_sec} segundos.`;
+        }
+        if (!measuredVideoDuration) {
+            return 'Esperá a que se lea la duración del video.';
+        }
+        return null;
     }
 
     function setStatus(message, type) {
@@ -82,8 +116,8 @@
                 if (minEl) minEl.textContent = limits.min_video_duration_sec;
                 if (maxEl) maxEl.textContent = limits.max_video_duration_sec;
                 if (hint) {
-                    const mb = (limits.max_video_bytes / (1024 * 1024)).toFixed(1);
-                    hint.textContent = `Tamaño máximo del video: ~${mb} MB.`;
+                    const mb = formatMb(limits.max_video_bytes);
+                    hint.textContent = `Máx. ~${mb} MB (un video corto también puede pasarse si el celular graba en 1080p/4K). Preferí 720p.`;
                 }
             }
         } catch (_) {}
@@ -123,16 +157,8 @@
         }
         if (step === 4) {
             const video = $('regBodyVideo')?.files?.[0];
-            if (!video) return 'El video corporal es obligatorio.';
-            if (video.size > limits.max_video_bytes) {
-                return 'El video supera el tamaño máximo. Comprime el archivo.';
-            }
-            if (measuredVideoDuration < limits.min_video_duration_sec) {
-                return `El video debe durar al menos ${limits.min_video_duration_sec} segundos.`;
-            }
-            if (measuredVideoDuration > limits.max_video_duration_sec) {
-                return `El video no puede superar ${limits.max_video_duration_sec} segundos.`;
-            }
+            const sizeOrDuration = videoRejectReason(video);
+            if (sizeOrDuration) return sizeOrDuration;
             if (!faceMatchResult?.match) return 'Completa la comparación facial (selfie vs video).';
             return null;
         }
@@ -154,29 +180,40 @@
         const matchLabel = $('regFaceMatchLabel');
         if (matchLabel) matchLabel.textContent = '';
         if (!file || !label) return;
-        if (file.size > limits.max_video_bytes) {
-            label.textContent = 'El video supera el tamaño máximo.';
-            label.style.color = '#ff8a9b';
-            return;
-        }
+
+        const applyLabel = () => {
+            const parts = [];
+            parts.push(`${formatMb(file.size)} MB`);
+            if (!videoSizeOk(file)) {
+                parts.push(`supera el máx. ~${formatMb(limits.max_video_bytes)} MB — grabá en 720p o comprimí`);
+            }
+            if (measuredVideoDuration > 0) {
+                const min = limits.min_video_duration_sec;
+                const max = limits.max_video_duration_sec;
+                if (measuredVideoDuration < min) {
+                    parts.push(`${measuredVideoDuration.toFixed(1)}s (mín. ${min}s)`);
+                } else if (measuredVideoDuration > max) {
+                    parts.push(`${measuredVideoDuration.toFixed(1)}s (máx. ${max}s)`);
+                } else if (videoSizeOk(file)) {
+                    parts.push(`duración OK ${measuredVideoDuration.toFixed(1)}s`);
+                } else {
+                    parts.push(`${measuredVideoDuration.toFixed(1)}s`);
+                }
+            }
+            const ok = videoReadyForFaceMatch(file);
+            label.textContent = parts.join(' · ');
+            label.style.color = ok ? '#7dffa8' : '#ff8a9b';
+        };
+
+        applyLabel();
+
         const url = URL.createObjectURL(file);
         const video = global.document.createElement('video');
         video.preload = 'metadata';
         video.onloadedmetadata = () => {
             URL.revokeObjectURL(url);
             measuredVideoDuration = video.duration || 0;
-            const min = limits.min_video_duration_sec;
-            const max = limits.max_video_duration_sec;
-            if (measuredVideoDuration < min) {
-                label.textContent = `Duración: ${measuredVideoDuration.toFixed(1)}s — mínimo ${min}s`;
-                label.style.color = '#ff8a9b';
-            } else if (measuredVideoDuration > max) {
-                label.textContent = `Duración: ${measuredVideoDuration.toFixed(1)}s — máximo ${max}s`;
-                label.style.color = '#ff8a9b';
-            } else {
-                label.textContent = `Duración OK: ${measuredVideoDuration.toFixed(1)}s`;
-                label.style.color = '#7dffa8';
-            }
+            applyLabel();
         };
         video.onerror = () => {
             label.textContent = 'No se pudo leer el video. Usa MP4.';
@@ -195,6 +232,15 @@
                 label.style.color = '#ff8a9b';
                 label.textContent = 'Completa la selfie (paso 3) y el video antes de comparar.';
             }
+            return null;
+        }
+        const reject = videoRejectReason(videoFile);
+        if (reject) {
+            if (label) {
+                label.style.color = '#ff8a9b';
+                label.textContent = reject;
+            }
+            faceMatchResult = null;
             return null;
         }
         try {

@@ -188,9 +188,39 @@
                     document.getElementById('maxDurLabel').textContent = limits.max_video_duration_sec;
                     const mb = (limits.max_video_bytes / (1024 * 1024)).toFixed(1);
                     document.getElementById('videoSizeHint').textContent =
-                        `Tamaño máximo del video: ~${mb} MB (comprime si es necesario).`;
+                        `Máx. ~${mb} MB (un video corto también puede pasarse en 1080p/4K). Preferí 720p.`;
                 }
             } catch (_) {}
+        }
+
+        function formatMb(bytes) {
+            return (Number(bytes) / (1024 * 1024)).toFixed(1);
+        }
+
+        function videoSizeOk(file) {
+            return Boolean(file) && file.size <= limits.max_video_bytes;
+        }
+
+        function videoDurationOk() {
+            return measuredVideoDuration >= limits.min_video_duration_sec
+                && measuredVideoDuration <= limits.max_video_duration_sec;
+        }
+
+        function videoRejectReason(file) {
+            if (!file) return 'El video corporal es obligatorio.';
+            if (!videoSizeOk(file)) {
+                return `Tu video pesa ${formatMb(file.size)} MB (máx. ~${formatMb(limits.max_video_bytes)} MB). Aunque dure poco, el celular suele grabar pesado: usá 720p o comprimí.`;
+            }
+            if (measuredVideoDuration > 0 && measuredVideoDuration < limits.min_video_duration_sec) {
+                return `El video debe durar al menos ${limits.min_video_duration_sec} segundos (ahora: ${measuredVideoDuration.toFixed(1)}s).`;
+            }
+            if (measuredVideoDuration > limits.max_video_duration_sec) {
+                return `El video no puede superar ${limits.max_video_duration_sec} segundos.`;
+            }
+            if (!measuredVideoDuration) {
+                return 'Esperá a que se lea la duración del video.';
+            }
+            return null;
         }
 
         document.getElementById('verification_type').addEventListener('change', function () {
@@ -206,14 +236,35 @@
             const file = this.files[0];
             const label = document.getElementById('videoDurationLabel');
             measuredVideoDuration = 0;
-            label.textContent = '';
-            if (!file) return;
-
-            if (file.size > limits.max_video_bytes) {
-                label.textContent = 'El video supera el tamaño máximo. Comprime el archivo.';
-                label.style.color = '#ff8a9b';
+            if (!file) {
+                label.textContent = '';
                 return;
             }
+
+            const applyLabel = () => {
+                const parts = [`${formatMb(file.size)} MB`];
+                if (!videoSizeOk(file)) {
+                    parts.push(`supera el máx. ~${formatMb(limits.max_video_bytes)} MB — grabá en 720p o comprimí`);
+                }
+                if (measuredVideoDuration > 0) {
+                    const min = limits.min_video_duration_sec;
+                    const max = limits.max_video_duration_sec;
+                    if (measuredVideoDuration < min) {
+                        parts.push(`${measuredVideoDuration.toFixed(1)}s (mín. ${min}s)`);
+                    } else if (measuredVideoDuration > max) {
+                        parts.push(`${measuredVideoDuration.toFixed(1)}s (máx. ${max}s)`);
+                    } else if (videoSizeOk(file)) {
+                        parts.push(`duración OK ${measuredVideoDuration.toFixed(1)}s`);
+                    } else {
+                        parts.push(`${measuredVideoDuration.toFixed(1)}s`);
+                    }
+                }
+                const ok = videoSizeOk(file) && videoDurationOk();
+                label.textContent = parts.join(' · ');
+                label.style.color = ok ? '#7dffa8' : '#ff8a9b';
+            };
+
+            applyLabel();
 
             const url = URL.createObjectURL(file);
             const video = document.createElement('video');
@@ -221,18 +272,7 @@
             video.onloadedmetadata = function () {
                 URL.revokeObjectURL(url);
                 measuredVideoDuration = video.duration || 0;
-                const min = limits.min_video_duration_sec;
-                const max = limits.max_video_duration_sec;
-                if (measuredVideoDuration < min) {
-                    label.textContent = `Duración: ${measuredVideoDuration.toFixed(1)}s — mínimo ${min}s`;
-                    label.style.color = '#ff8a9b';
-                } else if (measuredVideoDuration > max) {
-                    label.textContent = `Duración: ${measuredVideoDuration.toFixed(1)}s — máximo ${max}s`;
-                    label.style.color = '#ff8a9b';
-                } else {
-                    label.textContent = `Duración OK: ${measuredVideoDuration.toFixed(1)} segundos`;
-                    label.style.color = '#7dffa8';
-                }
+                applyLabel();
             };
             video.onerror = function () {
                 label.textContent = 'No se pudo leer el video. Usa MP4 si falla.';
@@ -250,6 +290,14 @@
             if (!selfieFile || !videoFile) {
                 label.style.color = '#ff8a9b';
                 label.textContent = 'Sube la selfie y el video antes de comparar.';
+                return null;
+            }
+
+            const reject = videoRejectReason(videoFile);
+            if (reject) {
+                label.style.color = '#ff8a9b';
+                label.textContent = reject;
+                faceMatchResult = null;
                 return null;
             }
 
@@ -320,9 +368,10 @@
                 msg.textContent = 'El video corporal es obligatorio';
                 return;
             }
-            if (measuredVideoDuration < limits.min_video_duration_sec) {
+            const videoErr = videoRejectReason(videoFile);
+            if (videoErr) {
                 msg.className = 'error';
-                msg.textContent = `El video debe durar al menos ${limits.min_video_duration_sec} segundos`;
+                msg.textContent = videoErr;
                 return;
             }
 
