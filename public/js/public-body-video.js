@@ -341,7 +341,14 @@ window.DeseoPublicBodyVideo = (function () {
 
         let detectedCode = '';
         const typed = normalizeCode(typedCode);
-        if (typed && (typed === expected || typed.replace(/-/g, '') === expected.replace(/-/g, ''))) {
+        if (typed) {
+            const typedOk =
+                typed === expected || typed.replace(/-/g, '') === expected.replace(/-/g, '');
+            if (!typedOk) {
+                throw new Error(
+                    `El código escrito no coincide. Debe ser exactamente ${expected}.`
+                );
+            }
             detectedCode = expected;
         } else if (codeImageFile) {
             if (onProgress) onProgress('Leyendo el código en la foto...');
