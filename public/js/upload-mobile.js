@@ -106,12 +106,7 @@ window.DeseoUploadMobile = (function () {
 
     function applyCapture(input) {
         const role = getRole(input);
-        // Video: galería + cámara (sin forzar capture; si no, solo graba y pesa demasiado)
-        if (role === 'video') {
-            input.removeAttribute('capture');
-            return;
-        }
-        // Documento / selfie: solo cámara en móvil (más simple y coherente)
+        // Documento, selfie y video: solo cámara en móvil (sin galería)
         const capture = captureForRole(role);
         if (capture && isMobile()) {
             input.setAttribute('capture', capture);
@@ -206,7 +201,7 @@ window.DeseoUploadMobile = (function () {
                   : 'fa-camera';
         const labelText =
             role === 'video'
-                ? 'Grabar o elegir video'
+                ? 'Grabar video con la cámara'
                 : role === 'selfie' || role === 'user'
                   ? 'Tomar selfie con la cámara'
                   : 'Tomar foto con la cámara';
