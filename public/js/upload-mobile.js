@@ -107,7 +107,7 @@ window.DeseoUploadMobile = (function () {
     function applyCapture(input) {
         const role = getRole(input);
         // video-pick: permitir cámara o galería (texto "Selecciona el video grabado")
-        if (role === 'video-pick' || role === 'video-gallery') {
+        if (role === 'video-pick' || role === 'video-gallery' || role === 'image-pick') {
             input.removeAttribute('capture');
             return;
         }

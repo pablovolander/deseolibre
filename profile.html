@@ -365,11 +365,20 @@
             margin-bottom: 12px;
         }
 
+        .profile-container.has-top-banner .profile-header {
+            margin-top: 12px;
+        }
+
         .profile-avatar-container {
             position: relative;
+            flex-shrink: 0;
         }
 
         .profile-avatar {
+            display: block;
+            flex-shrink: 0;
+            aspect-ratio: 1 / 1;
+            max-width: none;
             width: 168px;
             height: 168px;
             border-radius: 50%;
@@ -1623,14 +1632,14 @@
             }
 
             .profile-avatar {
-                width: 104px;
-                height: 104px;
+                width: 120px;
+                height: 120px;
                 border-width: 3px;
             }
 
             .avatar-badge {
-                width: 30px;
-                height: 30px;
+                width: 36px;
+                height: 36px;
                 bottom: 4px;
                 right: 4px;
                 border-width: 2px;
@@ -1782,8 +1791,8 @@
             }
 
             .profile-avatar {
-                width: 96px;
-                height: 96px;
+                width: 112px;
+                height: 112px;
             }
 
             .profile-stats {
@@ -1902,8 +1911,8 @@
             }
 
             .profile-avatar {
-                width: 90px;
-                height: 90px;
+                width: 104px;
+                height: 104px;
             }
 
             .profile-container {
@@ -2194,7 +2203,7 @@
                 <div class="profile-header">
             <div class="profile-info-row">
                 <div class="profile-avatar-container">
-                    <img src="https://via.placeholder.com/168?text=User" alt="Avatar" class="profile-avatar" id="profileAvatar">
+                    <img alt="" class="profile-avatar" id="profileAvatar" onclick="if (isOwnProfile) openChangeAvatarModal()" onerror="if (typeof DEFAULT_AVATAR_SRC !== 'undefined' && this.src !== DEFAULT_AVATAR_SRC) this.src = DEFAULT_AVATAR_SRC;">
                     <div class="avatar-badge" onclick="openChangeAvatarModal()">
                         <i class="fas fa-camera"></i>
                     </div>
@@ -2605,7 +2614,7 @@
                             <p>Selecciona tu nueva foto de perfil</p>
                             <small id="avatarFileInfo">Ningún archivo seleccionado</small>
                         </div>
-                        <input type="file" id="avatarFile" accept="image/*" data-mobile-capture="selfie" required style="display:none;" onchange="updateAvatarFileInfo(this)">
+                        <input type="file" id="avatarFile" accept="image/*" data-mobile-upload="image-pick" required style="display:none;" onchange="updateAvatarFileInfo(this)">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -2632,7 +2641,7 @@
                             <small>Recomendado: 1500x500 px</small><br>
                             <small id="coverFileInfo">Ningún archivo seleccionado</small>
                         </div>
-                        <input type="file" id="coverFile" accept="image/*" data-mobile-capture="environment" required style="display:none;" onchange="updateCoverFileInfo(this)">
+                        <input type="file" id="coverFile" accept="image/*" data-mobile-upload="image-pick" required style="display:none;" onchange="updateCoverFileInfo(this)">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -2824,12 +2833,12 @@
     <script src="/js/contact-links.js"></script>
     <script src="/js/listing-card.js"></script>
     <script src="/js/video-compress.js"></script>
-    <script src="/js/blob-direct-upload.js?v=20260926e"></script>
-    <script src="/js/public-body-video.js?v=20260926e"></script>
+    <script src="/js/blob-direct-upload.js?v=20260926f"></script>
+    <script src="/js/public-body-video.js?v=20260926f"></script>
     <script src="/js/service-catalog-ui.js"></script>
     <script src="/js/service-pricing.js"></script>
     <script src="/js/components.js"></script>
-    <script src="/js/upload-mobile.js?v=20260926e"></script>
+    <script src="/js/upload-mobile.js?v=20260926f"></script>
     <script src="/js/mobile-shell.js"></script>
     <script>
         // Global variables
@@ -2889,6 +2898,24 @@
         }
 
         const VERCEL_MAX_UPLOAD_BYTES = 4.5 * 1024 * 1024;
+        const DEFAULT_AVATAR_SRC = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">' +
+            '<rect width="120" height="120" fill="#3a2b4d"/>' +
+            '<circle cx="60" cy="46" r="22" fill="#b9a6d6"/>' +
+            '<path d="M20 112c4-24 20-36 40-36s36 12 40 36z" fill="#b9a6d6"/>' +
+            '</svg>'
+        );
+
+        function syncTopBannerOffset() {
+            const container = document.querySelector('.profile-container');
+            if (!container) return;
+            const setup = document.getElementById('profileSetupBanner');
+            const paused = document.getElementById('profilePausedBanner');
+            const hasBanner =
+                (setup && setup.style.display === 'block') ||
+                (paused && paused.classList.contains('show'));
+            container.classList.toggle('has-top-banner', Boolean(hasBanner));
+        }
 
         function showDeleteAccountLink(visible) {
             const footer = document.getElementById('profileDangerZone');
@@ -2908,6 +2935,7 @@
             if (banner) {
                 banner.classList.toggle('show', Boolean(isOwnProfile && isPaused));
             }
+            syncTopBannerOffset();
             if (btn) {
                 btn.classList.toggle('is-paused', isPaused);
                 btn.innerHTML = isPaused
@@ -2977,11 +3005,13 @@
                 if (banner) {
                     banner.style.display = 'none';
                 }
+                syncTopBannerOffset();
                 return;
             }
 
             if (currentUser.profile_complete && currentUser.is_verified) {
                 banner.style.display = 'none';
+                syncTopBannerOffset();
                 return;
             }
 
@@ -3003,6 +3033,7 @@
                     </div>
                 </div>`;
             banner.style.display = 'block';
+            syncTopBannerOffset();
         }
 
         function isAdminUser(user) {
@@ -3360,7 +3391,7 @@
             if (currentUser.profile_picture) {
                 avatarEl.src = profileMediaUrl(currentUser.profile_picture);
             } else {
-                avatarEl.src = profileMediaUrl('/uploads/default-avatar.png');
+                avatarEl.src = DEFAULT_AVATAR_SRC;
             }
 
             // Load cover photo
@@ -3428,7 +3459,7 @@
                 if (user.profile_picture) {
                     avatarEl.src = profileMediaUrl(user.profile_picture);
                 } else {
-                    avatarEl.src = profileMediaUrl('/uploads/default-avatar.png');
+                    avatarEl.src = DEFAULT_AVATAR_SRC;
                 }
 
                 // Load cover photo
@@ -4555,7 +4586,7 @@
             // Avatar del usuario
             const avatarUrl = profileForPost?.profile_picture
                 ? profileMediaUrl(profileForPost.profile_picture)
-                : profileMediaUrl('/uploads/default-avatar.png');
+                : DEFAULT_AVATAR_SRC;
             document.getElementById('postUserAvatar').src = avatarUrl;
             
             // Fecha
