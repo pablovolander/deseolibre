@@ -4849,6 +4849,15 @@ app.post('/api/reels', authenticateToken, requireUserVerification, handleReelUpl
             return res.status(404).json({ error: 'Usuario no encontrado' });
         }
 
+        if (!userHasCompleteProfile(authorCheck)) {
+            return res.status(400).json({
+                error: 'Perfil incompleto',
+                message: getProfileIncompleteMessage(),
+                requiresProfile: true,
+                profileUrl: '/profile.html'
+            });
+        }
+
         const categoryCheck = validateUserPublishCategory(authorCheck, normalizedCategory);
         if (!categoryCheck.ok) {
             return res.status(403).json({
