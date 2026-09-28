@@ -2366,7 +2366,7 @@
                 </div>
                 <div class="verification-content">
                     <div class="video-preview-container" id="bodyVideoPreview">
-                        <video id="bodyVerificationVideo" controls style="display:none;">
+                        <video id="bodyVerificationVideo" controls playsinline preload="metadata" style="display:none;">
                             Tu navegador no soporta videos.
                         </video>
                         <div class="video-placeholder" id="bodyVideoPlaceholder">
@@ -3393,9 +3393,9 @@
             }
 
             if (publicVideoUrl) {
-                videoElement.src = typeof resolveMediaUrl === 'function'
+                videoElement.src = withFirstFrameHint(typeof resolveMediaUrl === 'function'
                     ? resolveMediaUrl(publicVideoUrl)
-                    : `${API_URL}${publicVideoUrl}`;
+                    : `${API_URL}${publicVideoUrl}`);
                 videoElement.style.display = 'block';
                 placeholder.style.display = 'none';
                 if (isOwnProfile) {
@@ -3624,6 +3624,11 @@
             return 'photo';
         }
 
+        function withFirstFrameHint(url) {
+            if (!url || url.includes('#')) return url;
+            return `${url}#t=0.1`;
+        }
+
         function getPostThumbnail(post) {
             const mediaPath = post.media_url || post.file_url || '';
             const type = normalizePostContentType(post);
@@ -3632,11 +3637,16 @@
                 return { thumbnail: resolveMediaUrl(mediaPath), icon: '📷' };
             }
             if (type === 'video') {
-                return { thumbnail: resolveMediaUrl(post.thumbnail_url || mediaPath), icon: '🎥' };
+                if (post.thumbnail_url) {
+                    return { thumbnail: resolveMediaUrl(post.thumbnail_url), icon: '🎥' };
+                }
+                return { thumbnail: '', videoSrc: withFirstFrameHint(resolveMediaUrl(mediaPath)), icon: '🎥' };
             }
             if (type === 'audio') {
                 return {
-                    thumbnail: 'https://via.placeholder.com/300x300/6c5ce7/ffffff?text=🎙️+Audio',
+                    thumbnail: 'data:image/svg+xml;utf8,' + encodeURIComponent(
+                        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300"><rect width="300" height="300" fill="#6c5ce7"/><text x="150" y="170" font-size="72" text-anchor="middle">🎙️</text></svg>'
+                    ),
                     icon: '🎙️'
                 };
             }
@@ -3683,7 +3693,7 @@
             }
 
             grid.innerHTML = filteredPosts.map((post, index) => {
-                const { thumbnail, icon: typeIcon } = getPostThumbnail(post);
+                const { thumbnail, videoSrc, icon: typeIcon } = getPostThumbnail(post);
                 
                 console.log(`📌 Post ${index + 1}:`, {
                     type: normalizePostContentType(post),
@@ -3693,11 +3703,12 @@
 
                 return `
                     <div class="post-item" onclick="viewPost(${post.id})">
-                        <img src="${thumbnail}" 
-                             alt="${post.title}" 
+                        ${videoSrc
+                            ? `<video src="${videoSrc}" class="post-thumbnail" muted playsinline preload="metadata" disablepictureinpicture tabindex="-1" style="pointer-events:none;"></video>`
+                            : `<img src="${thumbnail}" 
+                             alt="${escapeProfileHtml(post.title)}" 
                              class="post-thumbnail"
-                             onerror="this.src='https://via.placeholder.com/300x300/ff6b6b/ffffff?text=Error+al+cargar'"
-                             loading="lazy">
+                             loading="lazy">`}
                         <span class="post-type-badge">${typeIcon}</span>
                         ${isOwnProfile ? `
                             <button class="post-delete-btn" 
