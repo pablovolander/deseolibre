@@ -1512,6 +1512,67 @@
             font-style: italic;
         }
 
+        .audio-record-toggle {
+            margin-top: 10px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .audio-recorder {
+            margin-top: 10px;
+            padding: 14px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .audio-recorder-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .audio-rec-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: none;
+            background: var(--btn-gradient);
+            color: #fff;
+            font-size: 1.4rem;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .audio-rec-btn.recording {
+            background: #e53935;
+            animation: audioPulse 1.2s infinite;
+        }
+
+        @keyframes audioPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.6); }
+            50% { box-shadow: 0 0 0 10px rgba(229, 57, 53, 0); }
+        }
+
+        .audio-recorder-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 0.9rem;
+        }
+
+        #audioRecPreview {
+            width: 100%;
+            margin-top: 12px;
+        }
+
+        .audio-recorder-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
         .post-action-btn.liked,
         .post-action-btn.liked i {
             color: var(--coral-pink);
@@ -2439,15 +2500,7 @@
                     <label for="createPostDescription">Descripción:</label>
                         <textarea id="createPostDescription" required placeholder="Describe tu publicación..."></textarea>
                 </div>
-                <div class="form-group">
-                    <label for="createPostType">Tipo de contenido:</label>
-                    <select id="createPostType" required>
-                            <option value="">Selecciona un tipo</option>
-                            <option value="photo">📷 Foto</option>
-                            <option value="video">🎥 Video</option>
-                            <option value="audio">🎙️ Audio</option>
-                        </select>
-                    </div>
+                <input type="hidden" id="createPostType" value="">
                     <div class="form-group">
                         <label for="createPostCategory">Categoría:</label>
                         <select id="createPostCategory" required>
@@ -2461,11 +2514,34 @@
                 <div class="form-group">
                     <label>Archivo:</label>
                         <div class="file-upload-area" onclick="document.getElementById('postFile').click()">
-                            <i class="fas fa-cloud-upload-alt"></i>
-                            <p>Click para subir archivo</p>
+                            <i class="fas fa-photo-film"></i>
+                            <p>Elegir foto o video</p>
                             <small id="fileInfo">Ningún archivo seleccionado</small>
                         </div>
-                        <input type="file" id="postFile" accept="image/*,video/*,audio/*" data-mobile-upload="image-pick" required style="display:none;">
+                        <input type="file" id="postFile" accept="image/*,video/*" data-mobile-upload="image-pick" required style="display:none;">
+                        <button type="button" class="btn-action btn-secondary audio-record-toggle" id="audioRecordToggle" onclick="openAudioRecorder()">
+                            <i class="fas fa-microphone"></i> O grabar un audio
+                        </button>
+                        <div class="audio-recorder" id="audioRecorder" hidden>
+                            <div class="audio-recorder-row">
+                                <button type="button" class="audio-rec-btn" id="audioRecBtn" onclick="toggleAudioRecording()" aria-label="Grabar">
+                                    <i class="fas fa-microphone"></i>
+                                </button>
+                                <div class="audio-recorder-info">
+                                    <strong id="audioRecStatus">Tocá el micrófono para grabar</strong>
+                                    <span id="audioRecTimer">0:00 / 3:00</span>
+                                </div>
+                            </div>
+                            <audio id="audioRecPreview" controls hidden></audio>
+                            <div class="audio-recorder-actions">
+                                <button type="button" class="btn-action btn-secondary" id="audioRecRetry" onclick="retryAudioRecording()" hidden>
+                                    <i class="fas fa-redo"></i> Grabar de nuevo
+                                </button>
+                                <button type="button" class="btn-action btn-secondary" onclick="closeAudioRecorder(true)">
+                                    Cancelar audio
+                                </button>
+                            </div>
+                        </div>
                 </div>
                 <p style="color: var(--text-muted); font-size: 0.9rem;">Tu nombre, ciudad, tarifa y teléfono se toman de tu perfil.</p>
                 <div class="form-group">
@@ -3754,7 +3830,9 @@
             
             const title = document.getElementById('createPostTitle').value;
             const description = document.getElementById('createPostDescription').value;
-            const contentType = document.getElementById('createPostType').value;
+            const postFileInput = document.getElementById('postFile');
+            const contentType = document.getElementById('createPostType').value
+                || detectPostContentType(postFileInput.files[0]);
             let category = document.getElementById('createPostCategory').value;
             const lockedCategory = resolveProfileCategory(currentUser?.category);
             if (lockedCategory) {
@@ -3788,8 +3866,7 @@
             }
             
             if (!contentType) {
-                console.log('❌ Validación fallida: tipo de contenido no seleccionado');
-                showNotification('Selecciona el tipo de contenido', 'error');
+                showNotification('Elegí una foto o un video, o grabá un audio', 'error');
                 return;
             }
             
@@ -4282,7 +4359,170 @@
             });
         }
 
+        const AUDIO_MAX_SECONDS = 180;
+        let audioRecorder = null;
+        let audioStream = null;
+        let audioChunks = [];
+        let audioTimerId = null;
+        let audioStartedAt = 0;
+        let recordedAudioFile = null;
+
+        function pickAudioMimeType() {
+            if (typeof MediaRecorder === 'undefined') return '';
+            const candidates = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm', 'audio/ogg;codecs=opus'];
+            return candidates.find((type) => MediaRecorder.isTypeSupported?.(type)) || '';
+        }
+
+        function formatAudioTime(seconds) {
+            const s = Math.max(0, Math.floor(seconds));
+            return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+        }
+
+        function setAudioRecorderUi(state) {
+            const btn = document.getElementById('audioRecBtn');
+            const status = document.getElementById('audioRecStatus');
+            const retry = document.getElementById('audioRecRetry');
+            const preview = document.getElementById('audioRecPreview');
+            btn.classList.toggle('recording', state === 'recording');
+            btn.innerHTML = state === 'recording' ? '<i class="fas fa-stop"></i>' : '<i class="fas fa-microphone"></i>';
+            btn.hidden = state === 'done';
+            retry.hidden = state !== 'done';
+            preview.hidden = state !== 'done';
+            status.textContent = state === 'recording'
+                ? 'Grabando… tocá para terminar'
+                : state === 'done'
+                    ? 'Audio listo. Escuchalo y publicá.'
+                    : 'Tocá el micrófono para grabar';
+        }
+
+        function openAudioRecorder() {
+            if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+                showNotification('Tu navegador no permite grabar audio. Probá con Chrome o Safari actualizados.', 'error');
+                return;
+            }
+            document.getElementById('audioRecorder').hidden = false;
+            document.getElementById('audioRecordToggle').hidden = true;
+            document.getElementById('audioRecTimer').textContent = `0:00 / ${formatAudioTime(AUDIO_MAX_SECONDS)}`;
+            setAudioRecorderUi('idle');
+        }
+
+        function stopAudioStream() {
+            if (audioStream) {
+                audioStream.getTracks().forEach((track) => track.stop());
+                audioStream = null;
+            }
+            if (audioTimerId) {
+                clearInterval(audioTimerId);
+                audioTimerId = null;
+            }
+        }
+
+        async function toggleAudioRecording() {
+            if (audioRecorder && audioRecorder.state === 'recording') {
+                audioRecorder.stop();
+                return;
+            }
+            try {
+                audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            } catch (error) {
+                showNotification('No se pudo usar el micrófono. Revisá el permiso del navegador.', 'error');
+                return;
+            }
+            const mimeType = pickAudioMimeType();
+            audioChunks = [];
+            audioRecorder = mimeType ? new MediaRecorder(audioStream, { mimeType }) : new MediaRecorder(audioStream);
+            audioRecorder.ondataavailable = (event) => {
+                if (event.data && event.data.size > 0) audioChunks.push(event.data);
+            };
+            audioRecorder.onstop = () => {
+                stopAudioStream();
+                const baseType = String(audioRecorder.mimeType || mimeType || 'audio/webm').split(';')[0];
+                const ext = baseType.includes('mp4') ? 'm4a' : baseType.includes('ogg') ? 'ogg' : 'webm';
+                const blob = new Blob(audioChunks, { type: baseType });
+                audioRecorder = null;
+                if (!blob.size) {
+                    setAudioRecorderUi('idle');
+                    showNotification('No se grabó audio. Probá de nuevo.', 'error');
+                    return;
+                }
+                recordedAudioFile = new File([blob], `audio-${Date.now()}.${ext}`, { type: baseType });
+                const preview = document.getElementById('audioRecPreview');
+                if (preview.src) URL.revokeObjectURL(preview.src);
+                preview.src = URL.createObjectURL(recordedAudioFile);
+                const postFile = document.getElementById('postFile');
+                const dt = new DataTransfer();
+                dt.items.add(recordedAudioFile);
+                postFile.files = dt.files;
+                document.getElementById('createPostType').value = 'audio';
+                const uploadArea = postFile.closest('.form-group').querySelector('.file-upload-area');
+                uploadArea.style.backgroundImage = '';
+                uploadArea.querySelector('i').className = 'fas fa-microphone';
+                uploadArea.querySelector('i').style.display = '';
+                uploadArea.querySelector('p').style.display = '';
+                uploadArea.querySelector('p').textContent = 'Audio grabado';
+                document.getElementById('fileInfo').textContent =
+                    `${formatAudioTime((Date.now() - audioStartedAt) / 1000)} · ${(recordedAudioFile.size / 1024 / 1024).toFixed(2)} MB`;
+                setAudioRecorderUi('done');
+            };
+            audioRecorder.start();
+            audioStartedAt = Date.now();
+            setAudioRecorderUi('recording');
+            const timerEl = document.getElementById('audioRecTimer');
+            audioTimerId = setInterval(() => {
+                const elapsed = (Date.now() - audioStartedAt) / 1000;
+                timerEl.textContent = `${formatAudioTime(elapsed)} / ${formatAudioTime(AUDIO_MAX_SECONDS)}`;
+                if (elapsed >= AUDIO_MAX_SECONDS && audioRecorder?.state === 'recording') {
+                    audioRecorder.stop();
+                }
+            }, 250);
+        }
+
+        function retryAudioRecording() {
+            clearRecordedAudio();
+            document.getElementById('audioRecTimer').textContent = `0:00 / ${formatAudioTime(AUDIO_MAX_SECONDS)}`;
+            setAudioRecorderUi('idle');
+        }
+
+        function clearRecordedAudio() {
+            const postFile = document.getElementById('postFile');
+            if (recordedAudioFile && postFile.files[0] === recordedAudioFile) {
+                postFile.value = '';
+                document.getElementById('createPostType').value = '';
+                const uploadArea = postFile.closest('.form-group').querySelector('.file-upload-area');
+                uploadArea.querySelector('i').className = 'fas fa-photo-film';
+                uploadArea.querySelector('p').textContent = 'Elegir foto o video';
+                document.getElementById('fileInfo').textContent = 'Ningún archivo seleccionado';
+            }
+            recordedAudioFile = null;
+            const preview = document.getElementById('audioRecPreview');
+            if (preview?.src) {
+                preview.pause();
+                URL.revokeObjectURL(preview.src);
+                preview.removeAttribute('src');
+            }
+        }
+
+        function closeAudioRecorder(discard) {
+            if (audioRecorder && audioRecorder.state === 'recording') {
+                audioRecorder.onstop = null;
+                audioRecorder.stop();
+                audioRecorder = null;
+            }
+            stopAudioStream();
+            if (discard) {
+                clearRecordedAudio();
+            } else {
+                recordedAudioFile = null;
+            }
+            const panel = document.getElementById('audioRecorder');
+            if (panel) panel.hidden = true;
+            const toggle = document.getElementById('audioRecordToggle');
+            if (toggle) toggle.hidden = false;
+        }
+
         function closeCreatePostModal() {
+            closeAudioRecorder(true);
+            document.getElementById('createPostType').value = '';
             document.getElementById('createPostModal').classList.remove('active');
             document.getElementById('createPostForm').reset();
             const categorySelect = document.getElementById('createPostCategory');
@@ -4313,13 +4553,13 @@
                 const icon = uploadArea.querySelector('i');
                 const text = uploadArea.querySelector('p');
                 if (icon) {
-                    icon.className = 'fas fa-cloud-upload-alt';
+                    icon.className = 'fas fa-photo-film';
                     icon.style.fontSize = '';
                     icon.style.color = '';
                     icon.style.display = '';
                 }
                 if (text) {
-                    text.textContent = 'Click para subir archivo';
+                    text.textContent = 'Elegir foto o video';
                     text.style.display = '';
                 }
             }
@@ -4408,6 +4648,19 @@
             document.getElementById('changeCoverForm').reset();
         }
 
+        function detectPostContentType(file) {
+            if (!file) return '';
+            const type = String(file.type || '').toLowerCase();
+            if (type.startsWith('image/')) return 'photo';
+            if (type.startsWith('video/')) return 'video';
+            if (type.startsWith('audio/')) return 'audio';
+            const name = String(file.name || '').toLowerCase();
+            if (/\.(jpe?g|png|webp|gif|heic|heif)$/.test(name)) return 'photo';
+            if (/\.(mp4|mov|webm|m4v|3gp|avi)$/.test(name)) return 'video';
+            if (/\.(mp3|m4a|aac|wav|ogg|oga|opus)$/.test(name)) return 'audio';
+            return '';
+        }
+
         // File upload info with preview
         function updateFileInfo(input) {
             const fileInfo = document.getElementById('fileInfo');
@@ -4416,6 +4669,10 @@
             if (input.files.length > 0) {
                 const file = input.files[0];
                 const fileSize = (file.size / 1024 / 1024).toFixed(2);
+                document.getElementById('createPostType').value = detectPostContentType(file);
+                if (!recordedAudioFile || file !== recordedAudioFile) {
+                    closeAudioRecorder(false);
+                }
                 
                 // Validación de tamaño (100MB máximo)
                 if (fileSize > 100) {
