@@ -471,6 +471,11 @@
                     if (window.history && window.history.replaceState) {
                         window.history.replaceState({}, document.title, window.location.pathname);
                     }
+                } else if (new URLSearchParams(window.location.search).get('login') === '1') {
+                    setTimeout(() => showLoginForm(), 400);
+                    if (window.history && window.history.replaceState) {
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                    }
                 }
             };
 

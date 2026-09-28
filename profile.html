@@ -2259,6 +2259,11 @@
             <div class="profile-banner-actions" id="profileBannerActions" aria-label="Acciones del perfil"></div>
         </div>
 
+        <div id="profileGuestNotice" class="profile-paused-banner" style="display:none;" role="status">
+            Estás viendo este perfil como visitante. Si es tu perfil,
+            <a href="index.html?login=1" style="color:inherit;font-weight:700;text-decoration:underline;">iniciá sesión</a>
+            para publicar o editar.
+        </div>
         <div id="profileSetupBanner" class="profile-setup-banner" style="display:none;" role="alert"></div>
         <div id="profilePausedBanner" class="profile-paused-banner" role="status">
             Tu perfil está <strong>pausado</strong>. No aparece en el directorio ni en reels. Puedes reactivarlo cuando quieras.
@@ -2961,9 +2966,11 @@
             if (!container) return;
             const setup = document.getElementById('profileSetupBanner');
             const paused = document.getElementById('profilePausedBanner');
+            const guest = document.getElementById('profileGuestNotice');
             const hasBanner =
                 (setup && setup.style.display === 'block') ||
-                (paused && paused.classList.contains('show'));
+                (paused && paused.classList.contains('show')) ||
+                (guest && guest.style.display === 'block');
             container.classList.toggle('has-top-banner', Boolean(hasBanner));
         }
 
@@ -3539,8 +3546,13 @@
 
         // Hide edit buttons when viewing other user's profile
         function hideEditButtons() {
-            const editButtons = document.querySelectorAll('.edit-avatar-btn, .edit-cover-btn, .edit-profile-btn, .create-post-btn');
+            const editButtons = document.querySelectorAll('.edit-avatar-btn, .edit-cover-btn, .edit-profile-btn, .create-post-btn, .avatar-badge, .cover-photo-overlay');
             editButtons.forEach(btn => btn.style.display = 'none');
+            const guestNotice = document.getElementById('profileGuestNotice');
+            if (guestNotice) {
+                guestNotice.style.display = authToken ? 'none' : 'block';
+            }
+            syncTopBannerOffset();
             const dangerZone = document.getElementById('profileDangerZone');
             if (dangerZone) {
                 dangerZone.style.display = 'none';
