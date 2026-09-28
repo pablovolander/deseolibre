@@ -258,7 +258,8 @@
                 <p class="form-toggle" style="margin-top:-0.25rem;margin-bottom:0.75rem;text-align:right;">
                     <a href="#" onclick="event.preventDefault(); showForgotPasswordForm();">¿Olvidaste tu contraseña?</a>
                 </p>
-                <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
+                <p id="loginError" role="alert" hidden style="background:rgba(255,77,109,0.15);border:1px solid rgba(255,77,109,0.5);color:#ff8fa3;padding:0.6rem 0.75rem;border-radius:8px;margin-bottom:0.75rem;font-size:0.9rem;"></p>
+                <button type="submit" class="btn btn-primary" id="loginSubmitBtn">Iniciar Sesión</button>
                 <div class="form-toggle">
                     <p>¿No tienes cuenta? <a href="#" onclick="showRegisterForm()">Regístrate aquí</a></p>
                 </div>
@@ -598,6 +599,13 @@
 
         // Authentication functions
         async function login(email, password) {
+            const loginError = document.getElementById('loginError');
+            const submitBtn = document.getElementById('loginSubmitBtn');
+            if (loginError) loginError.hidden = true;
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Entrando…';
+            }
             try {
                 const response = await apiCall('/api/auth/login', {
                     method: 'POST',
@@ -621,6 +629,18 @@
                 
             } catch (error) {
                 console.error('Login error:', error);
+                if (loginError) {
+                    const message = error && error.message ? error.message : '';
+                    loginError.textContent = /credenciales/i.test(message)
+                        ? 'Email o contraseña incorrectos. Revisá los datos o tocá «¿Olvidaste tu contraseña?».'
+                        : (message && message !== 'Failed to fetch' ? message : 'No se pudo conectar. Revisá tu internet e intentá de nuevo.');
+                    loginError.hidden = false;
+                }
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Iniciar Sesión';
+                }
             }
         }
 
