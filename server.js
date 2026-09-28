@@ -2862,17 +2862,26 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
 
     const isPublicValue = 1;
 
-    if (!req.file) {
+    const directFileUrl = String(req.body?.file_url || '').trim();
+    if (!req.file && !directFileUrl) {
         return res.status(400).json({ error: 'Archivo es requerido' });
     }
 
     let fileUrl;
-    try {
-        fileUrl = await persistUploadedFile(req.file, isVercel, localUploadsDir);
-    } catch (uploadError) {
-        console.error('Error al guardar archivo:', uploadError);
-        const message = uploadError.message || 'Error al guardar el archivo. Intenta de nuevo.';
-        return res.status(500).json({ error: message });
+    if (req.file) {
+        try {
+            fileUrl = await persistUploadedFile(req.file, isVercel, localUploadsDir);
+        } catch (uploadError) {
+            console.error('Error al guardar archivo:', uploadError);
+            const message = uploadError.message || 'Error al guardar el archivo. Intenta de nuevo.';
+            return res.status(500).json({ error: message });
+        }
+    } else {
+        const ownPrefix = `/api/media/uploads/posts/${userId}/`;
+        if (!directFileUrl.startsWith(ownPrefix) || directFileUrl.includes('..')) {
+            return res.status(400).json({ error: 'URL de archivo inválida' });
+        }
+        fileUrl = directFileUrl;
     }
 
     const thumbnailUrl = fileUrl;
@@ -3771,6 +3780,17 @@ app.post('/api/blob/client-token', authenticateToken, async (req, res) => {
                 'image/jpeg',
                 'image/png',
                 'image/webp',
+                'image/gif',
+                'image/heic',
+                'image/heif',
+                'audio/mpeg',
+                'audio/mp4',
+                'audio/x-m4a',
+                'audio/aac',
+                'audio/wav',
+                'audio/x-wav',
+                'audio/webm',
+                'audio/ogg',
                 'application/octet-stream'
             ],
             maximumSizeInBytes: 50 * 1024 * 1024,

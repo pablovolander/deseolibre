@@ -3819,9 +3819,8 @@
                 size: (file.size / 1024 / 1024).toFixed(2) + ' MB'
             });
 
-            // Validar tamaño de archivo (100MB máximo)
-            if (file.size > 100 * 1024 * 1024) {
-                showNotification('El archivo es muy grande. Máximo 100MB', 'error');
+            if (file.size > 50 * 1024 * 1024) {
+                showNotification('El archivo es muy grande. Máximo 50 MB', 'error');
                 return;
             }
 
@@ -3832,12 +3831,28 @@
             formData.append('category', category);
             formData.append('is_premium', isPremium ? 'true' : 'false');
             formData.append('is_public', 'true');
-            formData.append('file', file);
 
-            // Mostrar notificación de carga
             showNotification('⏳ Subiendo archivo...', 'success');
 
             try {
+                if (typeof DeseoBlobUpload !== 'undefined' && DeseoBlobUpload.uploadFile && currentUser?.id) {
+                    let lastShown = -1;
+                    const uploaded = await DeseoBlobUpload.uploadFile(file, {
+                        authToken: DeseoAuth.getToken(),
+                        folder: `uploads/posts/${currentUser.id}`,
+                        onProgress: ({ progress }) => {
+                            const pct = Math.round((progress || 0) * 100);
+                            if (pct >= lastShown + 10 || pct === 100) {
+                                lastShown = pct;
+                                showNotification(`⏳ Subiendo archivo... ${pct}%`, 'success');
+                            }
+                        }
+                    });
+                    formData.append('file_url', uploaded.url);
+                } else {
+                    formData.append('file', file);
+                }
+
                 console.log('🚀 Enviando datos al servidor...');
                 const response = await apiCall(`${API_URL}/api/content`, {
                     method: 'POST',

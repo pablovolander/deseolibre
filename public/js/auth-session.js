@@ -62,7 +62,10 @@
         }
 
         if (!response.ok) {
-            const error = new Error(data.error || data.message || 'Error en la solicitud');
+            const fallback = response.status === 413
+                ? 'El archivo es demasiado grande para subirlo.'
+                : `Error en la solicitud (${response.status})`;
+            const error = new Error(data.message || data.error || fallback);
             error.status = response.status;
             error.data = data;
             throw error;
