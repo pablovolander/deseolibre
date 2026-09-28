@@ -5303,7 +5303,15 @@
         }
 
         function openPostFromUrl() {
-            const postId = new URLSearchParams(window.location.search).get('post');
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('create') === '1' && isOwnProfile && currentUser) {
+                params.delete('create');
+                const query = params.toString();
+                history.replaceState(history.state, '', window.location.pathname + (query ? `?${query}` : ''));
+                openCreatePostModal();
+                return;
+            }
+            const postId = params.get('post');
             if (!postId) return;
             if (userPosts.some((p) => String(p.id) === String(postId))) {
                 viewPost(postId);

@@ -105,12 +105,30 @@ body.dl-mobile-nav {
 
     .directory-page .header-actions .btn-link,
     .directory-page .header-actions .btn-primary-sm {
+        box-sizing: border-box;
         width: 100%;
+        margin: 0;
         text-align: center;
         min-height: var(--mobile-touch-min);
         display: flex;
         align-items: center;
         justify-content: center;
+        gap: 0.4rem;
+        font-size: 0.95rem;
+        border-radius: 10px;
+    }
+
+    .directory-page .header-actions .btn-link {
+        padding: 0.5rem 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.04);
+    }
+
+    .directory-page .header-actions .btn-link.btn-reels {
+        font-size: 0.95rem;
+        padding: 0.5rem 1rem;
+        border-radius: 10px;
+        box-shadow: none;
     }
 
     .directory-page .directory-search {

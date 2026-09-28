@@ -202,6 +202,20 @@
         if (createBtn) {
             createBtn.style.display = authToken ? 'inline-block' : 'none';
         }
+        const actions = document.querySelector('.directory-header .header-actions');
+        if (!actions) return;
+        actions.querySelectorAll('[onclick="showLogin()"], a[href*="register=1"]').forEach((el) => {
+            el.style.display = authToken ? 'none' : '';
+        });
+        let profileLink = actions.querySelector('.header-profile-link');
+        if (authToken && !profileLink) {
+            profileLink = document.createElement('a');
+            profileLink.href = 'profile.html';
+            profileLink.className = 'btn-link header-profile-link';
+            profileLink.innerHTML = '<i class="fas fa-user"></i> Mi perfil';
+            actions.insertBefore(profileLink, createBtn || null);
+        }
+        if (profileLink) profileLink.style.display = authToken ? '' : 'none';
     }
 
     function dedupePostsByUser(posts) {
@@ -410,13 +424,7 @@
         if (!(await ensureCanPublishInCategory())) {
             return;
         }
-        document.getElementById('createPostModal')?.classList.add('show');
-        if (typeof DeseoPricing !== 'undefined') {
-            DeseoPricing.prefillPublishPhone();
-        }
-        if (typeof DeseoUploadMobile !== 'undefined') {
-            DeseoUploadMobile.initAll(document.getElementById('createPostModal'));
-        }
+        window.location.href = 'profile.html?create=1';
     };
 
     window.publishFromCategory = async function (event) {
