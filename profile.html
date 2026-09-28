@@ -3265,6 +3265,7 @@
                 await loadUserPosts();
                 initTabs();
                 renderProfileSetupBanner();
+                openPostFromUrl();
             } catch (error) {
                 console.error('Error initializing profile:', error);
                 if (typeof DeseoProfileBootstrap !== 'undefined') {
@@ -4617,10 +4618,36 @@
             return categories[category] || category;
         }
 
+        function sharedProfileOwnerId() {
+            return (isOwnProfile ? currentUser?.id : displayProfileUser?.id) || viewingUserId || currentUser?.id;
+        }
+
+        async function shareLink(url, title, copiedMessage) {
+            if (navigator.share) {
+                try {
+                    await navigator.share({ title, url });
+                    return;
+                } catch (error) {
+                    if (error?.name === 'AbortError') return;
+                }
+            }
+            try {
+                await navigator.clipboard.writeText(url);
+                showNotification(copiedMessage, 'success');
+            } catch (_) {
+                window.prompt('Copiá este enlace:', url);
+            }
+        }
+
         function shareProfile() {
-            const profileUrl = `${window.location.origin}/profile.html?user=${currentUser.id}`;
-            navigator.clipboard.writeText(profileUrl);
-            showNotification('¡Link del perfil copiado!', 'success');
+            const ownerId = sharedProfileOwnerId();
+            if (!ownerId) return;
+            const name = document.getElementById('profileName')?.textContent || 'Perfil';
+            shareLink(
+                `${window.location.origin}/profile.html?user=${encodeURIComponent(ownerId)}`,
+                `${name} · Deseo Libre`,
+                '¡Link del perfil copiado!'
+            );
         }
 
         async function viewPost(postId) {
@@ -4831,8 +4858,19 @@
         }
 
         function sharePost() {
-            // TODO: Implementar compartir
-            showNotification('Función de compartir próximamente', 'success');
+            if (!currentDetailPost) return;
+            const ownerId = currentDetailPost.user_id || sharedProfileOwnerId();
+            if (!ownerId) return;
+            const url = `${window.location.origin}/profile.html?user=${encodeURIComponent(ownerId)}&post=${encodeURIComponent(currentDetailPost.id)}`;
+            shareLink(url, currentDetailPost.title || 'Publicación · Deseo Libre', '¡Link de la publicación copiado!');
+        }
+
+        function openPostFromUrl() {
+            const postId = new URLSearchParams(window.location.search).get('post');
+            if (!postId) return;
+            if (userPosts.some((p) => String(p.id) === String(postId))) {
+                viewPost(postId);
+            }
         }
 
         // ============================================
