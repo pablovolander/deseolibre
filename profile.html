@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="/css/components.css" rel="stylesheet">
     <link href="/css/responsive.css" rel="stylesheet">
-    <link href="/css/mobile.css" rel="stylesheet">
+    <link href="/css/mobile.css?v=20260928a" rel="stylesheet">
     <link href="/css/age-gate.css" rel="stylesheet">
     <style>
         * {
@@ -2805,7 +2805,7 @@
                             <p class="no-comments">Aún no hay comentarios. ¡Sé el primero!</p>
                         </div>
                         <form class="post-comment-form" id="postCommentForm" onsubmit="submitPostComment(event)">
-                            <input type="text" id="postCommentInput" maxlength="500" placeholder="Escribe un comentario..." autocomplete="off">
+                            <input type="text" id="postCommentInput" maxlength="500" placeholder="Escribe un comentario..." autocomplete="off" onfocus="setTimeout(() => this.scrollIntoView({ block: 'center', behavior: 'smooth' }), 350)">
                             <button type="submit" aria-label="Enviar comentario"><i class="fas fa-paper-plane"></i></button>
                         </form>
                     </div>

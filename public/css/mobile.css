@@ -422,8 +422,7 @@ body.dl-mobile-nav:not(.directory-page):not(.home-page) {
     }
 
     body.dl-modal-hides-nav .profile-contact-sticky {
-        bottom: 0;
-        padding-bottom: calc(0.55rem + env(safe-area-inset-bottom, 0px));
+        display: none !important;
     }
 
     .profile-contact-sticky .contact-links-sticky {
