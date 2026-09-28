@@ -73,8 +73,9 @@ window.DeseoListing = (function () {
         if (post.profile_picture) {
             return post.profile_picture;
         }
-        if (post.content_type === 'video' && post.thumbnail_url) {
-            return post.thumbnail_url;
+        if (post.content_type === 'video') {
+            const thumb = String(post.thumbnail_url || '');
+            return /\.(jpe?g|png|webp|gif)(\?|#|$)/i.test(thumb) ? thumb : '';
         }
         return post.media_url || post.file_url || '';
     }

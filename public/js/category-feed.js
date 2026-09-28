@@ -36,7 +36,7 @@
         const safeTitle = escapeHtml(post.title);
 
         if (type === 'video') {
-            return `<video class="post-image" controls preload="metadata" src="${mediaUrl}" title="${safeTitle}"></video>`;
+            return `<video class="post-image" controls playsinline preload="metadata" src="${mediaUrl}#t=0.1" title="${safeTitle}"></video>`;
         }
         if (type === 'audio') {
             return `<div class="post-audio"><i class="fas fa-music"></i><audio controls src="${mediaUrl}"></audio></div>`;

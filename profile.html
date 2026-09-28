@@ -3637,8 +3637,9 @@
                 return { thumbnail: resolveMediaUrl(mediaPath), icon: '📷' };
             }
             if (type === 'video') {
-                if (post.thumbnail_url) {
-                    return { thumbnail: resolveMediaUrl(post.thumbnail_url), icon: '🎥' };
+                const thumb = String(post.thumbnail_url || '');
+                if (thumb && thumb !== mediaPath && /\.(jpe?g|png|webp|gif)(\?|#|$)/i.test(thumb)) {
+                    return { thumbnail: resolveMediaUrl(thumb), icon: '🎥' };
                 }
                 return { thumbnail: '', videoSrc: withFirstFrameHint(resolveMediaUrl(mediaPath)), icon: '🎥' };
             }

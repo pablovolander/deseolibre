@@ -229,18 +229,25 @@
         const cardImagePath = listing
             ? listing.getDirectoryCardImage(post)
             : (post.profile_picture || post.media_url || post.file_url || '');
-        const imageUrl = cardImagePath
-            ? (typeof resolveMediaUrl === 'function'
-                ? resolveMediaUrl(cardImagePath)
-                : (cardImagePath.startsWith('http') ? cardImagePath : `${API_URL}${cardImagePath}`))
-            : 'https://via.placeholder.com/400x300?text=Sin+foto';
+        const toUrl = (path) => (typeof resolveMediaUrl === 'function'
+            ? resolveMediaUrl(path)
+            : (path.startsWith('http') ? path : `${API_URL}${path}`));
+        const noPhotoSrc = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 520"><rect width="400" height="520" fill="#2a2036"/><text x="200" y="270" font-size="28" fill="#b9a6d6" text-anchor="middle" font-family="sans-serif">Sin foto</text></svg>'
+        );
+        const videoPath = !cardImagePath && post.content_type === 'video'
+            ? (post.media_url || post.file_url || '')
+            : '';
+        const imageUrl = cardImagePath ? toUrl(cardImagePath) : noPhotoSrc;
         const location = listing ? listing.getLocation(post) : (post.location || 'Ubicación no indicada');
         const price = listing ? listing.getPrice(post) : 'Consultar';
         const verified = post.is_verified
             ? '<span class="badge-verified"><i class="fas fa-check-circle"></i> Verificado</span>'
             : '';
 
-        const mediaHtml = `<img src="${imageUrl}" alt="${escapeHtml(name)}" loading="lazy" onerror="this.src='https://via.placeholder.com/400x520?text=Sin+foto'">`;
+        const mediaHtml = videoPath
+            ? `<video src="${toUrl(videoPath)}#t=0.1" muted playsinline preload="metadata" style="pointer-events:none;"></video>`
+            : `<img src="${imageUrl}" alt="${escapeHtml(name)}" loading="lazy" onerror="this.onerror=null; this.src='${noPhotoSrc}'">`;
 
         return `
         <article class="profile-card" onclick="window.location.href='profile.html?user=${post.user_id}'">
