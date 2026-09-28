@@ -4862,12 +4862,20 @@ app.post('/api/reels', authenticateToken, requireUserVerification, handleReelUpl
         }
 
         const media = pickReelMedia(req.files);
-        if (!media) {
+        const directMediaUrl = String(req.body?.media_url || '').trim();
+        if (!media && !directMediaUrl) {
             return res.status(400).json({ error: 'Elegí una foto o un video' });
         }
-        const { file: mediaFile, mediaType } = media;
+        if (!media) {
+            const ownPrefix = `/api/media/uploads/reels/${userId}/`;
+            if (!directMediaUrl.startsWith(ownPrefix) || directMediaUrl.includes('..')) {
+                return res.status(400).json({ error: 'URL de archivo inválida' });
+            }
+        }
+        const mediaFile = media ? media.file : null;
+        const mediaType = media ? media.mediaType : (req.body?.media_type === 'image' ? 'image' : 'video');
 
-        const mediaSize = Number(mediaFile.size || mediaFile.buffer?.length || 0);
+        const mediaSize = mediaFile ? Number(mediaFile.size || mediaFile.buffer?.length || 0) : 0;
         if (mediaSize > reelUploadLimitBytes) {
             return res.status(400).json({ error: buildReelTooLargeError(reelUploadLimitBytes) });
         }
@@ -4881,7 +4889,9 @@ app.post('/api/reels', authenticateToken, requireUserVerification, handleReelUpl
 
         const thumbnailFile = req.files && Array.isArray(req.files.thumbnail) ? req.files.thumbnail[0] : null;
 
-        const videoUrl = await persistUploadedFile(mediaFile, isVercel, localUploadsDir);
+        const videoUrl = mediaFile
+            ? await persistUploadedFile(mediaFile, isVercel, localUploadsDir)
+            : directMediaUrl;
         const thumbnailUrl = thumbnailFile
             ? await persistUploadedFile(thumbnailFile, isVercel, localUploadsDir)
             : null;

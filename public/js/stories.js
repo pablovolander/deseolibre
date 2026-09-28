@@ -6,6 +6,7 @@ window.DeseoStories = (function () {
     const IMAGE_DURATION_MS = 5000;
     const MAX_VIDEO_DURATION_SEC = 45;
     const MAX_UPLOAD_BYTES = 4.5 * 1024 * 1024;
+    const MAX_DIRECT_UPLOAD_BYTES = 50 * 1024 * 1024;
     const SEEN_STORAGE_KEY = 'deseo_seen_stories';
     const SWIPE_CLOSE_PX = 90;
     const HOLD_MS = 220;
@@ -253,7 +254,14 @@ window.DeseoStories = (function () {
         const author = root.querySelector('.story-author');
         author.href = `profile.html?user=${encodeURIComponent(reel.user_id)}`;
         const avatar = root.querySelector('.story-author-avatar');
-        avatar.src = mediaUrl(reel.profile_picture) || mediaUrl('/uploads/default-avatar.png');
+        const fallbackAvatar = typeof DEFAULT_AVATAR_SRC !== 'undefined'
+            ? DEFAULT_AVATAR_SRC
+            : 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="#3a3d4d"/><circle cx="20" cy="15" r="7" fill="#8a8fa3"/><path d="M6 36c2-8 8-12 14-12s12 4 14 12" fill="#8a8fa3"/></svg>');
+        avatar.onerror = () => {
+            avatar.onerror = null;
+            avatar.src = fallbackAvatar;
+        };
+        avatar.src = mediaUrl(reel.profile_picture) || fallbackAvatar;
         root.querySelector('.story-author-name').innerHTML =
             `${escapeHtml(reel.username || 'Usuario')}${reel.is_verified ? ' <span class="story-verified">✓</span>' : ''}`;
         root.querySelector('.story-author-time').textContent = timeAgo(reel.created_at);
@@ -526,25 +534,29 @@ window.DeseoStories = (function () {
         });
     }
 
-    async function prepareFile(file, setStatus) {
+    function canUploadDirect(userId) {
+        return Boolean(userId) && typeof DeseoBlobUpload !== 'undefined' && typeof DeseoBlobUpload.uploadFile === 'function';
+    }
+
+    async function prepareFile(file, setStatus, maxBytes) {
         const isVideo = String(file.type || '').startsWith('video/') || /\.(mp4|mov|m4v|webm|mkv)$/i.test(file.name || '');
         if (!isVideo) {
             let finalFile = file;
-            if (typeof DeseoUploadMobile !== 'undefined') {
+            if (typeof DeseoUploadMobile !== 'undefined' && typeof DeseoUploadMobile.compressImageFile === 'function') {
                 setStatus('Preparando foto...');
                 finalFile = await DeseoUploadMobile.compressImageFile(file, 3.5 * 1024 * 1024, 1920);
             }
-            if (finalFile.size > MAX_UPLOAD_BYTES) {
-                throw new Error(`La foto pesa ${formatMb(finalFile.size)} (máx. ${formatMb(MAX_UPLOAD_BYTES)}).`);
+            if (finalFile.size > maxBytes) {
+                throw new Error(`La foto pesa ${formatMb(finalFile.size)} (máx. ${formatMb(maxBytes)}).`);
             }
             return { file: finalFile, mediaType: 'image', duration: null };
         }
 
         let finalFile = file;
-        if (typeof DeseoVideoCompress !== 'undefined') {
-            setStatus(file.size > MAX_UPLOAD_BYTES ? `Comprimiendo video (${formatMb(file.size)})...` : 'Preparando video...');
+        if (typeof DeseoVideoCompress !== 'undefined' && file.size > maxBytes) {
+            setStatus(`Comprimiendo video (${formatMb(file.size)})...`);
             const result = await DeseoVideoCompress.compressIfNeeded(file, {
-                maxBytes: MAX_UPLOAD_BYTES,
+                maxBytes,
                 maxDurationSec: MAX_VIDEO_DURATION_SEC,
                 onProgress: ({ phase, progress }) => {
                     if (phase === 'compress') setStatus(`Comprimiendo video… ${Math.round((progress || 0) * 100)}%`);
@@ -552,8 +564,8 @@ window.DeseoStories = (function () {
             });
             finalFile = result.file;
         }
-        if (finalFile.size > MAX_UPLOAD_BYTES) {
-            throw new Error(`El video pesa ${formatMb(finalFile.size)} (máx. ${formatMb(MAX_UPLOAD_BYTES)}). Probá un clip más corto.`);
+        if (finalFile.size > maxBytes) {
+            throw new Error(`El video pesa ${formatMb(finalFile.size)} (máx. ${formatMb(maxBytes)}). Probá un clip más corto.`);
         }
         const duration = await probeVideoDuration(finalFile);
         if (duration != null && duration > MAX_VIDEO_DURATION_SEC + 0.5) {
@@ -602,6 +614,9 @@ window.DeseoStories = (function () {
         const textInput = sheet.querySelector('.story-upload-text input');
         let prepared = null;
         let previewUrl = null;
+        const uploaderId = opts.userId != null ? opts.userId : getCurrentUserId();
+        const direct = canUploadDirect(uploaderId);
+        const maxBytes = direct ? MAX_DIRECT_UPLOAD_BYTES : MAX_UPLOAD_BYTES;
 
         const setStatus = (message, type) => {
             status.textContent = message || '';
@@ -625,7 +640,7 @@ window.DeseoStories = (function () {
             submit.disabled = true;
             if (!file) return;
             try {
-                prepared = await prepareFile(file, (msg) => setStatus(msg));
+                prepared = await prepareFile(file, (msg) => setStatus(msg), maxBytes);
             } catch (err) {
                 setStatus(err.message || 'No se pudo preparar el archivo', 'error');
                 input.value = '';
@@ -656,12 +671,31 @@ window.DeseoStories = (function () {
             formData.set('category', opts.category);
             formData.set('title', textInput.value.trim());
             formData.set('is_public', 'true');
-            formData.set(prepared.mediaType === 'image' ? 'image' : 'video', prepared.file);
             if (prepared.duration != null) formData.set('duration_seconds', String(prepared.duration));
 
             submit.disabled = true;
             setStatus('Subiendo...');
             try {
+                let mediaUrl = null;
+                if (direct) {
+                    try {
+                        const uploaded = await DeseoBlobUpload.uploadFile(prepared.file, {
+                            authToken: token,
+                            folder: `uploads/reels/${uploaderId}`,
+                            onProgress: ({ progress }) => setStatus(`Subiendo… ${Math.round((progress || 0) * 100)}%`)
+                        });
+                        mediaUrl = uploaded.url;
+                    } catch (uploadErr) {
+                        if (prepared.file.size > MAX_UPLOAD_BYTES) throw uploadErr;
+                    }
+                }
+                if (mediaUrl) {
+                    formData.set('media_url', mediaUrl);
+                    formData.set('media_type', prepared.mediaType);
+                } else {
+                    formData.set(prepared.mediaType === 'image' ? 'image' : 'video', prepared.file);
+                }
+                setStatus('Publicando...');
                 const res = await fetch(`${apiBase()}/api/reels`, {
                     method: 'POST',
                     headers: { Authorization: `Bearer ${token}` },
