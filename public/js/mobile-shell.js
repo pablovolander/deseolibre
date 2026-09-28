@@ -250,6 +250,11 @@
     }
 
     function watchBackButton() {
+        // A click on href="#" changes the hash and fires popstate, which would close the modal it just opened.
+        document.addEventListener('click', (event) => {
+            const link = event.target && event.target.closest ? event.target.closest('a[href="#"]') : null;
+            if (link) event.preventDefault();
+        }, true);
         global.addEventListener('pagehide', () => {
             pageLeaving = true;
         });

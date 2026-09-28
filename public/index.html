@@ -65,8 +65,8 @@
                 </nav>
                 
                 <div class="auth-buttons" id="authButtons">
-                    <a href="#" class="btn btn-secondary" onclick="showLoginForm()">Iniciar Sesión</a>
-                    <a href="#" class="btn btn-primary" onclick="showRegisterForm()">Registrarse</a>
+                    <a href="index.html?login=1" class="btn btn-secondary" onclick="event.preventDefault(); showLoginForm();">Iniciar Sesión</a>
+                    <a href="index.html?register=1" class="btn btn-primary" onclick="event.preventDefault(); showRegisterForm();">Registrarse</a>
                 </div>
                 
                 <div class="user-menu" id="userMenu">
@@ -261,7 +261,7 @@
                 <p id="loginError" role="alert" hidden style="background:rgba(255,77,109,0.15);border:1px solid rgba(255,77,109,0.5);color:#ff8fa3;padding:0.6rem 0.75rem;border-radius:8px;margin-bottom:0.75rem;font-size:0.9rem;"></p>
                 <button type="submit" class="btn btn-primary" id="loginSubmitBtn">Iniciar Sesión</button>
                 <div class="form-toggle">
-                    <p>¿No tienes cuenta? <a href="#" onclick="showRegisterForm()">Regístrate aquí</a></p>
+                    <p>¿No tienes cuenta? <a href="#" onclick="event.preventDefault(); showRegisterForm();">Regístrate aquí</a></p>
                 </div>
             </form>
         </div>
@@ -424,7 +424,7 @@
                     <button type="button" class="modal-btn modal-btn-primary" id="regWizardSubmit" style="display:none;">Completar registro</button>
                 </div>
                 <div class="form-toggle" style="margin-top:1rem;">
-                    <p>¿Ya tienes cuenta? <a href="#" onclick="showLoginForm()">Inicia sesión</a></p>
+                    <p>¿Ya tienes cuenta? <a href="#" onclick="event.preventDefault(); showLoginForm();">Inicia sesión</a></p>
                 </div>
             </form>
         </div>
@@ -760,7 +760,7 @@
         function showLoginForm() {
             closeAllModals();
             const modal = document.getElementById('loginModal');
-            modal.style.display = 'block';
+            modal.style.display = 'flex';
             modal.classList.add('show');
             document.body.classList.add('modal-open');
             // Focus on first input
@@ -773,7 +773,7 @@
         function showForgotPasswordForm() {
             closeAllModals();
             const modal = document.getElementById('forgotPasswordModal');
-            modal.style.display = 'block';
+            modal.style.display = 'flex';
             modal.classList.add('show');
             document.body.classList.add('modal-open');
             const loginEmail = document.getElementById('loginEmail')?.value?.trim();
@@ -1020,6 +1020,6 @@
         });
     </script>
     <script src="/js/upload-mobile.js?v=20260926b"></script>
-    <script src="/js/mobile-shell.js?v=20260928b"></script>
+    <script src="/js/mobile-shell.js?v=20260928f"></script>
 </body>
 </html>
