@@ -11,6 +11,7 @@
     <link href="/css/responsive.css" rel="stylesheet">
     <link href="/css/mobile.css?v=20260928a" rel="stylesheet">
     <link href="/css/age-gate.css" rel="stylesheet">
+    <link href="/css/stories.css?v=20260928a" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -2470,8 +2471,8 @@
         <!-- PROFILE HEADER -->
                 <div class="profile-header">
             <div class="profile-info-row">
-                <div class="profile-avatar-container">
-                    <img alt="" class="profile-avatar" id="profileAvatar" onclick="if (isOwnProfile) openChangeAvatarModal()" onerror="if (typeof DEFAULT_AVATAR_SRC !== 'undefined' && this.src !== DEFAULT_AVATAR_SRC) this.src = DEFAULT_AVATAR_SRC;">
+                <div class="profile-avatar-container" id="profileAvatarRing">
+                    <img alt="" class="profile-avatar" id="profileAvatar" onclick="handleProfileAvatarClick()" onerror="if (typeof DEFAULT_AVATAR_SRC !== 'undefined' && this.src !== DEFAULT_AVATAR_SRC) this.src = DEFAULT_AVATAR_SRC;">
                     <div class="avatar-badge" onclick="openChangeAvatarModal()">
                         <i class="fas fa-camera"></i>
                     </div>
@@ -3099,6 +3100,7 @@
     <script src="/js/service-pricing.js"></script>
     <script src="/js/components.js"></script>
     <script src="/js/upload-mobile.js?v=20260926f"></script>
+    <script src="/js/stories.js?v=20260928a"></script>
     <script src="/js/mobile-shell.js?v=20260928b"></script>
     <script>
         // Global variables
@@ -3471,6 +3473,7 @@
                 initTabs();
                 renderProfileSetupBanner();
                 openPostFromUrl();
+                loadProfileStories();
             } catch (error) {
                 console.error('Error initializing profile:', error);
                 if (typeof DeseoProfileBootstrap !== 'undefined') {
@@ -5369,6 +5372,50 @@
         }
 
         // ============================================
+        // HISTORIAS
+        // ============================================
+
+        let profileStories = [];
+
+        async function loadProfileStories() {
+            const ring = document.getElementById('profileAvatarRing');
+            const userId = viewingUserId || currentUser?.id;
+            if (!ring || !userId || typeof DeseoStories === 'undefined') return;
+            try {
+                profileStories = await DeseoStories.fetchUserStories(userId);
+            } catch (error) {
+                console.warn('Historias del perfil:', error.message || error);
+                profileStories = [];
+            }
+            DeseoStories.applyRing(ring, profileStories);
+        }
+
+        function handleProfileAvatarClick() {
+            if (profileStories.length && typeof DeseoStories !== 'undefined') {
+                DeseoStories.open(profileStories, {
+                    currentUserId: currentUser?.id,
+                    onDeleted: (reel) => {
+                        profileStories = profileStories.filter((item) => item.id !== reel.id);
+                    },
+                    onClose: () => DeseoStories.applyRing(document.getElementById('profileAvatarRing'), profileStories)
+                });
+                return;
+            }
+            if (isOwnProfile) openChangeAvatarModal();
+        }
+
+        function openStoryUpload() {
+            if (typeof DeseoStories === 'undefined') return;
+            DeseoStories.openUploadSheet({
+                category: currentUser?.category || '',
+                onUploaded: async () => {
+                    showNotification('Historia publicada', 'success');
+                    await loadProfileStories();
+                }
+            });
+        }
+
+        // ============================================
         // FOLLOW SYSTEM FUNCTIONS
         // ============================================
 
@@ -5402,6 +5449,9 @@
                 actionsContainer.innerHTML = `
                     <button class="btn-action btn-primary btn-compact" onclick="openCreatePostModal()">
                         <i class="fas fa-plus"></i> Publicar
+                    </button>
+                    <button class="btn-action btn-secondary btn-compact" onclick="openStoryUpload()">
+                        <i class="fas fa-circle-plus"></i> Historia
                     </button>
                     <button class="btn-action btn-secondary btn-compact" onclick="openEditProfileModal()">
                         <i class="fas fa-edit"></i> Editar

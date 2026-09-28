@@ -161,13 +161,18 @@ body.reels-page.reels-immersive {
     background: #000;
 }
 
-.reel-stage .reel-video {
+.reel-stage .reel-video,
+.reel-stage .reel-image {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
     background: #000;
+}
+
+.reel-stage .reel-image {
+    object-fit: contain;
 }
 
 .reel-video::-webkit-media-controls {

@@ -384,7 +384,7 @@
                     <div class="reels-empty">
                         <div class="icon">🎬</div>
                         <strong>Aún no hay reels aquí</strong>
-                        <p>Sé la primera persona en subir un video corto en ${categoryMeta.label}.</p>
+                        <p>Sé la primera persona en subir una foto o un video en ${categoryMeta.label}.</p>
                     </div>`;
                 setStatus(feedStatus, '', null);
                 return;
@@ -414,7 +414,11 @@
     function playCardVideo(card) {
         if (!card) return;
         const video = card.querySelector('video.reel-video');
-        if (!video) return;
+        if (!video) {
+            pauseAllVideos(null);
+            registerView(reelIdFromCard(card), card);
+            return;
+        }
         pauseAllVideos(card);
         video.muted = globalMuted;
         video.playsInline = true;
@@ -489,6 +493,7 @@
         card.className = 'reel-card';
         card.dataset.reelId = reel.id;
 
+        const isImage = reel.media_type === 'image';
         const videoUrl = mediaUrl(reel.video_url);
         const mime = guessVideoMime(videoUrl);
         const avatar = mediaUrl(reel.profile_picture) || mediaUrl('/uploads/default-avatar.png');
@@ -499,13 +504,17 @@
         const likes = reel.likes_count || 0;
         const comments = reel.comments_count || 0;
 
-        card.innerHTML = `
-            <div class="reel-stage">
-                <video class="reel-video" playsinline muted loop preload="metadata" poster="${reel.thumbnail_url ? mediaUrl(reel.thumbnail_url) : ''}">
+        const mediaMarkup = isImage
+            ? `<img class="reel-image" src="${videoUrl}" alt="" loading="lazy">`
+            : `<video class="reel-video" playsinline muted loop preload="metadata" poster="${reel.thumbnail_url ? mediaUrl(reel.thumbnail_url) : ''}">
                     <source ${sourceAttrs}>
                 </video>
                 <button type="button" class="reel-tap-zone" aria-label="Reproducir o pausar"></button>
-                <button type="button" class="reel-mute-btn" aria-label="Silencio"><i class="fas fa-volume-mute"></i></button>
+                <button type="button" class="reel-mute-btn" aria-label="Silencio"><i class="fas fa-volume-mute"></i></button>`;
+
+        card.innerHTML = `
+            <div class="reel-stage">
+                ${mediaMarkup}
                 <div class="reel-overlay">
                     <div class="reel-overlay-gradient" aria-hidden="true"></div>
                     <div class="reel-side-actions">
@@ -708,6 +717,29 @@
         return uploadForm ? Array.from(uploadForm.querySelectorAll('input[data-reel-video]')) : [];
     }
 
+    function getReelImageInput() {
+        return uploadForm ? uploadForm.querySelector('input[data-reel-image]') : null;
+    }
+
+    function getSelectedReelImage() {
+        const input = getReelImageInput();
+        return (input?.files && input.files[0]) || null;
+    }
+
+    function wireImageInput() {
+        const imageInput = getReelImageInput();
+        if (!imageInput) return;
+        imageInput.addEventListener('change', () => {
+            const file = imageInput.files && imageInput.files[0];
+            if (!file) return;
+            preparedReelFile = null;
+            getReelVideoInputs().forEach((input) => {
+                input.value = '';
+            });
+            setStatus(uploadStatus, 'Foto lista', 'success');
+        });
+    }
+
     function wireVideoInputValidation() {
         const inputs = getReelVideoInputs();
         inputs.forEach((videoInput) => {
@@ -718,6 +750,8 @@
                     setStatus(uploadStatus, '', null);
                     return;
                 }
+                const imageInput = getReelImageInput();
+                if (imageInput) imageInput.value = '';
                 inputs.forEach((other) => {
                     if (other !== videoInput) other.value = '';
                 });
@@ -746,6 +780,7 @@
         const categoryInput = document.getElementById('reel-category-fixed');
         if (categoryInput) categoryInput.value = categoryId;
         wireVideoInputValidation();
+        wireImageInput();
 
         uploadForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -757,28 +792,42 @@
                 return;
             }
 
-            const videoInput = getReelVideoInputs().find((input) => input.files && input.files[0]) || null;
-            let file = getReelVideoFile(videoInput);
-            if (!file && videoInput?.files?.[0]) {
-                file = await prepareReelVideo(videoInput);
-            }
-            const check = await validateReelVideoFile(file);
-            if (!check.ok) {
-                setStatus(uploadStatus, check.error, 'error');
-                return;
-            }
-
+            const imageFile = getSelectedReelImage();
             const formData = new FormData(uploadForm);
             formData.set('category', categoryId);
-            formData.set('video', file);
             formData.set('is_public', 'true');
-            if (check.durationSeconds != null) {
-                formData.set('duration_seconds', String(check.durationSeconds));
+
+            if (imageFile) {
+                if (imageFile.size > MAX_REEL_BYTES) {
+                    setStatus(uploadStatus, `La foto pesa ${formatMb(imageFile.size)} (máx. ${formatMb(MAX_REEL_BYTES)}).`, 'error');
+                    return;
+                }
+                formData.delete('video');
+                formData.set('image', imageFile);
+            } else {
+                const videoInput = getReelVideoInputs().find((input) => input.files && input.files[0]) || null;
+                let file = getReelVideoFile(videoInput);
+                if (!file && videoInput?.files?.[0]) {
+                    file = await prepareReelVideo(videoInput);
+                }
+                if (!file) {
+                    setStatus(uploadStatus, 'Elegí una foto o un video', 'error');
+                    return;
+                }
+                const check = await validateReelVideoFile(file);
+                if (!check.ok) {
+                    setStatus(uploadStatus, check.error, 'error');
+                    return;
+                }
+                formData.set('video', file);
+                if (check.durationSeconds != null) {
+                    formData.set('duration_seconds', String(check.durationSeconds));
+                }
             }
 
             const btn = uploadForm.querySelector('.btn-publish-reel');
             if (btn) btn.disabled = true;
-            setStatus(uploadStatus, 'Subiendo video...');
+            setStatus(uploadStatus, 'Subiendo...');
 
             try {
                 const res = await fetch(`${API_URL}/api/reels`, {

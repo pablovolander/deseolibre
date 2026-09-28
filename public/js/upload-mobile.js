@@ -205,6 +205,8 @@ window.DeseoUploadMobile = (function () {
                 ? 'fa-video'
                 : role === 'video-gallery'
                   ? 'fa-images'
+                : role === 'image-pick'
+                  ? 'fa-image'
                 : role === 'selfie' || role === 'user'
                   ? 'fa-user-circle'
                   : 'fa-camera';
@@ -215,6 +217,8 @@ window.DeseoUploadMobile = (function () {
                   ? 'Elegir video de la galería'
                 : role === 'video-pick'
                   ? 'Grabar o elegir video'
+                : role === 'image-pick'
+                  ? 'Elegir foto de la galería'
                 : role === 'selfie' || role === 'user'
                   ? 'Tomar selfie con la cámara'
                   : 'Tomar foto con la cámara';

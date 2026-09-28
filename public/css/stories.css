@@ -1,0 +1,411 @@
+/* Historias: aro en avatares, visor a pantalla completa y hoja para subir */
+
+.story-ring {
+    position: relative;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.story-ring::before {
+    content: '';
+    position: absolute;
+    inset: -5px;
+    border-radius: 50%;
+    padding: 3px;
+    background: rgba(160, 160, 175, 0.75);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.story-ring.is-new::before {
+    background: conic-gradient(from 210deg, #ff6b9d, #ffb86b, #ff3d7f, #8b7cf8, #ff6b9d);
+}
+
+body.story-viewer-open {
+    overflow: hidden;
+}
+
+.story-viewer {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    background: rgba(0, 0, 0, 0.94);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.story-frame {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    max-width: calc(100dvh * 9 / 16);
+    background: #000;
+    overflow: hidden;
+    transition: transform 0.15s ease-out;
+}
+
+@media (min-width: 700px) {
+    .story-frame {
+        height: min(92dvh, 900px);
+        border-radius: 14px;
+        max-width: calc(min(92dvh, 900px) * 9 / 16);
+    }
+}
+
+.story-media {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.story-media img,
+.story-media video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+}
+
+.story-tap-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+}
+
+.story-progress {
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 0px) + 8px);
+    left: 8px;
+    right: 8px;
+    display: flex;
+    gap: 4px;
+    z-index: 3;
+}
+
+.story-progress-seg {
+    flex: 1;
+    height: 3px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.35);
+    overflow: hidden;
+}
+
+.story-progress-fill {
+    display: block;
+    height: 100%;
+    background: #fff;
+    transform: scaleX(0);
+    transform-origin: left center;
+}
+
+.story-header {
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 0px) + 18px);
+    left: 0;
+    right: 0;
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    z-index: 3;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.45), transparent);
+}
+
+.story-author {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    color: #fff;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.story-author-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    flex-shrink: 0;
+}
+
+.story-author-name {
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.story-verified {
+    color: #7cc4ff;
+}
+
+.story-author-time {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.story-header-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.story-btn {
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: #fff;
+    font-size: 1.1rem;
+    cursor: pointer;
+}
+
+.story-btn:hover,
+.story-btn:focus-visible {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.story-footer {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 40px 14px calc(env(safe-area-inset-bottom, 0px) + 16px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    z-index: 3;
+    pointer-events: none;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.6), transparent);
+}
+
+.story-caption {
+    font-size: 0.95rem;
+    line-height: 1.35;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+    overflow-wrap: anywhere;
+}
+
+.story-like {
+    pointer-events: auto;
+    margin-left: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    border: none;
+    background: transparent;
+    color: #fff;
+    font-size: 1.6rem;
+    cursor: pointer;
+}
+
+.story-like span {
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.story-like.liked i {
+    color: #ff3d7f;
+}
+
+.story-nav {
+    display: none;
+}
+
+@media (hover: hover) and (min-width: 700px) {
+    .story-nav {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 3;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(255, 255, 255, 0.85);
+        color: #111;
+        cursor: pointer;
+    }
+
+    .story-nav:disabled {
+        opacity: 0.3;
+        cursor: default;
+    }
+
+    .story-nav-prev {
+        left: 10px;
+    }
+
+    .story-nav-next {
+        right: 10px;
+    }
+}
+
+.story-viewer.is-paused .story-header,
+.story-viewer.is-paused .story-footer,
+.story-viewer.is-paused .story-progress {
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+/* Hoja para subir */
+
+.story-upload-sheet {
+    position: fixed;
+    inset: 0;
+    z-index: 5100;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+@media (min-width: 700px) {
+    .story-upload-sheet {
+        align-items: center;
+    }
+}
+
+.story-upload-card {
+    width: 100%;
+    max-width: 420px;
+    background: #16131c;
+    color: #f4f5f8;
+    border-radius: 18px 18px 0 0;
+    padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 18px);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    font-family: inherit;
+}
+
+@media (min-width: 700px) {
+    .story-upload-card {
+        border-radius: 18px;
+    }
+}
+
+.story-upload-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 1.05rem;
+}
+
+.story-upload-close {
+    border: none;
+    background: transparent;
+    color: inherit;
+    font-size: 1.2rem;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+}
+
+.story-upload-hint {
+    margin: 0;
+    font-size: 0.85rem;
+    color: rgba(244, 245, 248, 0.7);
+}
+
+.story-upload-pick {
+    cursor: pointer;
+}
+
+.story-upload-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 240px;
+    border-radius: 14px;
+    border: 2px dashed rgba(255, 255, 255, 0.25);
+    color: rgba(244, 245, 248, 0.8);
+    font-weight: 600;
+    overflow: hidden;
+    background: #0d0b11;
+}
+
+.story-upload-preview i {
+    font-size: 2rem;
+}
+
+.story-upload-preview.has-media {
+    border-style: solid;
+}
+
+.story-upload-preview img,
+.story-upload-preview video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.story-upload-text {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: rgba(244, 245, 248, 0.8);
+}
+
+.story-upload-text input {
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: #0d0b11;
+    color: #fff;
+    font: inherit;
+    font-size: 16px;
+}
+
+.story-upload-submit {
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 1rem;
+    color: #fff;
+    background: linear-gradient(135deg, #ff6b9d, #8b7cf8);
+    cursor: pointer;
+}
+
+.story-upload-submit:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.story-upload-status {
+    margin: 0;
+    min-height: 1.2em;
+    font-size: 0.85rem;
+}
+
+.story-upload-status.error {
+    color: #ff8a8a;
+}
+
+.story-upload-status.success {
+    color: #7ee2a8;
+}

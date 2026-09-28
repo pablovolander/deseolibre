@@ -77,7 +77,11 @@ const { deleteUserAccountData, deleteStoredMediaUrls } = require('./lib/delete-u
 const {
     getReelUploadLimitBytes,
     parseReelDurationSeconds,
-    buildReelTooLargeError
+    buildReelTooLargeError,
+    isAllowedReelFile,
+    pickReelMedia,
+    normalizeReelTitle,
+    isRecentReel
 } = require('./lib/reels');
 const { formatUserForAdminList, filterDeletableUserIds } = require('./lib/admin-users');
 const {
@@ -324,6 +328,8 @@ function enrichReelsWithMediaUrls(reels, req) {
     const origin = getRequestOrigin(req);
     return (reels || []).map((reel) => ({
         ...reel,
+        media_type: reel.media_type === 'image' ? 'image' : 'video',
+        is_recent: isRecentReel(reel.created_at),
         video_url: resolveMediaUrl(reel.video_url || '', origin),
         thumbnail_url: reel.thumbnail_url
             ? resolveMediaUrl(reel.thumbnail_url, origin)
@@ -582,30 +588,21 @@ const reelUpload = multer({
         fileSize: reelUploadLimitBytes
     },
     fileFilter: function (req, file, cb) {
-        const videoTypes = /mp4|mov|mkv|webm|avi|flv|wmv|m4v/;
-        const imageTypes = /jpeg|jpg|png|gif|webp/;
-        const extension = path.extname(file.originalname).toLowerCase().replace('.', '');
-
-        if (file.fieldname === 'video') {
-            if (videoTypes.test(extension)) {
-                return cb(null, true);
-            }
-            return cb(new Error('Formato de video no soportado para reels'));
+        if (!['video', 'image', 'thumbnail'].includes(file.fieldname)) {
+            return cb(new Error('Campo de archivo no permitido para reels'));
         }
-
-        if (file.fieldname === 'thumbnail') {
-            if (imageTypes.test(extension)) {
-                return cb(null, true);
-            }
-            return cb(new Error('Formato de miniatura no soportado para reels'));
+        if (isAllowedReelFile(file.fieldname, file.originalname)) {
+            return cb(null, true);
         }
-
-        return cb(new Error('Campo de archivo no permitido para reels'));
+        return cb(new Error(file.fieldname === 'video'
+            ? 'Formato de video no soportado para reels'
+            : 'Formato de foto no soportado. Usa JPG, PNG o WEBP.'));
     }
 });
 
 const reelFieldsUpload = reelUpload.fields([
     { name: 'video', maxCount: 1 },
+    { name: 'image', maxCount: 1 },
     { name: 'thumbnail', maxCount: 1 }
 ]);
 
@@ -1020,6 +1017,7 @@ async function applyDatabaseMigrations(database) {
     await exec('ALTER TABLE users ADD COLUMN offered_services TEXT');
     await exec('ALTER TABLE users ADD COLUMN profile_paused INTEGER DEFAULT 0');
     await exec('ALTER TABLE users ADD COLUMN profile_paused_at DATETIME');
+    await exec("ALTER TABLE reels ADD COLUMN media_type TEXT DEFAULT 'video'");
 }
 
 async function ensureDatabaseSchemaUpToDate() {
@@ -4834,10 +4832,6 @@ app.post('/api/reels', authenticateToken, requireUserVerification, handleReelUpl
         const userId = req.user.userId;
         const { title, description, category, is_public, duration_seconds } = req.body;
 
-        if (!title || !title.trim()) {
-            return res.status(400).json({ error: 'Título es requerido' });
-        }
-
         if (!category || !isValidCategory(category)) {
             return res.status(400).json({ error: 'Categoría inválida' });
         }
@@ -4867,27 +4861,29 @@ app.post('/api/reels', authenticateToken, requireUserVerification, handleReelUpl
             });
         }
 
-        const videoFile = req.files && Array.isArray(req.files.video) ? req.files.video[0] : null;
-        if (!videoFile) {
-            return res.status(400).json({ error: 'Archivo de video es requerido' });
+        const media = pickReelMedia(req.files);
+        if (!media) {
+            return res.status(400).json({ error: 'Elegí una foto o un video' });
         }
+        const { file: mediaFile, mediaType } = media;
 
-        const videoSize = Number(videoFile.size || videoFile.buffer?.length || 0);
-        if (videoSize > reelUploadLimitBytes) {
+        const mediaSize = Number(mediaFile.size || mediaFile.buffer?.length || 0);
+        if (mediaSize > reelUploadLimitBytes) {
             return res.status(400).json({ error: buildReelTooLargeError(reelUploadLimitBytes) });
         }
 
-        const durationCheck = parseReelDurationSeconds(duration_seconds);
+        const durationCheck = mediaType === 'video'
+            ? parseReelDurationSeconds(duration_seconds)
+            : { ok: true, value: null };
         if (!durationCheck.ok) {
             return res.status(400).json({ error: durationCheck.error });
         }
 
         const thumbnailFile = req.files && Array.isArray(req.files.thumbnail) ? req.files.thumbnail[0] : null;
-        const reelsUploadDir = path.join(localUploadsDir, 'reels');
 
-        const videoUrl = await persistUploadedFile(videoFile, isVercel, reelsUploadDir);
+        const videoUrl = await persistUploadedFile(mediaFile, isVercel, localUploadsDir);
         const thumbnailUrl = thumbnailFile
-            ? await persistUploadedFile(thumbnailFile, isVercel, reelsUploadDir)
+            ? await persistUploadedFile(thumbnailFile, isVercel, localUploadsDir)
             : null;
 
         const duration = durationCheck.value;
@@ -4904,17 +4900,18 @@ app.post('/api/reels', authenticateToken, requireUserVerification, handleReelUpl
         })();
 
         const insertResult = await runDb(
-            `INSERT INTO reels (user_id, title, description, video_url, thumbnail_url, category, is_public, duration_seconds)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO reels (user_id, title, description, video_url, thumbnail_url, category, is_public, duration_seconds, media_type)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 userId,
-                title.trim(),
+                normalizeReelTitle(title),
                 description ? description.trim() : null,
                 videoUrl,
                 thumbnailUrl,
                 normalizedCategory,
                 isPublicFlag,
-                duration
+                duration,
+                mediaType
             ]
         );
 
@@ -4930,6 +4927,7 @@ app.post('/api/reels', authenticateToken, requireUserVerification, handleReelUpl
         res.json({
             message: 'Reel publicado exitosamente',
             reel_id: insertResult.lastID,
+            media_type: mediaType,
             video_url: videoUrl,
             thumbnail_url: thumbnailUrl,
             category: normalizedCategory
@@ -4968,7 +4966,7 @@ app.get('/api/reels/category/:category', optionalAuthenticateToken, async (req, 
     const query = `
         SELECT 
             r.id, r.title, r.description, r.video_url, r.thumbnail_url, r.category,
-            r.is_public, r.duration_seconds, r.likes_count, r.comments_count, r.views_count,
+            r.is_public, r.duration_seconds, r.media_type, r.likes_count, r.comments_count, r.views_count,
             r.created_at, r.updated_at,
             u.id as user_id, u.username, u.full_name, u.profile_picture, u.is_verified,
             CASE WHEN rl.id IS NULL THEN 0 ELSE 1 END as is_liked_by_me
@@ -5022,6 +5020,52 @@ app.get('/api/reels/category/:category', optionalAuthenticateToken, async (req, 
     });
 });
 
+app.get('/api/reels/user/:userId', optionalAuthenticateToken, async (req, res) => {
+    try {
+        await dbReady;
+        if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
+            await refreshDatabaseFromBlob();
+        }
+    } catch (refreshErr) {
+        console.error('Error al refrescar BD antes de listar reels del perfil:', refreshErr.message);
+    }
+
+    const viewerId = getViewerUserId(req);
+    const ownerId = parseInt(req.params.userId, 10);
+    if (Number.isNaN(ownerId)) {
+        return res.status(400).json({ error: 'Identificador de usuario inválido' });
+    }
+
+    const query = `
+        SELECT
+            r.id, r.title, r.description, r.video_url, r.thumbnail_url, r.category,
+            r.is_public, r.duration_seconds, r.media_type, r.likes_count, r.comments_count, r.views_count,
+            r.created_at, r.updated_at,
+            u.id as user_id, u.username, u.full_name, u.profile_picture, u.is_verified,
+            CASE WHEN rl.id IS NULL THEN 0 ELSE 1 END as is_liked_by_me
+        FROM reels r
+        JOIN users u ON r.user_id = u.id
+        LEFT JOIN reel_likes rl ON rl.reel_id = r.id AND rl.user_id = ?
+        WHERE r.user_id = ?
+          AND (r.is_public = 1 OR r.user_id = ?)
+          AND (u.profile_paused IS NULL OR u.profile_paused = 0 OR r.user_id = ?)
+        ORDER BY r.created_at DESC
+        LIMIT 50
+    `;
+
+    db.all(query, [viewerId, ownerId, viewerId, viewerId], (err, reels) => {
+        if (err) {
+            console.error('❌ Error al obtener reels del perfil:', err);
+            return res.status(500).json({ error: 'Error al cargar historias' });
+        }
+        const enriched = enrichReelsWithMediaUrls(reels, req);
+        res.json({
+            reels: enriched,
+            has_recent: enriched.some((reel) => reel.is_recent)
+        });
+    });
+});
+
 app.get('/api/reels/:reelId', optionalAuthenticateToken, (req, res) => {
     const viewerId = getViewerUserId(req);
     const reelId = parseInt(req.params.reelId, 10);
@@ -5033,7 +5077,7 @@ app.get('/api/reels/:reelId', optionalAuthenticateToken, (req, res) => {
     const query = `
         SELECT
             r.id, r.title, r.description, r.video_url, r.thumbnail_url, r.category,
-            r.is_public, r.duration_seconds, r.likes_count, r.comments_count, r.views_count,
+            r.is_public, r.duration_seconds, r.media_type, r.likes_count, r.comments_count, r.views_count,
             r.created_at, r.updated_at,
             u.id as user_id, u.username, u.full_name, u.profile_picture, u.is_verified,
             CASE WHEN rl.id IS NULL THEN 0 ELSE 1 END as is_liked_by_me
