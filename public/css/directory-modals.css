@@ -99,12 +99,22 @@
     color: #fff;
 }
 
+.header-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.1rem;
+}
+
 .header-actions .btn-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
     color: #fff;
     text-decoration: none;
-    font-size: 0.9rem;
-    margin-left: 0.75rem;
+    font-size: 1rem;
     opacity: 0.85;
+    white-space: nowrap;
 }
 
 .header-actions .btn-link.btn-reels {
@@ -130,12 +140,13 @@
 .header-actions a.btn-primary-sm {
     background: linear-gradient(135deg, #ff6b9d, #8b7cf8);
     color: #fff;
-    padding: 0.5rem 1rem;
+    padding: 0.55rem 1.1rem;
     border-radius: 8px;
     border: none;
     cursor: pointer;
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
+    white-space: nowrap;
     text-decoration: none;
     display: inline-block;
     line-height: 1.25;
