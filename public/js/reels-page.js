@@ -704,38 +704,41 @@
         }
     }
 
-    function wireVideoInputValidation() {
-        const videoInput = uploadForm?.querySelector('input[name="video"]');
-        const durationInput = uploadForm?.querySelector('input[name="duration_seconds"]');
-        if (!videoInput) return;
+    function getReelVideoInputs() {
+        return uploadForm ? Array.from(uploadForm.querySelectorAll('input[data-reel-video]')) : [];
+    }
 
-        videoInput.addEventListener('change', async () => {
-            const original = videoInput.files && videoInput.files[0];
-            if (!original) {
-                preparedReelFile = null;
-                setStatus(uploadStatus, '', null);
-                return;
-            }
-            const file = await prepareReelVideo(videoInput);
-            if (!file) {
-                videoInput.value = '';
-                return;
-            }
-            const check = await validateReelVideoFile(file);
-            if (!check.ok) {
-                setStatus(uploadStatus, check.error, 'error');
-                preparedReelFile = null;
-                videoInput.value = '';
-                return;
-            }
-            if (check.durationSeconds != null && durationInput) {
-                durationInput.value = String(check.durationSeconds);
-            }
-            setStatus(
-                uploadStatus,
-                `Listo · ${formatMb(file.size)}${check.durationSeconds ? ` · ${check.durationSeconds}s` : ''}`,
-                'success'
-            );
+    function wireVideoInputValidation() {
+        const inputs = getReelVideoInputs();
+        inputs.forEach((videoInput) => {
+            videoInput.addEventListener('change', async () => {
+                const original = videoInput.files && videoInput.files[0];
+                if (!original) {
+                    preparedReelFile = null;
+                    setStatus(uploadStatus, '', null);
+                    return;
+                }
+                inputs.forEach((other) => {
+                    if (other !== videoInput) other.value = '';
+                });
+                const file = await prepareReelVideo(videoInput);
+                if (!file) {
+                    videoInput.value = '';
+                    return;
+                }
+                const check = await validateReelVideoFile(file);
+                if (!check.ok) {
+                    setStatus(uploadStatus, check.error, 'error');
+                    preparedReelFile = null;
+                    videoInput.value = '';
+                    return;
+                }
+                setStatus(
+                    uploadStatus,
+                    `Listo · ${formatMb(file.size)}${check.durationSeconds ? ` · ${check.durationSeconds}s` : ''}`,
+                    'success'
+                );
+            });
         });
     }
 
@@ -754,7 +757,7 @@
                 return;
             }
 
-            const videoInput = uploadForm.querySelector('input[name="video"]');
+            const videoInput = getReelVideoInputs().find((input) => input.files && input.files[0]) || null;
             let file = getReelVideoFile(videoInput);
             if (!file && videoInput?.files?.[0]) {
                 file = await prepareReelVideo(videoInput);
@@ -768,7 +771,7 @@
             const formData = new FormData(uploadForm);
             formData.set('category', categoryId);
             formData.set('video', file);
-            if (!formData.get('is_public')) formData.set('is_public', 'false');
+            formData.set('is_public', 'true');
             if (check.durationSeconds != null) {
                 formData.set('duration_seconds', String(check.durationSeconds));
             }
@@ -800,12 +803,10 @@
                     setStatus(uploadStatus, data.message || data.error, 'error');
                     return;
                 }
-                if (!res.ok) throw new Error(data.error || 'No se pudo subir el reel');
+                if (!res.ok) throw new Error(data.message || data.error || 'No se pudo subir el reel');
                 setStatus(uploadStatus, 'Reel publicado correctamente', 'success');
                 uploadForm.reset();
                 preparedReelFile = null;
-                const pub = document.getElementById('reel-public');
-                if (pub) pub.checked = true;
                 loadReels();
             } catch (err) {
                 setStatus(uploadStatus, err.message || 'Error al subir', 'error');

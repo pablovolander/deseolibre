@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <link href="/css/directory.css" rel="stylesheet">
     <link href="/css/directory-modals.css" rel="stylesheet">
-    <link href="/css/reels.css" rel="stylesheet">
+    <link href="/css/reels.css?v=20260928c" rel="stylesheet">
     <link href="/css/responsive.css" rel="stylesheet">
     <link href="/css/mobile.css" rel="stylesheet">
     <link href="/css/age-gate.css" rel="stylesheet">
@@ -40,7 +40,7 @@
 
         <details class="reels-upload-panel" id="reels-upload-panel">
             <summary><i class="fas fa-plus"></i><span class="reels-upload-label"> Subir reel</span></summary>
-            <p class="reels-upload-hint">Máximo 45 s y 4.5 MB. MP4 o WEBM. Si pesa más, acorta o comprime el video.</p>
+            <p class="reels-upload-hint">Video de hasta 45 segundos. Si pesa mucho, lo comprimimos automáticamente.</p>
             <form class="reels-upload-form" id="reel-upload-form">
                 <input type="hidden" name="category" id="reel-category-fixed" value="acompañantes-hombres">
                 <label>Título
@@ -49,19 +49,11 @@
                 <label>Descripción (opcional)
                     <textarea name="description" maxlength="500" placeholder="Breve descripción"></textarea>
                 </label>
-                <label>Video *
-                    <input type="file" name="video" accept="video/mp4,video/webm,video/quicktime,video/*" data-mobile-upload="video" required>
-                </label>
-                <label>Miniatura (opcional)
-                    <input type="file" name="thumbnail" accept="image/*" data-mobile-upload="file">
-                </label>
-                <label>Duración en segundos (opcional)
-                    <input type="number" name="duration_seconds" min="1" max="45" placeholder="45">
-                </label>
-                <label class="checkbox-row">
-                    <input type="checkbox" name="is_public" id="reel-public" value="true" checked>
-                    <span>Público (visible para otros usuarios)</span>
-                </label>
+                <div class="reels-video-pickers">
+                    <span class="reels-video-pickers-label">Video (máx. 45 s)</span>
+                    <input type="file" name="video" accept="video/mp4,video/webm,video/quicktime,video/*" data-mobile-upload="video" data-reel-video>
+                    <input type="file" accept="video/mp4,video/webm,video/quicktime,video/*" data-mobile-upload="video-gallery" data-reel-video>
+                </div>
                 <button type="submit" class="btn-publish-reel"><i class="fas fa-upload"></i> Publicar reel</button>
                 <p class="reels-status" id="reel-upload-status"></p>
             </form>
@@ -73,8 +65,8 @@
     </main>
 
     <script src="/js/video-compress.js"></script>
-    <script src="/js/reels-page.js"></script>
-    <script src="/js/upload-mobile.js"></script>
+    <script src="/js/reels-page.js?v=20260928c"></script>
+    <script src="/js/upload-mobile.js?v=20260928c"></script>
     <script src="/js/mobile-shell.js?v=20260928b"></script>
 </body>
 </html>

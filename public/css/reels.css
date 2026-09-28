@@ -534,6 +534,27 @@ body.reels-page.reels-immersive {
     color: rgba(255, 255, 255, 0.8);
 }
 
+.reels-video-pickers {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.8rem;
+}
+
+.reels-video-pickers-label {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.reels-video-pickers label {
+    margin-bottom: 0;
+}
+
+.reels-video-pickers .dl-mobile-file-btn i {
+    margin-right: 0.45rem;
+}
+
 .reels-upload-form input[type="text"],
 .reels-upload-form input[type="number"],
 .reels-upload-form textarea {

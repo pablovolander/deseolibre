@@ -203,13 +203,17 @@ window.DeseoUploadMobile = (function () {
         const icon =
             role === 'video'
                 ? 'fa-video'
+                : role === 'video-gallery'
+                  ? 'fa-images'
                 : role === 'selfie' || role === 'user'
                   ? 'fa-user-circle'
                   : 'fa-camera';
         const labelText =
             role === 'video'
                 ? 'Grabar video con la cámara'
-                : role === 'video-pick' || role === 'video-gallery'
+                : role === 'video-gallery'
+                  ? 'Elegir video de la galería'
+                : role === 'video-pick'
                   ? 'Grabar o elegir video'
                 : role === 'selfie' || role === 'user'
                   ? 'Tomar selfie con la cámara'
