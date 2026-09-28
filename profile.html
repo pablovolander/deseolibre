@@ -2894,7 +2894,7 @@
     <script src="/js/service-pricing.js"></script>
     <script src="/js/components.js"></script>
     <script src="/js/upload-mobile.js?v=20260926f"></script>
-    <script src="/js/mobile-shell.js"></script>
+    <script src="/js/mobile-shell.js?v=20260928b"></script>
     <script>
         // Global variables
         let currentUser = null;
@@ -4742,6 +4742,11 @@
 
         function closePostDetail() {
             document.getElementById('postDetailModal').classList.remove('active');
+            const mediaContainer = document.getElementById('postMediaContainer');
+            if (mediaContainer) {
+                mediaContainer.querySelectorAll('video, audio').forEach((media) => media.pause());
+                mediaContainer.innerHTML = '';
+            }
             currentDetailPost = null;
         }
 
@@ -5226,7 +5231,11 @@
         document.querySelectorAll('.modal').forEach(modal => {
             modal.addEventListener('click', function(e) {
                 if (e.target === this) {
-                    this.classList.remove('active');
+                    if (this.id === 'postDetailModal') {
+                        closePostDetail();
+                    } else {
+                        this.classList.remove('active');
+                    }
                 }
             });
         });

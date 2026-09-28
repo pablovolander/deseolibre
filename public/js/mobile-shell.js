@@ -178,12 +178,111 @@
         document.body.classList.toggle('dl-modal-hides-nav', open);
     }
 
+    const MODAL_HISTORY_KEY = 'dlModal';
+    let modalHistoryActive = false;
+    let ignoreNextPop = false;
+    let pageLeaving = false;
+
+    function isElementOpen(el) {
+        if (el.classList.contains('show') || el.classList.contains('active')) {
+            return true;
+        }
+        const style = global.getComputedStyle ? global.getComputedStyle(el) : null;
+        return Boolean(style && style.display !== 'none' && style.visibility !== 'hidden' && el.style.display === 'block');
+    }
+
+    function findTopDismissableModal() {
+        const candidates = Array.from(document.querySelectorAll('.modal, [role="dialog"]'))
+            .filter((el) => !el.closest('.age-gate-modal, .deseo-age-gate, #ageVerificationModal'))
+            .filter(isElementOpen);
+        return candidates.length ? candidates[candidates.length - 1] : null;
+    }
+
+    function hasDismissableOverlay() {
+        return Boolean(
+            findTopDismissableModal() ||
+            (document.body.classList.contains('reels-upload-open') && document.querySelector('details[open]'))
+        );
+    }
+
+    function closeTopOverlay() {
+        const modal = findTopDismissableModal();
+        if (modal) {
+            const closeBtn = modal.querySelector(
+                '.modal-close, .close, .close-modal, [data-close], [aria-label="Cerrar"], .editor-btn-secondary[onclick*="close"]'
+            );
+            if (closeBtn) {
+                closeBtn.click();
+            }
+            if (isElementOpen(modal)) {
+                modal.classList.remove('active', 'show');
+                if (modal.style.display === 'block') {
+                    modal.style.display = 'none';
+                }
+                modal.querySelectorAll('video, audio').forEach((media) => media.pause());
+                if (!findTopDismissableModal()) {
+                    document.body.classList.remove('modal-open');
+                }
+            }
+            return;
+        }
+        const openDetails = document.querySelectorAll('details[open]');
+        if (document.body.classList.contains('reels-upload-open') && openDetails.length) {
+            openDetails[openDetails.length - 1].open = false;
+        }
+    }
+
+    function syncModalHistory() {
+        const open = hasDismissableOverlay();
+        if (open && !modalHistoryActive) {
+            modalHistoryActive = true;
+            global.history.pushState({ [MODAL_HISTORY_KEY]: true }, '');
+        } else if (!open && modalHistoryActive) {
+            modalHistoryActive = false;
+            global.setTimeout(() => {
+                if (pageLeaving || !global.history.state?.[MODAL_HISTORY_KEY]) {
+                    return;
+                }
+                ignoreNextPop = true;
+                global.history.back();
+            }, 60);
+        }
+    }
+
+    function watchBackButton() {
+        global.addEventListener('pagehide', () => {
+            pageLeaving = true;
+        });
+        global.addEventListener('beforeunload', () => {
+            pageLeaving = true;
+        });
+        global.addEventListener('popstate', () => {
+            if (ignoreNextPop) {
+                ignoreNextPop = false;
+                return;
+            }
+            const fsElement = document.fullscreenElement || document.webkitFullscreenElement;
+            if (fsElement) {
+                (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+                global.history.pushState({ [MODAL_HISTORY_KEY]: true }, '');
+                return;
+            }
+            if (!modalHistoryActive) {
+                return;
+            }
+            modalHistoryActive = false;
+            closeTopOverlay();
+            global.setTimeout(syncModalHistory, 0);
+        });
+    }
+
     function observeModalsForBottomNav() {
         if (typeof MutationObserver === 'undefined') {
             return;
         }
         const observer = new MutationObserver(() => {
             syncBottomNavWithModals();
+            syncModalHistory();
         });
         observer.observe(document.body, {
             attributes: true,
@@ -192,8 +291,14 @@
             childList: true
         });
         document.addEventListener('click', () => {
-            global.setTimeout(syncBottomNavWithModals, 0);
+            global.setTimeout(() => {
+                syncBottomNavWithModals();
+                syncModalHistory();
+            }, 0);
         });
+        document.addEventListener('toggle', () => {
+            global.setTimeout(syncModalHistory, 0);
+        }, true);
     }
 
     function mountDirectoryMenu() {
@@ -234,7 +339,9 @@
     function init() {
         mountBottomNav();
         mountDirectoryMenu();
+        watchBackButton();
         observeModalsForBottomNav();
+        syncModalHistory();
     }
 
     if (document.readyState === 'loading') {
