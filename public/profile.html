@@ -1512,6 +1512,56 @@
             font-style: italic;
         }
 
+        .post-action-btn.liked,
+        .post-action-btn.liked i {
+            color: var(--coral-pink);
+        }
+
+        .post-comment-item {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+            align-items: flex-start;
+        }
+
+        .post-comment-item img {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+
+        .post-comment-item .post-comment-body {
+            font-size: 0.9rem;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .post-comment-form {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .post-comment-form input {
+            flex: 1;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-light);
+        }
+
+        .post-comment-form button {
+            border: none;
+            border-radius: 12px;
+            padding: 0 14px;
+            background: var(--btn-gradient);
+            color: var(--text-light);
+            cursor: pointer;
+        }
+
         .modal-post-detail .modal-close {
             position: absolute;
             top: 10px;
@@ -2729,7 +2779,7 @@
                     
                     <!-- Actions -->
                     <div class="post-detail-actions">
-                        <button class="post-action-btn" onclick="likePost()">
+                        <button class="post-action-btn" id="postLikeBtn" onclick="likePost()">
                             <i class="far fa-heart"></i>
                             <span id="postLikes">0</span>
                         </button>
@@ -2749,6 +2799,10 @@
                         <div id="postCommentsList">
                             <p class="no-comments">Aún no hay comentarios. ¡Sé el primero!</p>
                         </div>
+                        <form class="post-comment-form" id="postCommentForm" onsubmit="submitPostComment(event)">
+                            <input type="text" id="postCommentInput" maxlength="500" placeholder="Escribe un comentario..." autocomplete="off">
+                            <button type="submit" aria-label="Enviar comentario"><i class="fas fa-paper-plane"></i></button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -4638,22 +4692,130 @@
                 mediaContainer.insertBefore(audioPlaceholder, audio);
             }
             
+            currentDetailPost = post;
+            setPostLikeUi(false, post.likes_count || 0);
+            loadPostLikeState(post.id);
+            loadPostComments(post.id);
+
             // Mostrar modal
             document.getElementById('postDetailModal').classList.add('active');
         }
 
         function closePostDetail() {
             document.getElementById('postDetailModal').classList.remove('active');
+            currentDetailPost = null;
         }
 
-        function likePost() {
-            // TODO: Implementar like
-            showNotification('Función de likes próximamente', 'success');
+        let currentDetailPost = null;
+        let postLikeBusy = false;
+
+        function setPostLikeUi(liked, count) {
+            const btn = document.getElementById('postLikeBtn');
+            if (!btn) return;
+            btn.dataset.liked = liked ? 'true' : 'false';
+            btn.classList.toggle('liked', liked);
+            const icon = btn.querySelector('i');
+            if (icon) icon.className = liked ? 'fas fa-heart' : 'far fa-heart';
+            document.getElementById('postLikes').textContent = Math.max(0, count);
+        }
+
+        async function loadPostLikeState(postId) {
+            if (!authToken) return;
+            try {
+                const res = await fetch(`${API_URL}/api/posts/${postId}/liked`, {
+                    headers: profileFetchHeaders()
+                });
+                if (!res.ok || currentDetailPost?.id !== postId) return;
+                const data = await res.json();
+                setPostLikeUi(Boolean(data.liked), currentDetailPost.likes_count || 0);
+            } catch (_) {}
+        }
+
+        async function likePost() {
+            if (!authToken) {
+                showNotification('Iniciá sesión para dar me gusta', 'error');
+                return;
+            }
+            if (!currentDetailPost || postLikeBusy) return;
+            const post = currentDetailPost;
+            const btn = document.getElementById('postLikeBtn');
+            const liked = btn?.dataset.liked === 'true';
+            postLikeBusy = true;
+            try {
+                const res = await fetch(`${API_URL}/api/posts/${post.id}/${liked ? 'unlike' : 'like'}`, {
+                    method: liked ? 'DELETE' : 'POST',
+                    headers: profileFetchHeaders()
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || 'No se pudo actualizar el me gusta');
+                post.likes_count = Math.max(0, (post.likes_count || 0) + (liked ? -1 : 1));
+                setPostLikeUi(!liked, post.likes_count);
+            } catch (error) {
+                showNotification(error.message, 'error');
+            } finally {
+                postLikeBusy = false;
+            }
+        }
+
+        async function loadPostComments(postId) {
+            const list = document.getElementById('postCommentsList');
+            if (!list) return;
+            list.innerHTML = '<p class="no-comments">Cargando...</p>';
+            try {
+                const res = await fetch(`${API_URL}/api/posts/${postId}/comments`, {
+                    headers: profileFetchHeaders()
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || 'Error al cargar comentarios');
+                if (currentDetailPost?.id !== postId) return;
+                const comments = data.comments || [];
+                if (!comments.length) {
+                    list.innerHTML = '<p class="no-comments">Aún no hay comentarios. ¡Sé el primero!</p>';
+                    return;
+                }
+                list.innerHTML = comments.map((c) => `
+                    <div class="post-comment-item">
+                        <img src="${c.profile_picture ? profileMediaUrl(c.profile_picture) : DEFAULT_AVATAR_SRC}" alt="">
+                        <div class="post-comment-body">
+                            <strong>${escapeProfileHtml(c.username || 'Usuario')}</strong><br>
+                            ${escapeProfileHtml(c.comment)}
+                        </div>
+                    </div>`).join('');
+            } catch (error) {
+                list.innerHTML = `<p class="no-comments">${escapeProfileHtml(error.message)}</p>`;
+            }
+        }
+
+        async function submitPostComment(event) {
+            event.preventDefault();
+            if (!authToken) {
+                showNotification('Iniciá sesión para comentar', 'error');
+                return;
+            }
+            if (!currentDetailPost) return;
+            const input = document.getElementById('postCommentInput');
+            const text = input.value.trim();
+            if (!text) return;
+            const post = currentDetailPost;
+            try {
+                const res = await fetch(`${API_URL}/api/posts/${post.id}/comment`, {
+                    method: 'POST',
+                    headers: profileFetchHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ comment: text })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || 'No se pudo enviar el comentario');
+                input.value = '';
+                post.comments_count = (post.comments_count || 0) + 1;
+                document.getElementById('postComments').textContent = post.comments_count;
+                await loadPostComments(post.id);
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
         }
 
         function commentPost() {
-            // TODO: Implementar comentarios
-            showNotification('Función de comentarios próximamente', 'success');
+            document.getElementById('postCommentInput')?.focus();
         }
 
         function sharePost() {

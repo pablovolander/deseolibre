@@ -5612,7 +5612,10 @@ app.delete('/api/posts/:postId/unlike', authenticateToken, (req, res) => {
             }
 
             // Update likes count
-            db.run('UPDATE content_posts SET likes_count = likes_count - 1 WHERE id = ?', [postId]);
+            db.run(
+                'UPDATE content_posts SET likes_count = CASE WHEN likes_count > 0 THEN likes_count - 1 ELSE 0 END WHERE id = ?',
+                [postId]
+            );
 
             res.json({ message: 'Like removido', liked: false });
         }
