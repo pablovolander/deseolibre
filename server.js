@@ -2830,8 +2830,8 @@ app.post('/api/content', authenticateToken, uploadLimiter, upload.single('file')
     }
 
     // Validation
-    if (!title || !description || !content_type) {
-        return res.status(400).json({ error: 'Título, descripción y tipo de contenido son requeridos' });
+    if (!title || !content_type) {
+        return res.status(400).json({ error: 'Título y tipo de contenido son requeridos' });
     }
 
     if (!['photo', 'video', 'audio'].includes(content_type)) {

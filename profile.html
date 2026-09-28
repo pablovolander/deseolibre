@@ -1512,10 +1512,147 @@
             font-style: italic;
         }
 
-        .audio-record-toggle {
-            margin-top: 10px;
+        .post-audio-player {
             width: 100%;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+            color: #fff;
+        }
+
+        .post-audio-play {
+            width: 96px;
+            height: 96px;
+            border-radius: 50%;
+            border: none;
+            background: var(--primary-color, #ff4d6d);
+            color: #fff;
+            font-size: 2.2rem;
+            display: flex;
+            align-items: center;
             justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .post-audio-play .fa-play {
+            margin-left: 6px;
+        }
+
+        .post-audio-player.is-playing .post-audio-play {
+            animation: postAudioPulse 1.6s ease-in-out infinite;
+        }
+
+        @keyframes postAudioPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.06); }
+        }
+
+        .post-audio-label {
+            font-weight: 600;
+        }
+
+        .post-audio-player audio {
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .create-post-body .form-group {
+            margin-bottom: 10px;
+        }
+
+        .create-post-body .form-group[hidden] {
+            display: none !important;
+        }
+
+        .create-post-pickers {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .create-post-pickers .post-picker-tile {
+            margin: 0;
+            min-height: 120px;
+            padding: 12px;
+            border-radius: 14px;
+            border: 1px dashed rgba(255, 255, 255, 0.3);
+            background-color: rgba(255, 255, 255, 0.06);
+            background-size: cover;
+            background-position: center;
+            color: var(--text-light);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            font: inherit;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .create-post-pickers .post-picker-tile:hover {
+            background-color: rgba(255, 255, 255, 0.12);
+            border-color: var(--primary-color, #ff4d6d);
+        }
+
+        .create-post-pickers .post-picker-tile[hidden] {
+            display: none;
+        }
+
+        .create-post-pickers .post-picker-tile:only-child,
+        .create-post-pickers:has(.post-picker-audio[hidden]) .post-picker-tile {
+            grid-column: 1 / -1;
+        }
+
+        .create-post-pickers .post-picker-tile i {
+            font-size: 1.8rem !important;
+            margin: 0;
+        }
+
+        .create-post-pickers .post-picker-tile p {
+            margin: 0;
+        }
+
+        .create-post-file-info {
+            display: block;
+            margin-top: 6px;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        .create-post-body textarea {
+            min-height: 0;
+            resize: vertical;
+        }
+
+        .create-post-footer-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .create-post-hint {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        .create-post-premium {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+
+        .create-post-premium i {
+            color: #f5c542;
         }
 
         .audio-recorder {
@@ -2491,37 +2628,21 @@
                 <button class="modal-close" onclick="closeCreatePostModal()">&times;</button>
             </div>
             <form id="createPostForm" onsubmit="createPost(event)">
-                <div class="modal-body">
-                <div class="form-group">
-                    <label for="createPostTitle">Título:</label>
-                        <input type="text" id="createPostTitle" required placeholder="Ej: Sesión de fotos profesional">
-                </div>
-                <div class="form-group">
-                    <label for="createPostDescription">Descripción:</label>
-                        <textarea id="createPostDescription" required placeholder="Describe tu publicación..."></textarea>
-                </div>
+                <div class="modal-body create-post-body">
                 <input type="hidden" id="createPostType" value="">
-                    <div class="form-group">
-                        <label for="createPostCategory">Categoría:</label>
-                        <select id="createPostCategory" required>
-                            <option value="">Selecciona una categoría</option>
-                            <option value="acompañantes-mujeres">👩 Acompañantes Mujeres</option>
-                            <option value="acompañantes-hombres">👨 Acompañantes Hombres</option>
-                            <option value="acompañantes-trans">🏳️‍⚧️ Acompañantes Trans</option>
-                    </select>
-                    <small id="createPostCategoryHint" style="color: var(--text-muted); display:block; margin-top:6px;"></small>
-                </div>
-                <div class="form-group">
-                    <label>Archivo:</label>
-                        <div class="file-upload-area" onclick="document.getElementById('postFile').click()">
-                            <i class="fas fa-photo-film"></i>
-                            <p>Elegir foto o video</p>
-                            <small id="fileInfo">Ningún archivo seleccionado</small>
+                <div class="form-group create-post-media">
+                        <div class="create-post-pickers">
+                            <div class="file-upload-area post-picker-tile" onclick="document.getElementById('postFile').click()">
+                                <i class="fas fa-photo-film"></i>
+                                <p>Elegir foto o video</p>
+                            </div>
+                            <button type="button" class="post-picker-tile post-picker-audio" id="audioRecordToggle" onclick="openAudioRecorder()">
+                                <i class="fas fa-microphone"></i>
+                                <span>Grabar audio</span>
+                            </button>
                         </div>
+                        <small id="fileInfo" class="create-post-file-info">Ningún archivo seleccionado</small>
                         <input type="file" id="postFile" accept="image/*,video/*" data-mobile-upload="image-pick" required style="display:none;">
-                        <button type="button" class="btn-action btn-secondary audio-record-toggle" id="audioRecordToggle" onclick="openAudioRecorder()">
-                            <i class="fas fa-microphone"></i> O grabar un audio
-                        </button>
                         <div class="audio-recorder" id="audioRecorder" hidden>
                             <div class="audio-recorder-row">
                                 <button type="button" class="audio-rec-btn" id="audioRecBtn" onclick="toggleAudioRecording()" aria-label="Grabar">
@@ -2543,19 +2664,27 @@
                             </div>
                         </div>
                 </div>
-                <p style="color: var(--text-muted); font-size: 0.9rem;">Tu nombre, ciudad, tarifa y teléfono se toman de tu perfil.</p>
                 <div class="form-group">
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="isPremium">
-                        <label for="isPremium">Contenido premium</label>
-                    </div>
+                    <input type="text" id="createPostTitle" required maxlength="120" placeholder="Título" aria-label="Título">
                 </div>
                 <div class="form-group">
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="isPublicPost" checked>
-                        <label for="isPublicPost">Público</label>
-                    </div>
+                    <textarea id="createPostDescription" rows="2" maxlength="1000" placeholder="Descripción (opcional)" aria-label="Descripción"></textarea>
                 </div>
+                <div class="form-group" id="createPostCategoryGroup">
+                    <select id="createPostCategory" required aria-label="Categoría">
+                        <option value="">Selecciona una categoría</option>
+                        <option value="acompañantes-mujeres">👩 Acompañantes Mujeres</option>
+                        <option value="acompañantes-hombres">👨 Acompañantes Hombres</option>
+                        <option value="acompañantes-trans">🏳️‍⚧️ Acompañantes Trans</option>
+                    </select>
+                </div>
+                <div class="create-post-footer-row">
+                    <small id="createPostCategoryHint" class="create-post-hint"></small>
+                    <label class="create-post-premium" for="isPremium">
+                        <input type="checkbox" id="isPremium"> <i class="fas fa-crown"></i> Premium
+                    </label>
+                </div>
+                <input type="checkbox" id="isPublicPost" checked hidden>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn-action btn-secondary" onclick="closeCreatePostModal()">Cancelar</button>
@@ -3859,12 +3988,6 @@
                 return;
             }
             
-            if (!description) {
-                console.log('❌ Validación fallida: descripción vacía');
-                showNotification('La descripción es requerida', 'error');
-                return;
-            }
-            
             if (!contentType) {
                 showNotification('Elegí una foto o un video, o grabá un audio', 'error');
                 return;
@@ -4308,13 +4431,16 @@
                 }
             });
 
+            const categoryGroup = document.getElementById('createPostCategoryGroup');
             if (lockedCategory) {
                 categorySelect.value = lockedCategory;
                 categorySelect.disabled = true;
+                if (categoryGroup) categoryGroup.hidden = true;
                 if (hint) {
-                    hint.textContent = `Tu perfil está en ${getCategoryName(lockedCategory)}. Solo puedes publicar ahí.`;
+                    hint.textContent = `Se publica en ${getCategoryName(lockedCategory)}`;
                 }
             } else {
+                if (categoryGroup) categoryGroup.hidden = false;
                 categorySelect.disabled = false;
                 const urlCategory = new URLSearchParams(window.location.search).get('category');
                 const preferredCategory = resolveProfileCategory(urlCategory || currentUser?.category);
@@ -5002,17 +5128,39 @@
                 video.style.cssText = 'max-width: 100%; max-height: 100%;';
                 mediaContainer.appendChild(video);
             } else if (post.content_type === 'audio') {
+                const audioWrap = document.createElement('div');
+                audioWrap.className = 'post-audio-player';
+                audioWrap.innerHTML = `
+                    <button type="button" class="post-audio-play" aria-label="Reproducir audio">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <span class="post-audio-label">Tocá para escuchar</span>`;
                 const audio = document.createElement('audio');
                 audio.src = resolveMediaUrl(post.media_url || post.file_url);
                 audio.controls = true;
-                audio.style.width = '100%';
-                mediaContainer.appendChild(audio);
-                
-                // Agregar un placeholder visual para audios
-                const audioPlaceholder = document.createElement('div');
-                audioPlaceholder.style.cssText = 'text-align: center; padding: 60px 20px; color: white;';
-                audioPlaceholder.innerHTML = '<i class="fas fa-music" style="font-size: 5rem; margin-bottom: 20px;"></i><br><h3>Audio</h3>';
-                mediaContainer.insertBefore(audioPlaceholder, audio);
+                audio.preload = 'metadata';
+                audioWrap.appendChild(audio);
+                mediaContainer.appendChild(audioWrap);
+
+                const playBtn = audioWrap.querySelector('.post-audio-play');
+                const label = audioWrap.querySelector('.post-audio-label');
+                const syncAudioUi = () => {
+                    const playing = !audio.paused && !audio.ended;
+                    playBtn.innerHTML = `<i class="fas fa-${playing ? 'pause' : 'play'}"></i>`;
+                    playBtn.setAttribute('aria-label', playing ? 'Pausar audio' : 'Reproducir audio');
+                    audioWrap.classList.toggle('is-playing', playing);
+                    label.textContent = playing ? 'Reproduciendo…' : 'Tocá para escuchar';
+                };
+                audio.addEventListener('play', syncAudioUi);
+                audio.addEventListener('pause', syncAudioUi);
+                audio.addEventListener('ended', syncAudioUi);
+                playBtn.addEventListener('click', () => {
+                    if (audio.paused || audio.ended) {
+                        audio.play().catch(() => showNotification('No se pudo reproducir el audio', 'error'));
+                    } else {
+                        audio.pause();
+                    }
+                });
             }
             
             currentDetailPost = post;
