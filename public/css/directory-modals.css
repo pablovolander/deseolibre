@@ -117,6 +117,32 @@
     white-space: nowrap;
 }
 
+.header-actions .btn-link:hover {
+    opacity: 1;
+}
+
+.header-actions .btn-link.active {
+    opacity: 1;
+    font-weight: 700;
+}
+
+@media (min-width: 769px) {
+    .header-actions .btn-link.active {
+        position: relative;
+    }
+
+    .header-actions .btn-link.active::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -6px;
+        height: 2px;
+        border-radius: 2px;
+        background: linear-gradient(90deg, #ff6b9d, #8b7cf8);
+    }
+}
+
 .header-actions .btn-link.btn-reels {
     display: inline-flex;
     align-items: center;

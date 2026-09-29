@@ -14,10 +14,10 @@
     <meta property="og:url" content="https://deseolibre.vercel.app/feed-trans.html">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-    <link href="/css/directory.css?v=20260928c" rel="stylesheet">
-    <link href="/css/directory-modals.css?v=20260928c" rel="stylesheet">
+    <link href="/css/directory.css?v=20260928g" rel="stylesheet">
+    <link href="/css/directory-modals.css?v=20260928g" rel="stylesheet">
     <link href="/css/responsive.css" rel="stylesheet">
-    <link href="/css/mobile.css?v=20260928c" rel="stylesheet">
+    <link href="/css/mobile.css?v=20260928g" rel="stylesheet">
     <link href="/css/age-gate.css" rel="stylesheet">
 </head>
 <body class="directory-page" data-category="acompañantes-trans">
@@ -28,6 +28,7 @@
                 <a href="index.html" class="btn-link">Inicio</a>
                 <a href="feed-mujeres.html" class="btn-link">Mujeres</a>
                 <a href="feed-hombres.html" class="btn-link">Hombres</a>
+                <a href="feed-trans.html" class="btn-link active" aria-current="page">Trans</a>
                 <a href="reels-trans.html" class="btn-link btn-reels"><i class="fas fa-film"></i> Reels</a>
                 <button type="button" class="btn-primary-sm" onclick="showLogin()">Entrar</button>
                 <a href="index.html?register=1" class="btn-primary-sm">Registro</a>
@@ -37,18 +38,19 @@
     </header>
 
     <section class="directory-hero">
-        <h1>🏳️‍⚧️ Acompañantes Trans</h1>
+        <h1>Acompañantes Trans</h1>
         <p>CDMX, Guadalajara y Monterrey — busca por zona. Verificación, 0% comisión y contacto directo.</p>
-        <div id="popularCities" class="city-chips-row" aria-label="Ciudades"></div>
-        <div class="directory-search directory-search-zone-only">
-            <input type="hidden" id="searchCountry" value="MX">
-            <select id="searchZone" class="directory-zone-select" title="Zona">
-                <option value="">Toda la ciudad</option>
-            </select>
+        <div class="directory-search-panel">
+            <div id="popularCities" class="city-chips-row" aria-label="Ciudades"></div>
+            <div class="directory-search directory-search-zone-only">
+                <input type="hidden" id="searchCountry" value="MX">
+                <select id="searchZone" class="directory-zone-select" title="Zona">
+                    <option value="">Toda la ciudad</option>
+                </select>
+            </div>
         </div>
         <div class="directory-cta-row">
             <a href="#" class="cta-pro" onclick="publishFromCategory(event)"><i class="fas fa-user-tie"></i> Soy profesional — Publicar gratis</a>
-            <a href="reels-trans.html" class="cta-client cta-reels"><i class="fas fa-film"></i> Ver y subir Reels</a>
         </div>
         <div class="directory-trust">
             <span class="trust-pill trust-pill-verified"><i class="fas fa-shield-alt"></i> Verificación automática</span>

@@ -535,6 +535,21 @@ body.dl-mobile-nav:not(.directory-page):not(.home-page) {
         padding: 0.45rem 0.75rem;
         margin-bottom: 0.35rem;
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
+        scrollbar-width: none;
+    }
+
+    .directory-page .category-nav::-webkit-scrollbar {
+        display: none;
+    }
+
+    .directory-page .category-nav a.category-nav-reels {
+        font-size: 0.9rem;
+        padding: 0.35rem 0.85rem;
+        min-height: 0;
     }
 
     .directory-page .directory-results {
