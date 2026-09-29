@@ -1783,6 +1783,85 @@
             background: rgba(0, 0, 0, 0.8);
         }
 
+        .post-detail-media {
+            touch-action: pan-y;
+        }
+
+        .post-nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.85);
+            color: #111;
+            font-size: 1rem;
+            cursor: pointer;
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+        }
+
+        .post-nav-btn[hidden],
+        .post-nav-counter[hidden] {
+            display: none;
+        }
+
+        .post-nav-btn:hover {
+            background: #fff;
+        }
+
+        .post-nav-prev {
+            left: 12px;
+        }
+
+        .post-nav-next {
+            right: 12px;
+        }
+
+        .post-nav-counter {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            z-index: 5;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.55);
+            color: #fff;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        #postMediaContainer.post-slide-next {
+            animation: postSlideNext 0.22s ease-out;
+        }
+
+        #postMediaContainer.post-slide-prev {
+            animation: postSlidePrev 0.22s ease-out;
+        }
+
+        @keyframes postSlideNext {
+            from { transform: translateX(40px); opacity: 0.3; }
+            to { transform: none; opacity: 1; }
+        }
+
+        @keyframes postSlidePrev {
+            from { transform: translateX(-40px); opacity: 0.3; }
+            to { transform: none; opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            .post-nav-btn {
+                width: 36px;
+                height: 36px;
+                background: rgba(255, 255, 255, 0.7);
+            }
+        }
+
         /* Responsive para modal de detalle */
         @media (max-width: 768px) {
             .post-detail-container {
@@ -2960,8 +3039,15 @@
             <button class="modal-close" onclick="closePostDetail()">&times;</button>
             <div class="post-detail-container">
                 <!-- Media Section -->
-                <div class="post-detail-media">
+                <div class="post-detail-media" id="postDetailMedia">
                     <div id="postMediaContainer"></div>
+                    <button type="button" class="post-nav-btn post-nav-prev" id="postNavPrev" onclick="showAdjacentPost(-1)" aria-label="Publicación anterior" hidden>
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button type="button" class="post-nav-btn post-nav-next" id="postNavNext" onclick="showAdjacentPost(1)" aria-label="Publicación siguiente" hidden>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <span class="post-nav-counter" id="postNavCounter" hidden></span>
                 </div>
                 
                 <!-- Info Section -->
@@ -3880,6 +3966,7 @@
             }
 
             console.log('📊 Posts después del filtro:', filteredPosts.length);
+            renderedPostIds = filteredPosts.map((post) => String(post.id));
 
             if (filteredPosts.length === 0) {
                 const emptyMessage = isOwnProfile 
@@ -5063,7 +5150,60 @@
             );
         }
 
-        async function viewPost(postId) {
+        let renderedPostIds = [];
+
+        function updatePostNav(postId) {
+            const index = renderedPostIds.indexOf(String(postId));
+            const total = renderedPostIds.length;
+            const prev = document.getElementById('postNavPrev');
+            const next = document.getElementById('postNavNext');
+            const counter = document.getElementById('postNavCounter');
+            if (prev) prev.hidden = index <= 0;
+            if (next) next.hidden = index < 0 || index >= total - 1;
+            if (counter) {
+                counter.hidden = index < 0 || total < 2;
+                counter.textContent = `${index + 1} / ${total}`;
+            }
+        }
+
+        function showAdjacentPost(step) {
+            if (!currentDetailPost) return;
+            const index = renderedPostIds.indexOf(String(currentDetailPost.id));
+            const target = renderedPostIds[index + step];
+            if (index < 0 || !target) return;
+            viewPost(target, step);
+        }
+
+        (function setupPostSwipe() {
+            let startX = 0;
+            let startY = 0;
+            let tracking = false;
+            document.addEventListener('touchstart', (event) => {
+                const media = event.target.closest && event.target.closest('#postDetailMedia');
+                if (!media || event.touches.length !== 1) return;
+                tracking = true;
+                startX = event.touches[0].clientX;
+                startY = event.touches[0].clientY;
+            }, { passive: true });
+            document.addEventListener('touchend', (event) => {
+                if (!tracking) return;
+                tracking = false;
+                const touch = event.changedTouches[0];
+                const dx = touch.clientX - startX;
+                const dy = touch.clientY - startY;
+                if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+                showAdjacentPost(dx < 0 ? 1 : -1);
+            }, { passive: true });
+            document.addEventListener('keydown', (event) => {
+                if (!document.getElementById('postDetailModal')?.classList.contains('active')) return;
+                const tag = (event.target && event.target.tagName) || '';
+                if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+                if (event.key === 'ArrowRight') showAdjacentPost(1);
+                if (event.key === 'ArrowLeft') showAdjacentPost(-1);
+            });
+        })();
+
+        async function viewPost(postId, slideDirection = 0) {
             console.log('👁️ Viendo detalles del post:', postId);
             
             // Buscar el post en el array local
@@ -5114,7 +5254,14 @@
             
             // Cargar media
             const mediaContainer = document.getElementById('postMediaContainer');
+            mediaContainer.querySelectorAll('video, audio').forEach((media) => media.pause());
             mediaContainer.innerHTML = '';
+            mediaContainer.classList.remove('post-slide-next', 'post-slide-prev');
+            if (slideDirection) {
+                void mediaContainer.offsetWidth;
+                mediaContainer.classList.add(slideDirection > 0 ? 'post-slide-next' : 'post-slide-prev');
+            }
+            document.querySelector('#postDetailModal .post-detail-info')?.scrollTo(0, 0);
             
             if (post.content_type === 'photo') {
                 const img = document.createElement('img');
@@ -5167,6 +5314,7 @@
             }
             
             currentDetailPost = post;
+            updatePostNav(post.id);
             setPostLikeUi(false, post.likes_count || 0);
             loadPostLikeState(post.id);
             loadPostComments(post.id);
