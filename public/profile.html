@@ -3612,7 +3612,7 @@
                 uploadBtn.style.display = 'none';
 
                 // Show face obscured info if applicable
-                if (currentUser.face_obscured) {
+                if (profileUser?.face_obscured) {
                     videoInfo.style.display = 'block';
                     document.getElementById('faceObscuredText').textContent = 
                         'La persona indicó que ocultó el rostro en este video (lo hizo por su cuenta)';
