@@ -38,7 +38,15 @@ const {
     getDatabaseModeLabel,
     isIgnorableSchemaError
 } = require('./lib/database');
-const { persistUploadedFile, resolveMediaUrl, streamPrivateMedia, getBlobAccess, getBlobToken } = require('./lib/media-storage');
+const {
+    persistUploadedFile,
+    resolveMediaUrl,
+    streamPrivateMedia,
+    getBlobAccess,
+    getBlobToken,
+    usesLocalMediaRoot,
+    saveStreamToMediaRoot
+} = require('./lib/media-storage');
 const {
     generateResetToken,
     hashResetToken,
@@ -152,7 +160,7 @@ function rejectDevOnlyVerification(res) {
     return true;
 }
 
-if (isVercel) {
+if (isVercel || process.env.TRUST_PROXY === '1') {
     app.set('trust proxy', 1);
 }
 const publicDir = path.join(__dirname, 'public');
@@ -531,8 +539,10 @@ const diskStorage = multer.diskStorage({
     }
 });
 
-const upload = multer({ 
-    storage: isServerless ? multer.memoryStorage() : diskStorage,
+// Con MEDIA_ROOT los archivos no deben quedar en public/uploads (sería público): se reciben en memoria.
+const useMemoryUploads = isServerless || usesLocalMediaRoot();
+const upload = multer({
+    storage: useMemoryUploads ? multer.memoryStorage() : diskStorage,
     limits: {
         fileSize: 100 * 1024 * 1024 // 100MB limit (para videos)
     },
@@ -583,7 +593,7 @@ const reelStorage = multer.diskStorage({
 const reelUploadLimitBytes = getReelUploadLimitBytes(isServerless);
 
 const reelUpload = multer({
-    storage: isServerless ? multer.memoryStorage() : reelStorage,
+    storage: useMemoryUploads ? multer.memoryStorage() : reelStorage,
     limits: {
         fileSize: reelUploadLimitBytes
     },
@@ -3748,8 +3758,47 @@ app.get('/api/policies', (req, res) => {
 // ==================== IDENTITY VERIFICATION SYSTEM ====================
 
 // Token simple para subida directa del cliente a Vercel Blob (sin SDK en el navegador)
+const DIRECT_UPLOAD_MAX_BYTES = 100 * 1024 * 1024;
+
+function validateDirectUploadPathname(raw) {
+    const pathname = String(raw || '').replace(/^\/+/, '');
+    if (!pathname.startsWith('uploads/') || pathname.includes('..') || pathname.includes('\\')) {
+        return null;
+    }
+    return pathname;
+}
+
+app.put('/api/uploads/direct', authenticateToken, uploadLimiter, async (req, res) => {
+    if (!usesLocalMediaRoot()) {
+        return res.status(404).json({ error: 'Ruta API no encontrada' });
+    }
+    const pathname = validateDirectUploadPathname(req.query.pathname);
+    if (!pathname) {
+        return res.status(400).json({ error: 'Ruta de subida no permitida' });
+    }
+    const declared = Number(req.headers['content-length'] || 0);
+    if (declared > DIRECT_UPLOAD_MAX_BYTES) {
+        return res.status(413).json({ error: 'El archivo supera 100 MB' });
+    }
+    try {
+        const saved = await saveStreamToMediaRoot(pathname, req, DIRECT_UPLOAD_MAX_BYTES);
+        return res.json({ pathname: saved.pathname, size: saved.size });
+    } catch (error) {
+        console.error('direct upload error:', error.message);
+        return res.status(400).json({ error: error.message || 'No se pudo guardar el archivo' });
+    }
+});
+
 app.post('/api/blob/client-token', authenticateToken, async (req, res) => {
     try {
+        if (usesLocalMediaRoot()) {
+            const pathname = validateDirectUploadPathname(req.body?.pathname);
+            if (!pathname) {
+                return res.status(400).json({ error: 'Ruta de subida no permitida' });
+            }
+            return res.json({ mode: 'server', pathname, uploadUrl: '/api/uploads/direct' });
+        }
+
         if (!process.env.BLOB_READ_WRITE_TOKEN) {
             return res.status(503).json({
                 error: 'Almacenamiento no configurado',

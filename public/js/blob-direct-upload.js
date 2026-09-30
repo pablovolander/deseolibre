@@ -90,6 +90,25 @@
             throw new Error(tokenData.error || tokenData.message || 'No se pudo autorizar la subida del video');
         }
 
+        if (tokenData.mode === 'server') {
+            const serverResult = await putWithProgress(
+                `${apiBase()}${tokenData.uploadUrl}?pathname=${encodeURIComponent(tokenData.pathname || pathname)}`,
+                file,
+                {
+                    Authorization: `Bearer ${options.authToken}`,
+                    'Content-Type': file.type || 'application/octet-stream'
+                },
+                options.onProgress
+            );
+            const serverPathname = serverResult.pathname || tokenData.pathname || pathname;
+            return {
+                url: toStoredMediaUrl({ pathname: serverPathname }),
+                pathname: serverPathname,
+                downloadUrl: toStoredMediaUrl({ pathname: serverPathname }),
+                size: file.size
+            };
+        }
+
         const putUrl = `${tokenData.apiUrl || BLOB_API_URL}/?pathname=${encodeURIComponent(pathname)}`;
         const access = tokenData.access || 'private';
         const result = await putWithProgress(
