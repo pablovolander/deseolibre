@@ -573,7 +573,8 @@
                 defaultOptions.headers['Authorization'] = `Bearer ${authToken}`;
             }
 
-            const finalOptions = { ...defaultOptions, ...options };
+            const { silent, ...fetchOptions } = options;
+            const finalOptions = { ...defaultOptions, ...fetchOptions };
             const finalUrl = url.startsWith('http') ? url : `${LOCAL_API_BASE}${url}`;
             
             try {
@@ -586,13 +587,16 @@
                 const data = await response.json();
                 
                 if (!response.ok) {
-                    throw new Error(data.error || 'Error en la solicitud');
+                    const httpError = new Error(data.error || 'Error en la solicitud');
+                    httpError.status = response.status;
+                    httpError.data = data;
+                    throw httpError;
                 }
-                
+
                 return data;
             } catch (error) {
                 console.error('API Error:', error);
-                showError(error.message);
+                if (!silent) showError(error.message);
                 throw error;
             }
         }
@@ -668,7 +672,7 @@
             }
 
             try {
-                const response = await apiCall('/api/auth/verify');
+                const response = await apiCall('/api/auth/verify', { silent: true });
                 currentUser = response.user;
                 DeseoAuth.setSession(authToken, currentUser);
                 if (currentUser && !currentUser.age_verified && localStorage.getItem('ageVerified') === 'true') {
