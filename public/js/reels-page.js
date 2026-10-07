@@ -529,12 +529,12 @@
                         ${isOwner ? '<button type="button" class="delete-reel-btn" aria-label="Eliminar"><i class="fas fa-trash"></i></button>' : ''}
                     </div>
                     <div class="reel-body">
-                        <div class="reel-author">
+                        <a class="reel-author" href="profile.html?user=${encodeURIComponent(reel.user_id)}" aria-label="Ver perfil de ${username}">
                             <img src="${avatar}" alt="">
                             <div>
                                 <strong>${username}${reel.is_verified ? ' <span class="verified">✓</span>' : ''}</strong>
                             </div>
-                        </div>
+                        </a>
                         ${reel.title ? `<h3 class="reel-title">${escapeHtml(reel.title)}</h3>` : ''}
                         ${reel.description ? `<p class="reel-desc">${escapeHtml(reel.description)}</p>` : ''}
                     </div>

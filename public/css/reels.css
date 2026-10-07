@@ -280,10 +280,17 @@ body.reels-page.reels-immersive {
 }
 
 .reel-author {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 0.65rem;
     margin-bottom: 0.55rem;
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.reel-author:hover strong {
+    text-decoration: underline;
 }
 
 .reel-author img {
