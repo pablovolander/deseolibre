@@ -21,7 +21,7 @@ rm -rf app.old
 mv app app.old
 mv app.new app
 systemctl restart deseolibre
-sleep 4
+sleep 10
 systemctl is-active deseolibre
 curl -s -o /dev/null -w "health %{http_code}\n" http://127.0.0.1:3000/api/health
 '@
