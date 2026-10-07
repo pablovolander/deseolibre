@@ -119,7 +119,7 @@
                 if (minEl) minEl.textContent = limits.min_video_duration_sec;
                 if (maxEl) maxEl.textContent = limits.max_video_duration_sec;
                 if (hint) {
-                    hint.textContent = 'Grabá al menos 8 s con la cámara. Se sube a la nube (hasta ~50 MB); el peso ya no bloquea.';
+                    hint.textContent = 'Grabá al menos 8 s con la cámara.';
                 }
             }
         } catch (_) {}
