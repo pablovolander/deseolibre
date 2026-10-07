@@ -262,6 +262,34 @@
     color: rgba(255, 255, 255, 0.85);
 }
 
+.directory-legal {
+    max-width: 1200px;
+    margin: 2rem auto 0;
+    padding: 1.25rem 1.25rem 2rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    text-align: center;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.directory-legal p {
+    margin: 0.25rem 0;
+}
+
+.directory-legal strong {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.directory-legal a {
+    color: rgba(255, 158, 200, 0.85);
+    text-decoration: none;
+}
+
+.directory-legal a:hover {
+    text-decoration: underline;
+}
+
 .directory-toolbar {
     max-width: 1200px;
     margin: 0 auto;

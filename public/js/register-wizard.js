@@ -133,6 +133,9 @@
             if (username.length < 3) return 'Usuario: mínimo 3 caracteres.';
             if (!email.includes('@')) return 'Email inválido.';
             if (password.length < 6) return 'Contraseña: mínimo 6 caracteres.';
+            if (!$('registerAdultDeclaration')?.checked) {
+                return 'Debes declarar que eres mayor de 18 años para continuar.';
+            }
             return null;
         }
         if (step === 2) {
@@ -335,7 +338,8 @@
                     telegram_username: profilePayload.telegram_username,
                     service_price: profilePayload.service_price,
                     service_price_unit: profilePayload.service_price_unit,
-                    category: $('regCategory').value.trim()
+                    category: $('regCategory').value.trim(),
+                    adult_declaration: Boolean($('registerAdultDeclaration')?.checked)
                 })
             });
             const regData = await regRes.json().catch(() => ({}));

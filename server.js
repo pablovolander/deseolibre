@@ -1028,6 +1028,9 @@ async function applyDatabaseMigrations(database) {
     await exec('ALTER TABLE users ADD COLUMN profile_paused INTEGER DEFAULT 0');
     await exec('ALTER TABLE users ADD COLUMN profile_paused_at DATETIME');
     await exec("ALTER TABLE reels ADD COLUMN media_type TEXT DEFAULT 'video'");
+    await exec('ALTER TABLE users ADD COLUMN adult_declaration_at DATETIME');
+    await exec('ALTER TABLE user_verifications ADD COLUMN admin_reviewed_at DATETIME');
+    await exec('ALTER TABLE user_verifications ADD COLUMN admin_reviewed_by INTEGER');
 }
 
 async function ensureDatabaseSchemaUpToDate() {
@@ -1458,11 +1461,19 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
             telegram_username,
             service_price,
             service_price_unit,
-            category
+            category,
+            adult_declaration
         } = req.body;
 
         if (!username || !email || !password) {
             return res.status(400).json({ error: 'Usuario, email y contraseña son requeridos' });
+        }
+
+        if (adult_declaration !== true && adult_declaration !== 'true') {
+            return res.status(400).json({
+                error: 'Debes declarar que eres mayor de 18 años para registrarte',
+                field: 'adult_declaration'
+            });
         }
 
         const profileCheck = validateUserProfileFields({
@@ -1533,8 +1544,8 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
         const insertResult = await runDb(
             `INSERT INTO users (
                 username, email, password_hash, full_name, country, city, zone, zone_detail, location,
-                phone, telegram_username, service_price, service_price_unit, category
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                phone, telegram_username, service_price, service_price_unit, category, adult_declaration_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 normalizedUsername,
                 normalizedEmail,
@@ -1549,7 +1560,8 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
                 profileCheck.telegram_username,
                 profileCheck.service_price,
                 profileCheck.service_price_unit,
-                profileCheck.category
+                profileCheck.category,
+                new Date().toISOString()
             ]
         );
 
@@ -3943,12 +3955,13 @@ app.post('/api/verification/upload', authenticateToken, upload.fields([
         const directVideoUrl = String(bodyVideoUrlFromClient || '').trim();
 
         const existingUser = await runDbGet(
-            'SELECT is_verified FROM users WHERE id = ?',
+            'SELECT is_verified, verification_status FROM users WHERE id = ?',
             [userId]
         );
         if (existingUser?.is_verified) {
             return res.status(400).json({ error: 'Tu cuenta ya está verificada' });
         }
+        const needsManualReview = existingUser?.verification_status === 'rejected';
 
         const pending = await runDbGet(
             'SELECT id FROM user_verifications WHERE user_id = ? AND status = ?',
@@ -4000,13 +4013,33 @@ app.post('/api/verification/upload', authenticateToken, upload.fields([
             face_match_score: Number(face_match_score),
             additional_info: additional_info || null,
             submitted_at: new Date().toISOString(),
-            auto_verified: true,
+            auto_verified: !needsManualReview,
             auto_method: autoEval.method,
             auto_checks: autoEval.checks_passed,
             video_via_direct_blob: Boolean(directVideoUrl)
         };
 
         const now = new Date().toISOString();
+
+        if (needsManualReview) {
+            const pendingInsert = await runDb(
+                `INSERT INTO user_verifications (user_id, verification_type, verification_data, status)
+                 VALUES (?, ?, ?, ?)`,
+                [userId, verification_type, JSON.stringify(verificationData), 'pending']
+            );
+            await runDb(
+                `UPDATE users SET verification_status = 'pending' WHERE id = ?`,
+                [userId]
+            );
+            await saveDatabaseAsync();
+            return res.json({
+                message: 'Recibimos tus documentos. Como tu verificación anterior fue rechazada, esta vez la revisa una persona del equipo.',
+                verification_id: pendingInsert.lastID,
+                status: 'pending',
+                is_verified: false,
+                auto_verified: false
+            });
+        }
 
         const insertResult = await runDb(
             `INSERT INTO user_verifications (user_id, verification_type, verification_data, status, verified_at)
@@ -4220,204 +4253,172 @@ app.get('/api/verification/requirements', (req, res) => {
     res.json(requirements);
 });
 
-// Admin: Get all verifications (with optional status filter)
-app.get('/api/admin/verifications/pending', authenticateToken, (req, res) => {
-    const userId = req.user.userId;
-    const status = req.query.status || 'pending'; // Default to pending for backward compatibility
-    
-    // Check if user is admin
-    db.get('SELECT is_admin FROM users WHERE id = ?', [userId], (err, user) => {
-        if (err) {
-            return sendApiError(res, error, { development: isDevelopment });
-        }
-        
-        if (!user || !user.is_admin) {
-            return res.status(403).json({ error: 'Acceso denegado' });
-        }
-        
-        let query = `
-            SELECT uv.*, u.username, u.email, u.created_at as user_created_at
-            FROM user_verifications uv
-            JOIN users u ON uv.user_id = u.id
-        `;
-        
+// Admin: verificaciones. Se aprueban automáticamente al registrarse; el admin las revisa después.
+function parseVerificationData(raw) {
+    if (!raw) return {};
+    try {
+        return JSON.parse(raw);
+    } catch (_) {
+        return {};
+    }
+}
+
+app.get('/api/admin/verifications/pending', authenticateToken, async (req, res) => {
+    try {
+        const admin = await assertAdminUser(req, res);
+        if (!admin) return;
+
+        const status = String(req.query.status || 'all');
+        let where = '';
         const params = [];
-        if (status !== 'all') {
-            query += ` WHERE uv.status = ?`;
+        if (status === 'unreviewed') {
+            where = "WHERE uv.status = 'approved' AND uv.admin_reviewed_at IS NULL";
+        } else if (status !== 'all') {
+            where = 'WHERE uv.status = ?';
             params.push(status);
         }
-        
-        query += ` ORDER BY uv.created_at DESC`;
-        
-        db.all(query, params, (err, verifications) => {
-            if (err) {
-                return sendApiError(res, error, { development: isDevelopment });
-            }
-            
-            const formattedVerifications = verifications.map(verification => {
-                const verificationData = verification.verification_data ? 
-                    JSON.parse(verification.verification_data) : {};
-                
-                // Get rejection reason if exists
-                let rejection_reason = null;
-                if (verification.status === 'rejected') {
-                    // Try to get rejection reason from user_verifications table
-                    rejection_reason = verification.rejection_reason || null;
-                }
-                
-                return {
-                    id: verification.id,
-                    user_id: verification.user_id,
-                    username: verification.username,
-                    email: verification.email,
-                    user_created_at: verification.user_created_at,
-                    verification_type: verification.verification_type,
-                    verification_data: verificationData,
-                    status: verification.status,
-                    rejection_reason: rejection_reason,
-                    created_at: verification.created_at,
-                    verified_at: verification.verified_at
-                };
-            });
-            
-            res.json({ verifications: formattedVerifications });
-        });
-    });
-});
 
-// Admin: Approve verification
-app.post('/api/admin/verifications/:id/approve', authenticateToken, (req, res) => {
-    const userId = req.user.userId;
-    const verificationId = req.params.id;
-    
-    // Check if user is admin
-    db.get('SELECT is_admin FROM users WHERE id = ?', [userId], (err, user) => {
-        if (err) {
-            return sendApiError(res, error, { development: isDevelopment });
-        }
-        
-        if (!user || !user.is_admin) {
-            return res.status(403).json({ error: 'Acceso denegado' });
-        }
-        
-        // Update verification status
-        db.run(
-            'UPDATE user_verifications SET status = ?, verified_at = ? WHERE id = ?',
-            ['approved', new Date().toISOString(), verificationId],
-            function(err) {
-                if (err) {
-                    return res.status(500).json({ error: 'Error al aprobar la verificación' });
-                }
-                
-                // Get user_id from verification
-                db.get('SELECT user_id FROM user_verifications WHERE id = ?', [verificationId], (err, verification) => {
-                    if (err) {
-                        return sendApiError(res, error, { development: isDevelopment });
-                    }
-                    
-                    // Update user verification status
-                    db.run(
-                        'UPDATE users SET is_verified = ?, verification_status = ? WHERE id = ?',
-                        [1, 'verified', verification.user_id],
-                        function(err) {
-                            if (err) {
-                                return res.status(500).json({ error: 'Error al actualizar el usuario' });
-                            }
-                            
-                            res.json({ 
-                                message: 'Verificación aprobada exitosamente',
-                                verification_id: verificationId,
-                                user_id: verification.user_id
-                            });
-                        }
-                    );
-                });
-            }
+        const rows = await runDbAll(
+            `SELECT uv.*, u.username, u.email, u.full_name, u.created_at AS user_created_at,
+                    u.adult_declaration_at
+             FROM user_verifications uv
+             JOIN users u ON uv.user_id = u.id
+             ${where}
+             ORDER BY datetime(uv.created_at) DESC, uv.id DESC`,
+            params
         );
-    });
-});
 
-// Admin: Reject verification
-app.post('/api/admin/verifications/:id/reject', authenticateToken, (req, res) => {
-    const userId = req.user.userId;
-    const verificationId = req.params.id;
-    const { reason } = req.body;
-    
-    if (!reason) {
-        return res.status(400).json({ error: 'Razón de rechazo requerida' });
+        res.json({
+            verifications: rows.map((v) => ({
+                id: v.id,
+                user_id: v.user_id,
+                username: v.username,
+                email: v.email,
+                full_name: v.full_name,
+                user_created_at: v.user_created_at,
+                adult_declaration_at: v.adult_declaration_at || null,
+                verification_type: v.verification_type,
+                verification_data: parseVerificationData(v.verification_data),
+                status: v.status,
+                rejection_reason: v.rejection_reason || null,
+                created_at: v.created_at,
+                verified_at: v.verified_at,
+                admin_reviewed_at: v.admin_reviewed_at || null
+            }))
+        });
+    } catch (error) {
+        return sendApiError(res, error, { development: isDevelopment });
     }
-    
-    // Check if user is admin
-    db.get('SELECT is_admin FROM users WHERE id = ?', [userId], (err, user) => {
-        if (err) {
-            return sendApiError(res, error, { development: isDevelopment });
-        }
-        
-        if (!user || !user.is_admin) {
-            return res.status(403).json({ error: 'Acceso denegado' });
-        }
-        
-        // Update verification status
-        db.run(
-            'UPDATE user_verifications SET status = ?, rejection_reason = ? WHERE id = ?',
-            ['rejected', reason, verificationId],
-            function(err) {
-                if (err) {
-                    return res.status(500).json({ error: 'Error al rechazar la verificación' });
-                }
-                
-                res.json({ 
-                    message: 'Verificación rechazada',
-                    verification_id: verificationId,
-                    reason: reason
-                });
-            }
-        );
-    });
 });
 
-// Get verification statistics
-app.get('/api/admin/verifications/stats', authenticateToken, (req, res) => {
-    const userId = req.user.userId;
-    
-    // Check if user is admin
-    db.get('SELECT is_admin FROM users WHERE id = ?', [userId], (err, user) => {
-        if (err) {
-            return sendApiError(res, error, { development: isDevelopment });
-        }
-        
-        if (!user || !user.is_admin) {
-            return res.status(403).json({ error: 'Acceso denegado' });
-        }
-        
-        const query = `
-            SELECT 
-                status,
-                COUNT(*) as count
-            FROM user_verifications 
-            GROUP BY status
-        `;
-        
-        db.all(query, [], (err, stats) => {
-            if (err) {
-                return sendApiError(res, error, { development: isDevelopment });
-            }
-            
-            const formattedStats = {
-                pending: 0,
-                approved: 0,
-                rejected: 0,
-                total: 0
-            };
-            
-            stats.forEach(stat => {
-                formattedStats[stat.status] = stat.count;
-                formattedStats.total += stat.count;
-            });
-            
-            res.json(formattedStats);
+async function loadVerificationForAdmin(req, res) {
+    const admin = await assertAdminUser(req, res);
+    if (!admin) return null;
+    const verification = await runDbGet(
+        'SELECT id, user_id, status FROM user_verifications WHERE id = ?',
+        [req.params.id]
+    );
+    if (!verification) {
+        res.status(404).json({ error: 'Verificación no encontrada' });
+        return null;
+    }
+    return { admin, verification };
+}
+
+app.post('/api/admin/verifications/:id/approve', authenticateToken, async (req, res) => {
+    try {
+        const ctx = await loadVerificationForAdmin(req, res);
+        if (!ctx) return;
+
+        const now = new Date().toISOString();
+        await runDb(
+            `UPDATE user_verifications
+             SET status = 'approved', rejection_reason = NULL,
+                 verified_at = COALESCE(verified_at, ?), admin_reviewed_at = ?, admin_reviewed_by = ?
+             WHERE id = ?`,
+            [now, now, ctx.admin.id, ctx.verification.id]
+        );
+        await runDb(
+            `UPDATE users SET is_verified = 1, verification_status = 'verified',
+                 verification_date = COALESCE(verification_date, ?)
+             WHERE id = ?`,
+            [now, ctx.verification.user_id]
+        );
+        await saveDatabaseAsync();
+
+        res.json({
+            message: 'Cuenta revisada y aprobada',
+            verification_id: ctx.verification.id,
+            user_id: ctx.verification.user_id
         });
-    });
+    } catch (error) {
+        return sendApiError(res, error, { development: isDevelopment });
+    }
+});
+
+app.post('/api/admin/verifications/:id/reject', authenticateToken, async (req, res) => {
+    try {
+        const reason = String(req.body?.reason || '').trim();
+        if (!reason) {
+            return res.status(400).json({ error: 'Razón de rechazo requerida' });
+        }
+
+        const ctx = await loadVerificationForAdmin(req, res);
+        if (!ctx) return;
+
+        const now = new Date().toISOString();
+        await runDb(
+            `UPDATE user_verifications
+             SET status = 'rejected', rejection_reason = ?, admin_reviewed_at = ?, admin_reviewed_by = ?
+             WHERE id = ?`,
+            [reason, now, ctx.admin.id, ctx.verification.id]
+        );
+        await runDb(
+            `UPDATE users SET is_verified = 0, verification_status = 'rejected' WHERE id = ?`,
+            [ctx.verification.user_id]
+        );
+        try {
+            await removeUserFromFeedIndex(ctx.verification.user_id);
+        } catch (indexErr) {
+            console.warn('No se pudo limpiar índice de feeds:', indexErr.message);
+        }
+        await saveDatabaseAsync();
+
+        res.json({
+            message: 'Verificación rechazada. El perfil ya no aparece en el directorio.',
+            verification_id: ctx.verification.id,
+            user_id: ctx.verification.user_id,
+            reason
+        });
+    } catch (error) {
+        return sendApiError(res, error, { development: isDevelopment });
+    }
+});
+
+app.get('/api/admin/verifications/stats', authenticateToken, async (req, res) => {
+    try {
+        const admin = await assertAdminUser(req, res);
+        if (!admin) return;
+
+        const rows = await runDbAll(
+            `SELECT status, COUNT(*) AS count,
+                    SUM(CASE WHEN status = 'approved' AND admin_reviewed_at IS NULL THEN 1 ELSE 0 END) AS unreviewed
+             FROM user_verifications
+             GROUP BY status`
+        );
+
+        const stats = { pending: 0, approved: 0, rejected: 0, unreviewed: 0, total: 0 };
+        rows.forEach((row) => {
+            const count = Number(row.count) || 0;
+            stats[row.status] = count;
+            stats.unreviewed += Number(row.unreviewed) || 0;
+            stats.total += count;
+        });
+
+        res.json(stats);
+    } catch (error) {
+        return sendApiError(res, error, { development: isDevelopment });
+    }
 });
 
 // One-time bootstrap: promote user to admin with ADMIN_BOOTSTRAP_SECRET (set in Vercel env)

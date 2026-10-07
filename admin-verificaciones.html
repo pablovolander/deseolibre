@@ -398,6 +398,77 @@
                 flex-direction: column;
             }
         }
+        .stat-card.unreviewed h3 { color: var(--coral-pink); }
+
+        .stat-card.clickable {
+            cursor: pointer;
+        }
+
+        .stat-card.clickable:hover {
+            box-shadow: 0 4px 16px rgba(108, 92, 231, 0.25);
+        }
+
+        .review-help {
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+            border-radius: 12px;
+            background: #f3f0ff;
+            color: var(--text-dark);
+            font-size: 0.92rem;
+            line-height: 1.5;
+        }
+
+        .review-badge {
+            display: inline-block;
+            margin-top: 0.5rem;
+            padding: 0.3rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .review-badge.todo {
+            background: #ffe3e3;
+            color: #c0392b;
+        }
+
+        .review-badge.done {
+            background: #e3f7e8;
+            color: #1e7b34;
+        }
+
+        .document-item video {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            display: block;
+            background: #000;
+        }
+
+        .document-item.video-item {
+            cursor: default;
+        }
+
+        .document-item.video-item:hover {
+            transform: none;
+        }
+
+        .declaration-line {
+            margin-top: 0.35rem;
+            font-size: 0.85rem;
+        }
+
+        .declaration-line.ok { color: #1e7b34; }
+        .declaration-line.missing { color: var(--medium-gray); }
+
+        .reviewed-note {
+            padding: 0.85rem 1rem;
+            margin-bottom: 1rem;
+            background: var(--light-gray);
+            border-radius: 10px;
+            color: var(--medium-gray);
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
@@ -405,7 +476,7 @@
         <div class="header">
             <div>
                 <h1><i class="fas fa-shield-alt"></i> Panel de Verificaciones</h1>
-                <p style="margin-top: 0.5rem; opacity: 0.9;">Administración de Verificaciones de Identidad</p>
+                <p style="margin-top: 0.5rem; opacity: 0.9;">Revisá las cuentas nuevas: documento, selfie y video.</p>
             </div>
             <div class="header-actions">
                 <a href="admin-usuarios.html" class="btn btn-primary">
@@ -424,30 +495,40 @@
         </div>
 
         <div class="stats-container" id="statsContainer">
-            <div class="stat-card pending">
-                <h3 id="pendingCount">0</h3>
-                <p>Pendientes</p>
+            <div class="stat-card unreviewed clickable" onclick="filterByStatus('unreviewed')">
+                <h3 id="unreviewedCount">0</h3>
+                <p>Sin revisar</p>
             </div>
-            <div class="stat-card approved">
+            <div class="stat-card pending clickable" onclick="filterByStatus('pending')">
+                <h3 id="pendingCount">0</h3>
+                <p>Esperando aprobación</p>
+            </div>
+            <div class="stat-card approved clickable" onclick="filterByStatus('approved')">
                 <h3 id="approvedCount">0</h3>
                 <p>Aprobadas</p>
             </div>
-            <div class="stat-card rejected">
+            <div class="stat-card rejected clickable" onclick="filterByStatus('rejected')">
                 <h3 id="rejectedCount">0</h3>
                 <p>Rechazadas</p>
             </div>
-            <div class="stat-card">
+            <div class="stat-card clickable" onclick="filterByStatus('all')">
                 <h3 id="totalCount">0</h3>
                 <p>Total</p>
             </div>
         </div>
 
         <div class="content">
+            <div class="review-help">
+                <strong>Cómo revisar:</strong> mirá que la persona del documento sea la misma de la selfie y del video, y que por la fecha de nacimiento sea <strong>mayor de 18 años</strong>.
+                Si está todo bien, tocá <strong>«Revisado OK»</strong>. Si algo no cuadra, tocá <strong>«Rechazar»</strong>: la cuenta pierde la verificación y su perfil deja de aparecer en el directorio al instante.
+            </div>
+
             <div class="filters">
-                <button class="filter-btn active" onclick="filterByStatus('all')">Todas</button>
-                <button class="filter-btn" onclick="filterByStatus('pending')">Pendientes</button>
-                <button class="filter-btn" onclick="filterByStatus('approved')">Aprobadas</button>
-                <button class="filter-btn" onclick="filterByStatus('rejected')">Rechazadas</button>
+                <button class="filter-btn" data-filter="unreviewed" onclick="filterByStatus('unreviewed')">Sin revisar</button>
+                <button class="filter-btn" data-filter="pending" onclick="filterByStatus('pending')">Esperando aprobación</button>
+                <button class="filter-btn" data-filter="approved" onclick="filterByStatus('approved')">Aprobadas</button>
+                <button class="filter-btn" data-filter="rejected" onclick="filterByStatus('rejected')">Rechazadas</button>
+                <button class="filter-btn" data-filter="all" onclick="filterByStatus('all')">Todas</button>
             </div>
 
             <div id="messageContainer"></div>
@@ -470,13 +551,52 @@
 
     <script src="/js/api-config.js"></script>
     <script>
-        let currentFilter = 'all';
+        let currentFilter = 'unreviewed';
         let allVerifications = [];
 
-        // Verificar autenticación al cargar
+        const FILTER_EMPTY_TEXT = {
+            unreviewed: 'No hay cuentas sin revisar. ¡Todo al día!',
+            pending: 'No hay cuentas esperando aprobación.',
+            approved: 'No hay verificaciones aprobadas.',
+            rejected: 'No hay verificaciones rechazadas.',
+            all: 'Todavía no hay verificaciones.'
+        };
+
         window.addEventListener('DOMContentLoaded', () => {
             checkAuth();
         });
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function mediaSrc(url) {
+            if (!url) return '';
+            return /^https?:\/\//i.test(url) ? url : `${API_URL}${url}`;
+        }
+
+        function formatDate(value) {
+            if (!value) return '';
+            const raw = String(value);
+            const date = new Date(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(raw) ? raw.replace(' ', 'T') + 'Z' : raw);
+            if (Number.isNaN(date.getTime())) return '';
+            return date.toLocaleString('es-MX', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function isUnreviewed(v) {
+            return v.status === 'approved' && !v.admin_reviewed_at;
+        }
 
         async function checkAuth() {
             const token = localStorage.getItem('authToken');
@@ -502,13 +622,11 @@
         async function loadStats() {
             const token = localStorage.getItem('authToken');
             const response = await fetch(`${API_URL}/api/admin/verifications/stats`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: { Authorization: `Bearer ${token}` }
             });
 
             if (!response.ok) {
-                if (response.status === 403) {
+                if (response.status === 403 || response.status === 401) {
                     showMessage('No tienes permisos de administrador', 'error');
                     setTimeout(() => {
                         window.location.href = 'index.html';
@@ -519,6 +637,7 @@
             }
 
             const stats = await response.json();
+            document.getElementById('unreviewedCount').textContent = stats.unreviewed || 0;
             document.getElementById('pendingCount').textContent = stats.pending || 0;
             document.getElementById('approvedCount').textContent = stats.approved || 0;
             document.getElementById('rejectedCount').textContent = stats.rejected || 0;
@@ -527,15 +646,12 @@
 
         async function loadVerifications() {
             const token = localStorage.getItem('authToken');
-            // Load all verifications (not just pending)
             const response = await fetch(`${API_URL}/api/admin/verifications/pending?status=all`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: { Authorization: `Bearer ${token}` }
             });
 
             if (!response.ok) {
-                if (response.status === 403) {
+                if (response.status === 403 || response.status === 401) {
                     showMessage('No tienes permisos de administrador', 'error');
                     return;
                 }
@@ -547,144 +663,160 @@
             renderVerifications();
         }
 
-        function renderVerifications() {
-            const container = document.getElementById('verificationsList');
-            
-            if (allVerifications.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-inbox"></i>
-                        <h3>No hay verificaciones pendientes</h3>
-                        <p>Todas las verificaciones han sido procesadas</p>
+        function documentImage(url, label) {
+            if (!url) return '';
+            const src = mediaSrc(url);
+            return `
+                <div class="document-item" onclick="openModal('${escapeHtml(src)}')">
+                    <img src="${escapeHtml(src)}" alt="${escapeHtml(label)}" loading="lazy" onerror="this.alt='Imagen no disponible'">
+                    <div class="document-label">${escapeHtml(label)}</div>
+                </div>`;
+        }
+
+        function documentVideo(url, label) {
+            if (!url) return '';
+            const src = mediaSrc(url);
+            return `
+                <div class="document-item video-item">
+                    <video src="${escapeHtml(src)}" controls playsinline preload="metadata"></video>
+                    <div class="document-label">${escapeHtml(label)}</div>
+                </div>`;
+        }
+
+        function renderActions(v) {
+            const reasonBox = `
+                <textarea class="rejection-reason" id="rejectionReason_${v.id}"
+                    placeholder="Motivo del rechazo (lo verá la persona). Ej: el documento no se lee, no es mayor de edad, la cara no coincide..."
+                    rows="3"></textarea>`;
+
+            if (v.status === 'rejected') {
+                return `
+                    <div class="reviewed-note" style="background:#f8d7da;color:#721c24;">
+                        <strong>Motivo del rechazo:</strong> ${escapeHtml(v.rejection_reason || '—')}
+                        ${v.admin_reviewed_at ? `<br><small>Rechazada el ${escapeHtml(formatDate(v.admin_reviewed_at))}</small>` : ''}
                     </div>
-                `;
-                return;
+                    <div class="verification-actions">
+                        <button class="btn btn-approve" onclick="approveVerification(${v.id})">
+                            <i class="fas fa-undo"></i> Aprobar de todas formas
+                        </button>
+                    </div>`;
             }
 
-            const filtered = currentFilter === 'all' 
-                ? allVerifications 
-                : allVerifications.filter(v => v.status === currentFilter);
+            const approveLabel = v.status === 'pending' ? 'Aprobar' : 'Revisado OK';
+            const reviewedNote = v.status === 'approved' && v.admin_reviewed_at
+                ? `<div class="reviewed-note"><i class="fas fa-check"></i> Revisada el ${escapeHtml(formatDate(v.admin_reviewed_at))}. Si después ves algo raro, igual podés rechazarla.</div>`
+                : '';
+            const approveBtn = v.status === 'approved' && v.admin_reviewed_at
+                ? ''
+                : `<button class="btn btn-approve" onclick="approveVerification(${v.id})">
+                        <i class="fas fa-check"></i> ${approveLabel}
+                   </button>`;
+
+            return `
+                ${reviewedNote}
+                <div class="verification-actions">
+                    ${approveBtn}
+                    <button class="btn btn-reject" onclick="showRejectionReason(${v.id})">
+                        <i class="fas fa-times"></i> Rechazar
+                    </button>
+                </div>
+                ${reasonBox}`;
+        }
+
+        function renderVerifications() {
+            const container = document.getElementById('verificationsList');
+            document.querySelectorAll('.filter-btn').forEach((btn) => {
+                btn.classList.toggle('active', btn.dataset.filter === currentFilter);
+            });
+
+            let filtered = allVerifications;
+            if (currentFilter === 'unreviewed') {
+                filtered = allVerifications.filter(isUnreviewed);
+            } else if (currentFilter !== 'all') {
+                filtered = allVerifications.filter((v) => v.status === currentFilter);
+            }
 
             if (filtered.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
-                        <i class="fas fa-filter"></i>
-                        <h3>No hay verificaciones con este filtro</h3>
-                    </div>
-                `;
+                        <i class="fas fa-inbox"></i>
+                        <h3>${escapeHtml(FILTER_EMPTY_TEXT[currentFilter] || 'No hay verificaciones con este filtro')}</h3>
+                    </div>`;
                 return;
             }
 
-            container.innerHTML = filtered.map(verification => {
-                const verificationData = verification.verification_data || {};
-                const documents = typeof verificationData === 'object' ? verificationData : {};
-                const date = new Date(verification.created_at).toLocaleDateString('es-ES', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
+            container.innerHTML = filtered.map((v) => {
+                const d = (v.verification_data && typeof v.verification_data === 'object') ? v.verification_data : {};
+                const statusClass = isUnreviewed(v) ? 'todo' : 'done';
+                const statusBadge = v.status === 'approved'
+                    ? `<span class="review-badge ${statusClass}">${isUnreviewed(v) ? 'Sin revisar' : 'Revisada'}</span>`
+                    : '';
+                const declaration = v.adult_declaration_at
+                    ? `<p class="declaration-line ok"><i class="fas fa-check-circle"></i> Declaró ser mayor de 18 el ${escapeHtml(formatDate(v.adult_declaration_at))}</p>`
+                    : `<p class="declaration-line missing"><i class="fas fa-minus-circle"></i> Cuenta anterior a la declaración de mayoría de edad</p>`;
 
                 return `
-                    <div class="verification-card" data-id="${verification.id}">
+                    <div class="verification-card" data-id="${v.id}">
                         <div class="verification-header">
                             <div class="user-info">
-                                <h3>${verification.username}</h3>
-                                <p><i class="fas fa-envelope"></i> ${verification.email}</p>
-                                <p><i class="fas fa-calendar"></i> ${date}</p>
-                                <p><i class="fas fa-id-card"></i> Tipo: ${getVerificationTypeName(verification.verification_type)}</p>
+                                <h3>${escapeHtml(v.username)}${v.full_name ? ` <small style="font-weight:400;color:var(--medium-gray);">(${escapeHtml(v.full_name)})</small>` : ''}</h3>
+                                <p><i class="fas fa-envelope"></i> ${escapeHtml(v.email)}</p>
+                                <p><i class="fas fa-calendar"></i> Enviada el ${escapeHtml(formatDate(v.created_at))}</p>
+                                <p><i class="fas fa-id-card"></i> ${escapeHtml(getVerificationTypeName(v.verification_type))}${d.country ? ` · ${escapeHtml(d.country)}` : ''}</p>
+                                ${declaration}
+                                <p style="margin-top:0.35rem;"><a href="profile.html?user=${encodeURIComponent(v.user_id)}" target="_blank" rel="noopener"><i class="fas fa-external-link-alt"></i> Ver perfil público</a></p>
                             </div>
-                            <span class="verification-status status-${verification.status}">
-                                ${getStatusText(verification.status)}
-                            </span>
+                            <div style="text-align:right;">
+                                <span class="verification-status status-${escapeHtml(v.status)}">${escapeHtml(getStatusText(v.status))}</span><br>
+                                ${statusBadge}
+                            </div>
                         </div>
 
                         <div class="documents-section">
                             <h4><i class="fas fa-images"></i> Documentos</h4>
                             <div class="documents-grid">
-                                ${documents.id_front_url ? `
-                                    <div class="document-item" onclick="openModal('${API_URL}${documents.id_front_url}')">
-                                        <img src="${API_URL}${documents.id_front_url}" alt="Frente del documento" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'200\' height=\'200\'%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\'%3EImagen no disponible%3C/text%3E%3C/svg%3E'">
-                                        <div class="document-label">Frente del Documento</div>
-                                    </div>
-                                ` : ''}
-                                ${documents.id_back_url ? `
-                                    <div class="document-item" onclick="openModal('${API_URL}${documents.id_back_url}')">
-                                        <img src="${API_URL}${documents.id_back_url}" alt="Reverso del documento" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'200\' height=\'200\'%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\'%3EImagen no disponible%3C/text%3E%3C/svg%3E'">
-                                        <div class="document-label">Reverso del Documento</div>
-                                    </div>
-                                ` : ''}
-                                ${documents.selfie_url ? `
-                                    <div class="document-item" onclick="openModal('${API_URL}${documents.selfie_url}')">
-                                        <img src="${API_URL}${documents.selfie_url}" alt="Selfie" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'200\' height=\'200\'%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\'%3EImagen no disponible%3C/text%3E%3C/svg%3E'">
-                                        <div class="document-label">Selfie con Documento</div>
-                                    </div>
-                                ` : ''}
+                                ${documentImage(d.id_front_url, 'Frente del documento')}
+                                ${documentImage(d.id_back_url, 'Reverso del documento')}
+                                ${documentImage(d.selfie_url, 'Selfie con documento')}
+                                ${documentVideo(d.body_video_url, 'Video de verificación')}
                             </div>
-                            ${documents.additional_info ? `
+                            ${d.additional_info ? `
                                 <div style="margin-top: 1rem; padding: 1rem; background: var(--light-gray); border-radius: 10px;">
-                                    <strong>Información adicional:</strong>
-                                    <p style="margin-top: 0.5rem;">${documents.additional_info}</p>
-                                </div>
-                            ` : ''}
+                                    <strong>Notas de la persona:</strong>
+                                    <p style="margin-top: 0.5rem;">${escapeHtml(d.additional_info)}</p>
+                                </div>` : ''}
                         </div>
 
-                        ${verification.status === 'pending' ? `
-                            <div class="verification-actions">
-                                <button class="btn btn-approve" onclick="approveVerification(${verification.id})">
-                                    <i class="fas fa-check"></i> Aprobar
-                                </button>
-                                <button class="btn btn-reject" onclick="showRejectionReason(${verification.id})">
-                                    <i class="fas fa-times"></i> Rechazar
-                                </button>
-                            </div>
-                            <textarea 
-                                class="rejection-reason" 
-                                id="rejectionReason_${verification.id}"
-                                placeholder="Razón del rechazo (requerida)..."
-                                rows="3"
-                            ></textarea>
-                        ` : verification.status === 'rejected' && verification.rejection_reason ? `
-                            <div style="padding: 1rem; background: #f8d7da; border-radius: 10px; color: #721c24;">
-                                <strong>Razón del rechazo:</strong>
-                                <p style="margin-top: 0.5rem;">${verification.rejection_reason}</p>
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
+                        ${renderActions(v)}
+                    </div>`;
             }).join('');
         }
 
         function getVerificationTypeName(type) {
             const types = {
-                'id_card': 'Cédula de Identidad',
-                'passport': 'Pasaporte',
-                'driver_license': 'Licencia de Conducir'
+                id_card: 'INE / Cédula de identidad',
+                passport: 'Pasaporte',
+                driver_license: 'Licencia de conducir'
             };
-            return types[type] || type;
+            return types[type] || type || 'Documento';
         }
 
         function getStatusText(status) {
             const statuses = {
-                'pending': 'Pendiente',
-                'approved': 'Aprobada',
-                'rejected': 'Rechazada'
+                pending: 'Esperando aprobación',
+                approved: 'Aprobada',
+                rejected: 'Rechazada'
             };
             return statuses[status] || status;
         }
 
         function filterByStatus(status) {
             currentFilter = status;
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.classList.add('active');
             renderVerifications();
         }
 
         async function approveVerification(id) {
-            if (!confirm('¿Estás seguro de que deseas aprobar esta verificación?')) {
+            if (!confirm('¿Confirmás que revisaste esta cuenta y está todo bien?')) {
                 return;
             }
 
@@ -693,20 +825,17 @@
                 const response = await fetch(`${API_URL}/api/admin/verifications/${id}/approve`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${token}`,
+                        Authorization: `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     }
                 });
-
+                const data = await response.json().catch(() => ({}));
                 if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || 'Error al aprobar la verificación');
+                    throw new Error(data.error || 'Error al aprobar la verificación');
                 }
 
-                showMessage('Verificación aprobada exitosamente', 'success');
-                setTimeout(() => {
-                    loadData();
-                }, 1000);
+                showMessage(data.message || 'Cuenta revisada', 'success');
+                loadData();
             } catch (error) {
                 showMessage(error.message, 'error');
             }
@@ -715,16 +844,15 @@
         function showRejectionReason(id) {
             const textarea = document.getElementById(`rejectionReason_${id}`);
             textarea.classList.toggle('show');
-            
+
             if (textarea.classList.contains('show')) {
                 textarea.focus();
-                // Agregar botón de confirmar rechazo
                 const card = textarea.closest('.verification-card');
                 const actions = card.querySelector('.verification-actions');
                 if (!actions.querySelector('.btn-confirm-reject')) {
                     const confirmBtn = document.createElement('button');
                     confirmBtn.className = 'btn btn-reject btn-confirm-reject';
-                    confirmBtn.innerHTML = '<i class="fas fa-times"></i> Confirmar Rechazo';
+                    confirmBtn.innerHTML = '<i class="fas fa-times"></i> Confirmar rechazo';
                     confirmBtn.onclick = () => rejectVerification(id);
                     actions.appendChild(confirmBtn);
                 }
@@ -733,13 +861,13 @@
 
         async function rejectVerification(id) {
             const reason = document.getElementById(`rejectionReason_${id}`).value.trim();
-            
+
             if (!reason) {
-                showMessage('Debes proporcionar una razón para rechazar la verificación', 'error');
+                showMessage('Escribí el motivo del rechazo antes de confirmar', 'error');
                 return;
             }
 
-            if (!confirm('¿Estás seguro de que deseas rechazar esta verificación?')) {
+            if (!confirm('¿Rechazar esta cuenta? Su perfil dejará de aparecer en el directorio.')) {
                 return;
             }
 
@@ -748,21 +876,18 @@
                 const response = await fetch(`${API_URL}/api/admin/verifications/${id}/reject`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${token}`,
+                        Authorization: `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ reason })
                 });
-
+                const data = await response.json().catch(() => ({}));
                 if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || 'Error al rechazar la verificación');
+                    throw new Error(data.error || 'Error al rechazar la verificación');
                 }
 
-                showMessage('Verificación rechazada', 'success');
-                setTimeout(() => {
-                    loadData();
-                }, 1000);
+                showMessage(data.message || 'Verificación rechazada', 'success');
+                loadData();
             } catch (error) {
                 showMessage(error.message, 'error');
             }
@@ -784,7 +909,7 @@
             messageDiv.textContent = message;
             container.innerHTML = '';
             container.appendChild(messageDiv);
-            
+
             setTimeout(() => {
                 messageDiv.remove();
             }, 5000);
@@ -795,7 +920,6 @@
             showMessage('Datos actualizados', 'success');
         }
 
-        // Cerrar modal con ESC
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 closeModal();
@@ -804,4 +928,3 @@
     </script>
 </body>
 </html>
-

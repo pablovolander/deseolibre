@@ -16,7 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <link href="/css/responsive.css" rel="stylesheet">
     <link href="/css/age-gate.css" rel="stylesheet">
-    <link href="/css/home.css" rel="stylesheet">
+    <link href="/css/home.css?v=20261007a" rel="stylesheet">
     <link href="/css/mobile.css" rel="stylesheet">
     <script src="/js/api-config.js"></script>
     <script src="/js/city-search.js"></script>
@@ -29,7 +29,7 @@
     <script src="/js/face-match.js?v=20260926b"></script>
     <script src="/js/video-compress.js?v=20260926b"></script>
     <script src="/js/blob-direct-upload.js?v=20260929a"></script>
-    <script src="/js/register-wizard.js?v=20261007a"></script>
+    <script src="/js/register-wizard.js?v=20261007b"></script>
 </head>
 <body class="home-page">
     <div id="storageBanner" class="storage-banner" hidden></div>
@@ -237,7 +237,8 @@
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2024 Deseo Libre. Todos los derechos reservados. | Solo para mayores de 18 años</p>
+                <p>&copy; 2026 Deseo Libre. Todos los derechos reservados.</p>
+                <p><strong>Solo para mayores de 18 años.</strong> Todos los anunciantes declararon ser mayores de edad y verificaron su identidad. <a href="policies.html#reporting">Reportar un perfil</a></p>
             </div>
         </div>
     </footer>
@@ -313,6 +314,10 @@
                         <label for="registerPassword">Contraseña</label>
                         <input type="password" id="registerPassword" required minlength="6">
                     </div>
+                    <label class="reg-adult-declaration">
+                        <input type="checkbox" id="registerAdultDeclaration" required>
+                        <span>Declaro bajo protesta de decir verdad que soy <strong>mayor de 18 años</strong>, que el documento que voy a subir es mío y que publico por voluntad propia. Acepto las <a href="policies.html" target="_blank" rel="noopener">Políticas y Términos</a>.</span>
+                    </label>
                 </div>
                 <div class="reg-wizard-step-panel" data-step="2">
                     <div class="form-group">

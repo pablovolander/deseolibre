@@ -820,6 +820,32 @@
     margin: 0.35rem 0 0.75rem;
 }
 
+.reg-adult-declaration {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    margin: 0.75rem 0 0.25rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid rgba(255, 107, 157, 0.35);
+    border-radius: 10px;
+    background: rgba(255, 107, 157, 0.07);
+    font-size: 0.82rem;
+    line-height: 1.45;
+    cursor: pointer;
+}
+
+.reg-adult-declaration input {
+    flex-shrink: 0;
+    width: 1.1rem;
+    height: 1.1rem;
+    margin-top: 0.1rem;
+    accent-color: #ff6b9d;
+}
+
+.reg-adult-declaration a {
+    color: #ff9ec8;
+}
+
 .reg-wizard-video-meta {
     font-size: 0.85rem;
     margin-top: 0.35rem;

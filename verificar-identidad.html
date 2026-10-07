@@ -350,6 +350,15 @@
                 uploadPanel.style.display = 'none';
                 return;
             }
+            if (s.status === 'pending') {
+                statusPanel.innerHTML = `<div class="verify-card status-box">
+                    <i class="fas fa-hourglass-half" style="font-size:2.5rem;"></i>
+                    <h2>Verificación en revisión</h2>
+                    <p>Recibimos tus documentos. Una persona del equipo los está revisando. Volvé a esta página más tarde para ver el resultado.</p>
+                </div>`;
+                uploadPanel.style.display = 'none';
+                return;
+            }
             if (s.status === 'rejected' && s.rejection_reason) {
                 statusPanel.innerHTML = `<div class="verify-card status-box" style="color:#ff8a9b;">
                     <h2>Verificación rechazada</h2>
