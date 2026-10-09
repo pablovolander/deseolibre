@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
 // Variables locales (.env.local no se sube a git)
 const envLocalPath = path.join(__dirname, '.env.local');
@@ -45,7 +46,12 @@ const {
     getBlobAccess,
     getBlobToken,
     usesLocalMediaRoot,
-    saveStreamToMediaRoot
+    saveStreamToMediaRoot,
+    resolveMediaRootPath,
+    isProtectedMediaPath,
+    signMediaUrl,
+    verifyMediaSignature,
+    hasBlockedExtension
 } = require('./lib/media-storage');
 const {
     generateResetToken,
@@ -400,7 +406,8 @@ app.use(compression());
 // Rate limiting global
 const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutos
-    max: isDevelopment ? 1000 : 100, // Más permisivo en desarrollo
+    // Alto a propósito: en datos móviles muchos usuarios comparten la misma IP (CGNAT)
+    max: isDevelopment ? 5000 : 1500,
     message: 'Demasiadas solicitudes desde esta IP, intenta nuevamente en 15 minutos.',
     standardHeaders: true,
     legacyHeaders: false,
@@ -417,7 +424,7 @@ const authLimiter = rateLimit({
 // Rate limiting para subida de archivos
 const uploadLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hora
-    max: isDevelopment ? 100 : 20, // 20 uploads por hora en producción
+    max: isDevelopment ? 100 : 60, // 60 uploads por hora en producción
     message: 'Límite de subida de archivos alcanzado, intenta nuevamente más tarde.',
 });
 
@@ -478,6 +485,9 @@ app.use('/api/media', async (req, res, next) => {
     const pathname = decodeURIComponent((req.path || '').replace(/^\//, ''));
     if (!pathname) {
         return res.status(400).json({ error: 'Falta ruta del archivo' });
+    }
+    if (isProtectedMediaPath(pathname) && !verifyMediaSignature(pathname, req.query.exp, req.query.sig)) {
+        return res.status(403).json({ error: 'Archivo privado' });
     }
     try {
         await streamPrivateMedia(pathname, res, req.method === 'HEAD');
@@ -3774,10 +3784,32 @@ const DIRECT_UPLOAD_MAX_BYTES = 100 * 1024 * 1024;
 
 function validateDirectUploadPathname(raw) {
     const pathname = String(raw || '').replace(/^\/+/, '');
-    if (!pathname.startsWith('uploads/') || pathname.includes('..') || pathname.includes('\\')) {
+    if (
+        !pathname.startsWith('uploads/')
+        || pathname.includes('..')
+        || pathname.includes('\\')
+        || hasBlockedExtension(pathname)
+    ) {
         return null;
     }
     return pathname;
+}
+
+function directUploadOwnerPrefix(userId) {
+    return `u${userId}-`;
+}
+
+/** Ruta definitiva elegida por el servidor: nombre único con el id del dueño (no se puede pisar archivos ajenos). */
+function buildDirectUploadPathname(requested, userId) {
+    const parts = requested.split('/');
+    const rawName = parts.pop() || 'archivo';
+    let dir = parts.join('/');
+    if (isProtectedMediaPath(`${dir}/`)) {
+        dir = `uploads/verification/${userId}`;
+    }
+    const name = rawName.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-80) || 'archivo';
+    const unique = `${directUploadOwnerPrefix(userId)}${Date.now()}-${crypto.randomBytes(6).toString('hex')}-${name}`;
+    return `${dir}/${unique}`;
 }
 
 app.put('/api/uploads/direct', authenticateToken, uploadLimiter, async (req, res) => {
@@ -3787,6 +3819,17 @@ app.put('/api/uploads/direct', authenticateToken, uploadLimiter, async (req, res
     const pathname = validateDirectUploadPathname(req.query.pathname);
     if (!pathname) {
         return res.status(400).json({ error: 'Ruta de subida no permitida' });
+    }
+    const fileName = pathname.split('/').pop() || '';
+    if (!fileName.startsWith(directUploadOwnerPrefix(req.user.userId))) {
+        return res.status(403).json({ error: 'Ruta de subida no autorizada' });
+    }
+    if (isProtectedMediaPath(pathname) && !pathname.startsWith(`uploads/verification/${req.user.userId}/`)) {
+        return res.status(403).json({ error: 'Ruta de subida no autorizada' });
+    }
+    const existing = resolveMediaRootPath(pathname);
+    if (existing && fs.existsSync(existing)) {
+        return res.status(409).json({ error: 'El archivo ya existe' });
     }
     const declared = Number(req.headers['content-length'] || 0);
     if (declared > DIRECT_UPLOAD_MAX_BYTES) {
@@ -3804,10 +3847,11 @@ app.put('/api/uploads/direct', authenticateToken, uploadLimiter, async (req, res
 app.post('/api/blob/client-token', authenticateToken, async (req, res) => {
     try {
         if (usesLocalMediaRoot()) {
-            const pathname = validateDirectUploadPathname(req.body?.pathname);
-            if (!pathname) {
+            const requested = validateDirectUploadPathname(req.body?.pathname);
+            if (!requested) {
                 return res.status(400).json({ error: 'Ruta de subida no permitida' });
             }
+            const pathname = buildDirectUploadPathname(requested, req.user.userId);
             return res.json({ mode: 'server', pathname, uploadUrl: '/api/uploads/direct' });
         }
 
@@ -3991,15 +4035,16 @@ app.post('/api/verification/upload', authenticateToken, upload.fields([
             return res.status(400).json({ error: autoEval.reason || 'Verificación no aprobada' });
         }
 
-        const idFrontUrl = await persistUploadedFile(files.id_front[0], isVercel, localUploadsDir);
-        const selfieUrl = await persistUploadedFile(files.selfie[0], isVercel, localUploadsDir);
+        const privateFolder = { folder: `verification/${userId}` };
+        const idFrontUrl = await persistUploadedFile(files.id_front[0], isVercel, localUploadsDir, privateFolder);
+        const selfieUrl = await persistUploadedFile(files.selfie[0], isVercel, localUploadsDir, privateFolder);
         let bodyVideoUrl = directVideoUrl;
         if (!bodyVideoUrl) {
-            bodyVideoUrl = await persistUploadedFile(files.body_video[0], isVercel, localUploadsDir);
+            bodyVideoUrl = await persistUploadedFile(files.body_video[0], isVercel, localUploadsDir, privateFolder);
         }
         let idBackUrl = null;
         if (verification_type !== 'passport' && files.id_back?.[0]) {
-            idBackUrl = await persistUploadedFile(files.id_back[0], isVercel, localUploadsDir);
+            idBackUrl = await persistUploadedFile(files.id_back[0], isVercel, localUploadsDir, privateFolder);
         }
 
         const verificationData = {
@@ -4263,6 +4308,16 @@ function parseVerificationData(raw) {
     }
 }
 
+function withSignedVerificationMedia(data) {
+    const signed = { ...data };
+    for (const key of ['id_front_url', 'id_back_url', 'selfie_url', 'body_video_url']) {
+        if (signed[key]) {
+            signed[key] = signMediaUrl(signed[key]);
+        }
+    }
+    return signed;
+}
+
 app.get('/api/admin/verifications/pending', authenticateToken, async (req, res) => {
     try {
         const admin = await assertAdminUser(req, res);
@@ -4298,7 +4353,7 @@ app.get('/api/admin/verifications/pending', authenticateToken, async (req, res) 
                 user_created_at: v.user_created_at,
                 adult_declaration_at: v.adult_declaration_at || null,
                 verification_type: v.verification_type,
-                verification_data: parseVerificationData(v.verification_data),
+                verification_data: withSignedVerificationMedia(parseVerificationData(v.verification_data)),
                 status: v.status,
                 rejection_reason: v.rejection_reason || null,
                 created_at: v.created_at,
@@ -6246,20 +6301,12 @@ app.get('/index.html', (req, res) => {
     sendSeoHtml(res, 'index.html', buildHomeMeta());
 });
 
-app.get('/home.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'home.html'));
-});
-
-app.get('/feed.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'feed.html'));
-});
+app.get('/home.html', (req, res) => res.redirect(301, '/'));
+app.get('/feed.html', (req, res) => res.redirect(301, '/feed-mujeres.html'));
+app.get('/create-post.html', (req, res) => res.redirect(301, '/profile.html'));
 
 app.get('/profile.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'profile.html'));
-});
-
-app.get('/create-post.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'create-post.html'));
 });
 
 app.get('/verificar-identidad.html', (req, res) => {

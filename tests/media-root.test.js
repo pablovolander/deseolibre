@@ -56,3 +56,33 @@ test('saveStreamToMediaRoot saves stream and enforces max size', withMediaRoot(a
     );
     assert.equal(fs.existsSync(path.join(mediaRoot, 'uploads/reels/7/big.mp4')), false);
 }));
+
+test('active file types (html, svg, js) are rejected', withMediaRoot(async (m) => {
+    assert.equal(m.resolveMediaRootPath('uploads/posts/1/x.html'), null);
+    assert.equal(m.resolveMediaRootPath('uploads/posts/1/x.SVG'), null);
+    await assert.rejects(
+        m.persistUploadedFile({ originalname: 'evil.html', buffer: Buffer.from('<script>'), mimetype: 'text/html' }, false, null),
+        /no permitido/
+    );
+}));
+
+test('verification files go to a protected folder and need a valid signature', withMediaRoot(async (m) => {
+    process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
+    const url = await m.persistUploadedFile(
+        { originalname: 'ine.jpg', buffer: Buffer.from('doc'), mimetype: 'image/jpeg' },
+        false,
+        null,
+        { folder: 'verification/42' }
+    );
+    assert.match(url, /^\/api\/media\/uploads\/verification\/42\//);
+    const pathname = decodeURIComponent(url.replace('/api/media/', ''));
+    assert.equal(m.isProtectedMediaPath(pathname), true);
+    assert.equal(m.isProtectedMediaPath('uploads/posts/1/a.jpg'), false);
+
+    const signed = new URL(m.signMediaUrl(url), 'http://x');
+    assert.equal(m.verifyMediaSignature(pathname, signed.searchParams.get('exp'), signed.searchParams.get('sig')), true);
+    assert.equal(m.verifyMediaSignature(pathname, signed.searchParams.get('exp'), 'forged'), false);
+    assert.equal(m.verifyMediaSignature('uploads/verification/43/other.jpg', signed.searchParams.get('exp'), signed.searchParams.get('sig')), false);
+    assert.equal(m.verifyMediaSignature(pathname, String(Math.floor(Date.now() / 1000) - 10), signed.searchParams.get('sig')), false);
+    assert.equal(m.signMediaUrl('/api/media/uploads/posts/1/a.jpg'), '/api/media/uploads/posts/1/a.jpg');
+}));
