@@ -2,21 +2,22 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <title>Deseo Libre — Directorio de acompañantes en México</title>
     <meta name="description" content="Directorio de acompañantes en CDMX, Guadalajara y Monterrey. Perfiles con verificación, contacto directo y 0% de comisión.">
     <meta name="robots" content="index, follow">
-    <link rel="canonical" href="https://deseolibre.vercel.app/">
+    <link rel="canonical" href="https://deseolibre.com/">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Deseo Libre">
     <meta property="og:title" content="Deseo Libre — Directorio de acompañantes en México">
     <meta property="og:description" content="Directorio de acompañantes en CDMX, Guadalajara y Monterrey. Perfiles con verificación, contacto directo y 0% de comisión.">
-    <meta property="og:url" content="https://deseolibre.vercel.app/">
+    <meta property="og:url" content="https://deseolibre.com/">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <link href="/css/responsive.css" rel="stylesheet">
     <link href="/css/age-gate.css" rel="stylesheet">
-    <link href="/css/home.css?v=20261007a" rel="stylesheet">
+    <link href="/css/home.css?v=20261013a" rel="stylesheet">
     <link href="/css/mobile.css" rel="stylesheet">
     <script src="/js/api-config.js"></script>
     <script src="/js/city-search.js"></script>
@@ -150,6 +151,31 @@
 
         </div>
     </main>
+
+    <section class="home-advertise" id="anunciate" aria-labelledby="anunciate-title">
+        <div class="container">
+            <div class="home-advertise-card">
+                <div class="home-advertise-text">
+                    <p class="home-advertise-kicker"><i class="fas fa-rocket" aria-hidden="true"></i> Lanzamiento en CDMX</p>
+                    <h2 class="home-advertise-title" id="anunciate-title">¿Eres acompañante? Publica tu perfil gratis</h2>
+                    <p class="home-advertise-lead">
+                        Estamos abriendo Deseo Libre en Ciudad de México. Durante el lanzamiento, anunciarte no cuesta nada:
+                        tus clientes te escriben directo y lo que cobras es 100% tuyo.
+                    </p>
+                    <ul class="home-advertise-list">
+                        <li><i class="fas fa-check" aria-hidden="true"></i> Gratis durante el lanzamiento</li>
+                        <li><i class="fas fa-check" aria-hidden="true"></i> Contacto directo por WhatsApp o Telegram</li>
+                        <li><i class="fas fa-check" aria-hidden="true"></i> Insignia de perfil verificado</li>
+                        <li><i class="fas fa-check" aria-hidden="true"></i> Pixelado de rostro incluido</li>
+                    </ul>
+                </div>
+                <div class="home-advertise-actions">
+                    <a href="index.html?register=1" class="btn btn-primary" onclick="event.preventDefault(); showRegisterForm();"><i class="fas fa-user-plus"></i> Publicar mi perfil gratis</a>
+                    <p class="home-advertise-note">Registro en pocos minutos. Solo mayores de 18 años.</p>
+                </div>
+            </div>
+        </div>
+    </section>
 
     <section class="home-about" id="sobre" aria-labelledby="sobre-title">
         <div class="container">

@@ -6304,6 +6304,7 @@ app.get('/index.html', (req, res) => {
 app.get('/home.html', (req, res) => res.redirect(301, '/'));
 app.get('/feed.html', (req, res) => res.redirect(301, '/feed-mujeres.html'));
 app.get('/create-post.html', (req, res) => res.redirect(301, '/profile.html'));
+app.get('/favicon.ico', (req, res) => res.redirect(301, '/favicon.svg'));
 
 app.get('/profile.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'profile.html'));

@@ -489,6 +489,83 @@
     margin-right: 0.15rem;
 }
 
+.home-advertise {
+    position: relative;
+    z-index: 1;
+    padding: 2.5rem 0;
+    background: #0a0c12;
+}
+
+.home-advertise-card {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem 2.5rem;
+    padding: 1.75rem 1.75rem;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(255, 107, 157, 0.14), rgba(139, 124, 248, 0.14));
+    border: 1px solid rgba(255, 107, 157, 0.35);
+}
+
+.home-advertise-text {
+    flex: 1 1 380px;
+}
+
+.home-advertise-kicker {
+    margin: 0 0 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #ff9ec8;
+}
+
+.home-advertise-title {
+    margin: 0 0 0.75rem;
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.4rem, 3.5vw, 1.9rem);
+    color: #fff;
+}
+
+.home-advertise-lead {
+    margin: 0 0 1rem;
+    line-height: 1.6;
+    color: rgba(244, 245, 248, 0.88);
+}
+
+.home-advertise-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+    gap: 0.4rem 1.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.92rem;
+    color: rgba(244, 245, 248, 0.85);
+}
+
+.home-advertise-list i {
+    margin-right: 0.4rem;
+    color: #ff6b9d;
+}
+
+.home-advertise-actions {
+    flex: 0 1 260px;
+    text-align: center;
+}
+
+.home-advertise-actions .btn {
+    width: 100%;
+    justify-content: center;
+}
+
+.home-advertise-note {
+    margin: 0.6rem 0 0;
+    font-size: 0.8rem;
+    color: rgba(244, 245, 248, 0.6);
+}
+
 .home-about {
     position: relative;
     z-index: 1;
