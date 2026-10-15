@@ -169,6 +169,14 @@ function rejectDevOnlyVerification(res) {
 if (isVercel || process.env.TRUST_PROXY === '1') {
     app.set('trust proxy', 1);
 }
+
+app.use((req, res, next) => {
+    const host = String(req.headers.host || '').toLowerCase();
+    if (host.startsWith('www.') && (req.method === 'GET' || req.method === 'HEAD')) {
+        return res.redirect(301, `https://${host.slice(4)}${req.originalUrl}`);
+    }
+    next();
+});
 const publicDir = path.join(__dirname, 'public');
 const vercelUploadRoot = path.join(os.tmpdir(), 'deseo_libre_uploads');
 
