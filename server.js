@@ -2616,6 +2616,85 @@ app.post('/api/user/avatar', authenticateToken, uploadLimiter, upload.single('av
     }
 });
 
+async function clearUserMediaField(userId, column, currentUrl) {
+    const updateResult = await runDb(
+        `UPDATE users SET ${column} = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        [userId]
+    );
+    if (!updateResult.changes) {
+        return false;
+    }
+    if (column === 'profile_picture') {
+        await runDb('UPDATE user_profiles SET profile_image_url = NULL WHERE user_id = ?', [userId]).catch(() => {});
+        try {
+            await refreshUserProfilePictureInFeedIndex(userId, null);
+        } catch (indexErr) {
+            console.warn('No se pudo limpiar avatar en índice de feeds:', indexErr.message);
+        }
+    }
+    if (currentUrl) {
+        try {
+            await deleteStoredMediaUrls([currentUrl], { localPublicDir: publicDir });
+        } catch (mediaErr) {
+            console.warn(`No se pudo borrar archivo de ${column}:`, mediaErr.message);
+        }
+        try {
+            const pathname = String(currentUrl).replace(/^\/api\/media\//, '').replace(/^\//, '');
+            const fullPath = resolveMediaRootPath(pathname);
+            if (fullPath && fs.existsSync(fullPath)) {
+                fs.unlinkSync(fullPath);
+            }
+        } catch (rootErr) {
+            console.warn(`No se pudo borrar ${column} en MEDIA_ROOT:`, rootErr.message);
+        }
+    }
+    return true;
+}
+
+app.delete('/api/user/avatar', authenticateToken, async (req, res) => {
+    try {
+        const user = await resolveAuthUser(req);
+        if (!user) {
+            return res.status(404).json({
+                error: 'Usuario no encontrado',
+                message: 'Tu sesión no coincide con la base de datos. Cierra sesión y vuelve a entrar.'
+            });
+        }
+        const row = await runDbGet('SELECT profile_picture FROM users WHERE id = ?', [user.id]);
+        const ok = await clearUserMediaField(user.id, 'profile_picture', row?.profile_picture);
+        if (!ok) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+        await saveDatabaseAsync();
+        res.json({ message: 'Foto de perfil eliminada', avatar_url: null });
+    } catch (error) {
+        console.error('Error deleting avatar:', error);
+        res.status(500).json({ error: 'Error al eliminar la foto de perfil' });
+    }
+});
+
+app.delete('/api/user/cover', authenticateToken, async (req, res) => {
+    try {
+        const user = await resolveAuthUser(req);
+        if (!user) {
+            return res.status(404).json({
+                error: 'Usuario no encontrado',
+                message: 'Tu sesión no coincide con la base de datos. Cierra sesión y vuelve a entrar.'
+            });
+        }
+        const row = await runDbGet('SELECT cover_photo FROM users WHERE id = ?', [user.id]);
+        const ok = await clearUserMediaField(user.id, 'cover_photo', row?.cover_photo);
+        if (!ok) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+        await saveDatabaseAsync();
+        res.json({ message: 'Foto de portada eliminada', cover_url: null });
+    } catch (error) {
+        console.error('Error deleting cover:', error);
+        res.status(500).json({ error: 'Error al eliminar la foto de portada' });
+    }
+});
+
 // Upload cover photo
 app.post('/api/user/cover', authenticateToken, uploadLimiter, upload.single('cover'), async (req, res) => {
     try {

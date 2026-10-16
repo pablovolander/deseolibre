@@ -2973,7 +2973,8 @@
                         <input type="file" id="avatarFile" accept="image/*" data-mobile-upload="image-pick" required style="display:none;" onchange="updateAvatarFileInfo(this)">
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer" style="flex-wrap:wrap;gap:0.5rem;">
+                    <button type="button" class="btn-action btn-secondary" id="removeAvatarBtn" onclick="removeAvatar()" style="background:#7f1d1d;border-color:#7f1d1d;color:#fff;">Quitar foto</button>
                     <button type="button" class="btn-action btn-secondary" onclick="closeChangeAvatarModal()">Cancelar</button>
                     <button type="submit" class="btn-action btn-primary">Guardar</button>
                 </div>
@@ -3000,7 +3001,8 @@
                         <input type="file" id="coverFile" accept="image/*" data-mobile-upload="image-pick" required style="display:none;" onchange="updateCoverFileInfo(this)">
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer" style="flex-wrap:wrap;gap:0.5rem;">
+                    <button type="button" class="btn-action btn-secondary" id="removeCoverBtn" onclick="removeCover()" style="background:#7f1d1d;border-color:#7f1d1d;color:#fff;">Quitar portada</button>
                     <button type="button" class="btn-action btn-secondary" onclick="closeChangeCoverModal()">Cancelar</button>
                     <button type="submit" class="btn-action btn-primary">Guardar</button>
                 </div>
@@ -4400,6 +4402,50 @@
                 catHint.textContent = currentUser?.category
                     ? 'No podrás cambiar la categoría después de tu primera publicación.'
                     : 'Elige en qué directorio publicarás (Mujeres, Hombres o Trans).';
+            }
+        }
+
+        async function removeAvatar() {
+            if (!currentUser?.profile_picture) {
+                showNotification('No hay foto de perfil para quitar', 'error');
+                return;
+            }
+            if (!confirm('¿Quitar tu foto de perfil?')) {
+                return;
+            }
+            try {
+                await apiCall(`${API_URL}/api/user/avatar`, { method: 'DELETE' });
+                currentUser.profile_picture = null;
+                document.getElementById('profileAvatar').src = DEFAULT_AVATAR_SRC;
+                showNotification('Foto de perfil eliminada', 'success');
+                closeChangeAvatarModal();
+                verifyToken().catch(() => {});
+                renderProfileSetupBanner();
+            } catch (error) {
+                showNotification(error.data?.error || error.message || 'No se pudo quitar la foto', 'error');
+            }
+        }
+
+        async function removeCover() {
+            if (!currentUser?.cover_photo) {
+                showNotification('No hay portada para quitar', 'error');
+                return;
+            }
+            if (!confirm('¿Quitar tu foto de portada?')) {
+                return;
+            }
+            try {
+                await apiCall(`${API_URL}/api/user/cover`, { method: 'DELETE' });
+                currentUser.cover_photo = null;
+                const coverImg = document.getElementById('coverPhoto');
+                coverImg.removeAttribute('src');
+                coverImg.style.display = 'none';
+                showNotification('Foto de portada eliminada', 'success');
+                closeChangeCoverModal();
+                verifyToken().catch(() => {});
+                renderProfileSetupBanner();
+            } catch (error) {
+                showNotification(error.data?.error || error.message || 'No se pudo quitar la portada', 'error');
             }
         }
 
